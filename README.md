@@ -186,6 +186,12 @@ honest players on one set of rules and stop casual tampering; they are not proof
   the owner links it to the account (set the account's `"player"` in `data/creator_users.json`).
   Changing the password, unlinking or banning the account cancels
   every saved game login. Recommended for any server open to people you do not know.
+- **Forgotten passwords.** There is no email. Each player can make a recovery code on their
+  Profile page (their password is asked again); it is shown once and downloaded as a text file
+  for them to keep. "Forgot your password?" on the sign-in page takes the username, the code and a
+  new password. A code works once, making a new one cancels the old one, the server keeps only a
+  fingerprint of it, and using it signs the account out of every browser, computer and phone.
+  Wrong codes are limited per address and per account name.
 - **Bans.** Banning an account on the People page also bans its linked game player. Players
   without a site account can be banned on their own on the same page (kept in `data/bans.json`).
   A banned player cannot sign in, and a running game stops working at its next request.

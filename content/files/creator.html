@@ -145,6 +145,23 @@
     <p class="hint hidden" id="loginRules">Username: 2 to 30 letters, digits, . ' - or _, no spaces. Password: at least 6 characters, no spaces. Do not reuse a password from another site. This is the same account you can link in the game under Settings &gt; Account.</p>
     <button class="primary" id="loginGo" type="submit">Sign in</button>
     <p class="switch"><span id="loginAsk">New here?</span> <a href="#" id="loginSwitch">Create an account</a></p>
+    <p class="switch" id="forgotLine"><a href="#" id="forgotLink">Forgot your password?</a></p>
+  </form>
+  <form class="login hidden" id="recoverForm" autocomplete="off">
+    <h2>Reset your password</h2>
+    <p class="hint">Use the recovery code you saved from your Profile page. It works once: afterwards, make a new one there.</p>
+    <p id="recoverMsg" class="note hidden"></p>
+    <div class="field"><label for="r_name">Username</label>
+      <input id="r_name" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+    <div class="field"><label for="r_code">Recovery code</label>
+      <input id="r_code" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"></div>
+    <div class="field"><label for="r_new">New password</label>
+      <input id="r_new" type="password" maxlength="200" autocomplete="new-password"></div>
+    <div class="field"><label for="r_new2">New password again</label>
+      <input id="r_new2" type="password" maxlength="200" autocomplete="new-password"></div>
+    <p class="hint">Resetting signs this account out of every browser, computer and phone.</p>
+    <button class="primary" id="recoverGo" type="submit">Reset password</button>
+    <p class="switch"><a href="#" id="recoverBack">Back to sign in</a></p>
   </form>
 </div>
 <nav id="tabs" class="hidden">
@@ -302,6 +319,15 @@
         </div>
         <button type="submit">Change password</button>
       </form>
+    </section>
+    <section>
+      <h2>Recovery code</h2>
+      <p class="hint">If you forget your password, a recovery code lets you set a new one from the sign-in page (<strong>Forgot your password?</strong>). It is shown only once and downloaded as a file: keep it somewhere safe, away from this computer if you can. Anyone with the code and your username can take over the account. Making a new code cancels the old one, and using a code uses it up. <span id="p_recAt"></span></p>
+      <form id="recoveryForm">
+        <div class="row"><div class="field"><label for="p_recPass">Your password</label><input id="p_recPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
+        <button type="submit">Make a recovery code</button>
+      </form>
+      <div id="p_recShow" class="box hidden" style="margin-top:10px; border-color:var(--ok)">Your recovery code: <code id="p_recCode" style="font-size:1.2em; user-select:all"></code><br><span class="hint">It has also been downloaded. It will not be shown again.</span></div>
     </section>
     <section id="p_decks" class="hidden">
       <h2>Decks</h2>
@@ -1116,7 +1142,7 @@ function loginMode(create) {
   $("loginGo").textContent = create ? "Create account" : "Sign in";
   $("loginAsk").textContent = create ? "Already have an account?" : "New here?";
   $("loginSwitch").textContent = create ? "Sign in" : "Create an account";
-  $("pass2Field").classList.toggle("hidden", !create); $("loginRules").classList.toggle("hidden", !create);
+  $("pass2Field").classList.toggle("hidden", !create); $("forgotLine").classList.toggle("hidden", create); $("loginRules").classList.toggle("hidden", !create);
   $("pass").autocomplete = create ? "new-password" : "current-password";
   loginSay("");
 }
@@ -1187,6 +1213,7 @@ function drawProfile() {
   $("p_gameLogin").classList.toggle("hidden", !linked);
   $("p_decks").classList.toggle("hidden", !linked);
   if (linked && !$("viewProfile").classList.contains("hidden")) loadDecks();
+  $("p_recAt").textContent = account && account.recoveryAt ? `You have a recovery code, made on ${account.recoveryAt.slice(0, 10)}.` : "You do not have a recovery code yet.";
   $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
 }
 const sentence = e => e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".";
@@ -1216,6 +1243,41 @@ async function gameLogin() {
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     await loadList(); say(`${d.file} downloaded. Any earlier file no longer works.`, "ok");
   } catch (e) { say(sentence(e), "bad"); }
+}
+async function recoveryCode() {
+  if (!val("p_recPass")) return say("Enter your password to make a recovery code.", "bad");
+  try {
+    const d = await call("CreatorRecoveryCode", { passphrase: val("p_recPass") });
+    $("p_recPass").value = "";
+    $("p_recCode").textContent = d.recoveryCode; $("p_recShow").classList.remove("hidden");
+    const text = `Warpforge Revival - account recovery code\n\nUsername: ${d.name}\nRecovery code: ${d.recoveryCode}\nMade: ${d.at.slice(0, 10)}\n\n` +
+      `If you forget your password: open the card creator site, choose "Forgot your password?" and enter your username, this code and a new password.\n` +
+      `The code works once. Anyone with it can take over your account, so keep this file private.\n`;
+    const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "text/plain" })), download: `warpforge-recovery-${d.name}.txt` });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    await loadList(); say("Recovery code made and downloaded. Any earlier code no longer works.", "ok");
+  } catch (e) { say(sentence(e), "bad"); }
+}
+// Forgotten password: the recovery form on the sign-in page.
+function recoverMode(on) {
+  $("loginForm").classList.toggle("hidden", on); $("recoverForm").classList.toggle("hidden", !on);
+  recoverSay("");
+  if (on) { $("r_name").value = val("author").trim(); ($("r_name").value ? $("r_code") : $("r_name")).focus(); }
+  else for (const id of ["r_code", "r_new", "r_new2"]) $(id).value = "";
+}
+function recoverSay(text) { const m = $("recoverMsg"); m.textContent = text; m.classList.toggle("hidden", !text); }
+async function recover() {
+  const name = val("r_name").trim(), code = val("r_code").trim(), pass = val("r_new");
+  if (!name || !code || !pass) return recoverSay("Enter your username, your recovery code and a new password.");
+  if (pass !== val("r_new2")) return recoverSay("The two new passwords do not match.");
+  $("recoverGo").disabled = true;
+  try {
+    const d = await call("CreatorRecover", { name, recoveryCode: code, newPassphrase: pass });
+    setSession(d.session); recoverMode(false); loginMode(false);
+    await loadList();
+    say(`Password reset. Welcome back, ${d.name}. Your recovery code is used up: make a new one on your Profile page.`, "ok");
+  } catch (e) { recoverSay(sentence(e)); }
+  $("recoverGo").disabled = false;
 }
 // Deck codes are the game's own: what its Share button copies and its Import Deck box reads.
 // base64 of "Name:defence card:warlord:card:card:…;game mode" (a card held twice is listed twice).
@@ -1435,7 +1497,7 @@ async function loadUploads() {
       } })));
   }
 }
-async function signOut() { try { await call("CreatorSignOut"); } catch (e) {} setSession(""); say(""); fill(null); show("Create"); await loadList(); }
+async function signOut() { try { await call("CreatorSignOut"); } catch (e) {} setSession(""); say(""); $("p_recShow").classList.add("hidden"); $("p_recCode").textContent = ""; fill(null); show("Create"); await loadList(); }
 async function discard(c) {
   if (!confirm(`Discard ${c.name}? It disappears from your list.`)) return;
   try { await call("CreatorDiscard", { id: c.id }); if (editingId === c.id) fill(null); say(`${c.name} discarded.`, "ok"); loadList(); }
@@ -1550,6 +1612,10 @@ async function start() {
     $("deckCode").value = await f.text(); importDeck();
   });
   $("gameLoginForm").addEventListener("submit", e => { e.preventDefault(); gameLogin(); });
+  $("recoveryForm").addEventListener("submit", e => { e.preventDefault(); recoveryCode(); });
+  $("recoverForm").addEventListener("submit", e => { e.preventDefault(); recover(); });
+  $("forgotLink").onclick = e => { e.preventDefault(); recoverMode(true); };
+  $("recoverBack").onclick = e => { e.preventDefault(); recoverMode(false); $("author").focus(); };
   $("loginForm").addEventListener("submit", e => { e.preventDefault(); sign(); });
   $("loginSwitch").onclick = e => { e.preventDefault(); loginMode(!creating); $("author").focus(); };
   for (const id of ["f_name", "f_kind", "f_army", "f_rarity", "f_cost", "f_melee", "f_ranged", "f_health", "f_armour", "f_keyword", "f_stratagemType", "f_art", "f_text", "f_designNotes", "f_token"])

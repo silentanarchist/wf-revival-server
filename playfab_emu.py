@@ -1252,6 +1252,7 @@ class PlayFabEmulator:
         return ok({"cards": cards, "role": role, "released": self._creator_released(), "name": me,
                    "account": dict(self._creator_perms(account), gameLoginAt=max([account.get("gameLoginAt") or ""] + [g.get("at") or "" for g in account.get("gameLogins") or [] if isinstance(g, dict)]),
                                    gameLogins=len(self._game_login_hashes(account)),
+                                   recoveryAt=account.get("recoveryAt") or "" if account.get("recoveryHash") else "",
                                    playerName=((self.store.load(account["player"]) or {}).get("DisplayName") or account["player"])
                                    if account.get("player") else "") if account and me else None,
                    "rulesVersion": self._creator_rules_version()})
@@ -1774,6 +1775,77 @@ class PlayFabEmulator:
             self._creator_users_save(users)
         return ok({})
 
+    # ---- recovery code: the way back in after a forgotten password
+    # Made on the profile page (the password is asked again) and shown once, for the player to
+    # download or write down; the server keeps only a fingerprint. Using it sets a new password,
+    # signs out every browser, computer and phone, and is used up (a new one can be made after).
+    RECOVERY_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"     # no I, L, O or U: easy to read back
+
+    @classmethod
+    def _recovery_new(cls):
+        raw = "".join(cls.RECOVERY_ALPHABET[b % 32] for b in os.urandom(20))   # 100 bits
+        return "-".join(raw[i:i + 4] for i in range(0, 20, 4))
+
+    @staticmethod
+    def _recovery_hash(code):
+        text = re.sub(r"[^0-9A-Z]", "", str(code or "").upper())
+        text = text.replace("O", "0").replace("I", "1").replace("L", "1")
+        if len(text) != 20:
+            return None
+        return hashlib.sha256(("warpforge-recovery:" + text).encode("utf-8")).hexdigest()
+
+    def api_Revival_CreatorRecoveryCode(self, req, headers):
+        """Makes a new recovery code for the signed-in account (replacing any earlier one)."""
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me or self._creator_perms(me)["access"] == "banned":
+                return err("NotAuthorized", "sign in first")
+            if not self._creator_check_passphrase(me, req.get("passphrase")):
+                return err("InvalidPassword", "wrong password")
+            users = self._creator_users()
+            user = users[me["name"].lower()]
+            code = self._recovery_new()
+            user["recoveryHash"], user["recoveryAt"] = self._recovery_hash(code), now_iso()
+            self._creator_users_save(users)
+        return ok({"recoveryCode": code, "name": user["name"], "at": user["recoveryAt"]})
+
+    def api_Revival_CreatorRecover(self, req, headers):
+        """Forgotten password: name + recovery code + new password. Signs in on success."""
+        name = " ".join(str(req.get("name") or "").split())[:30]
+        new = str(req.get("newPassphrase") or "")
+        digest = self._recovery_hash(req.get("recoveryCode"))
+        if not name or not req.get("recoveryCode"):
+            return err("InvalidParams", "enter your name and your recovery code")
+        if not 6 <= len(new) <= 200:
+            return err("InvalidParams", "the new password must be at least 6 characters")
+        if any(ch.isspace() for ch in new):
+            return err("InvalidParams", "the password cannot contain spaces")
+        where = self._address(headers)
+        if not self._allow("recover-fail", where, 10, 900, count=False) or not self._allow("recover-fail-name", name.lower(), 5, 900, count=False):
+            return err("TooManyAttempts", "too many attempts - wait a few minutes and try again", 1199, 429)
+        with self.store.lock:
+            users = self._creator_users()
+            user = users.get(name.lower())
+            if user is None or not digest or not user.get("recoveryHash") or not hmac.compare_digest(user["recoveryHash"], digest):
+                self._allow("recover-fail", where, 10, 900)
+                self._allow("recover-fail-name", name.lower(), 5, 900)
+                return err("InvalidPassword", "that name and recovery code do not match")
+            if self._creator_perms(user)["access"] == "banned":
+                return err("AccountBanned", "this account has been banned")
+            token = uuid.uuid4().hex + uuid.uuid4().hex
+            user["salt"] = os.urandom(16).hex()
+            user["hash"] = self._creator_hash(new, user["salt"])
+            user["sessions"] = [hashlib.sha256(token.encode("utf-8")).hexdigest()]
+            user["passphraseChangedAt"] = user["recoveredAt"] = now_iso()
+            user.pop("recoveryHash", None)                  # used up
+            user.pop("recoveryAt", None)
+            user.pop("gameLoginHash", None)                 # every computer and phone signs in again
+            user.pop("gameLogins", None)
+            self._end_play(user.get("player"), "The password of this account was reset. Start the game again and sign in.")
+            self._creator_users_save(users)
+        log.info("account %s: password reset with its recovery code", user["name"])
+        return ok({"name": user["name"], "session": token, "account": self._creator_perms(user)})
+
     # A game login lets the game sign in as the account's game player, with or without Steam. It
     # is a long secret kept by the mod in UserData/WarpforgeRevival/game-login.txt: written there
     # by the in-game sign-in window, or downloaded from the profile page. An account can have
@@ -2216,7 +2288,7 @@ class PlayFabEmulator:
     #  - entries older than "logDays" in revival-settings.json (default 14) are dropped once a day,
     #    and the file is cut back if it still passes 50 MB.
     LOG_SECRET = {"passphrase", "newpassphrase", "password", "session", "key", "token", "ticket", "image", "mask",
-                  "sessionticket", "entitytoken", "devicetoken", "x-authorization", "secret"}
+                  "sessionticket", "entitytoken", "devicetoken", "x-authorization", "secret", "recoverycode"}
     LOG_IDENTITY = {"steamticket", "androiddeviceid", "androiddevice", "customid", "iosdeviceid", "deviceid", "nintendoswitchdeviceid"}
     LOG_MAX_BYTES = 50 * 1024 * 1024
 
