@@ -1017,8 +1017,8 @@ class PlayFabEmulator:
         name = " ".join(str(req.get("name") or "").split())[:30]
         passphrase = str(req.get("passphrase") or "")
         if req.get("create"):       # the rules apply to new accounts; existing ones sign in as they were made
-            if not re.fullmatch(r"[\w.'-]{2,30}", name):
-                return err("InvalidParams", "names are 2 to 30 letters, digits, . ' - or _, without spaces")
+            if not re.fullmatch(r"[\w.'-]{5,30}", name):
+                return err("InvalidParams", "account names are 5 to 30 letters, digits, . ' - or _, without spaces")
             if self._word_filter().found(name):
                 return err("InvalidParams", "that name contains a word that is not allowed here")
             if not 6 <= len(passphrase) <= 200:
@@ -1731,8 +1731,8 @@ class PlayFabEmulator:
     def api_Revival_CreatorRename(self, req, headers):
         """Changes the account's username (the current passphrase is asked again). Cards follow the new name."""
         new = " ".join(str(req.get("name") or "").split())
-        if not re.fullmatch(r"[\w.'-]{2,30}", new):
-            return err("InvalidParams", "names are 2 to 30 letters, digits, . ' - or _, without spaces")
+        if not re.fullmatch(r"[\w.'-]{5,30}", new):
+            return err("InvalidParams", "account names are 5 to 30 letters, digits, . ' - or _, without spaces")
         if self._word_filter().found(new):
             return err("InvalidParams", "that name contains a word that is not allowed here")
         with self.store.lock:
