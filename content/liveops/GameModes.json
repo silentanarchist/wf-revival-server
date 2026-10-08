@@ -409,11 +409,13 @@
      "manaPerTurn": 2,
      "drawCardsPerTurn": 1,
      "manaAccumulation": 0,
-     "handLimit": 10,
+     "handLimit": 8,
      "shouldReshuffle": false,
      "showMulligan": true,
      "assignDefensiveCardsInEditMode": true,
-     "alternativeTraitLogic": false
+     "alternativeTraitLogic": false,
+     "startingHand": 4,
+     "secondPlayerExtraCards": 0
     },
     "drawData": {
      "EventAssets": [

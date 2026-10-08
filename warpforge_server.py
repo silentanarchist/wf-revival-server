@@ -671,6 +671,8 @@ class Handler(BaseHTTPRequestHandler):
                   ".html": "text/html; charset=utf-8"}
 
     def _serve_file(self, rel):
+        if rel == "revival-settings.json":
+            return self._serve_settings()
         root = os.path.realpath(self.files_dir)
         full = os.path.realpath(os.path.join(root, rel))
         if not full.startswith(root + os.sep):
@@ -684,6 +686,45 @@ class Handler(BaseHTTPRequestHandler):
         if data is None:
             return self._json(404, {"error": "not found"})
         self._send(200, data, ctype)
+
+
+    def _serve_settings(self):
+        """The settings file as the mod reads it, plus the starting hand of each game mode that
+        sets one ("startingHand" / "secondPlayerExtraCards" in its gameplayVariables in
+        content/liveops/GameModes.json), as {"startingHands": {eventId: {...}}}."""
+        data = dict(settings())
+        hands = mode_hands()
+        if hands:
+            data["startingHands"] = hands
+        self._send(200, json.dumps(data, ensure_ascii=False).encode("utf-8"), "application/json")
+
+
+_hands_cache = [None, {}]
+
+
+def mode_hands():
+    """{eventId: {"startingHand": n, "secondPlayerExtraCards": m}} for the game modes in
+    content/liveops/GameModes.json that set either value; re-read when the file changes."""
+    path = os.path.join(os.path.dirname(os.path.realpath(Handler.files_dir or ".")), "liveops", "GameModes.json")
+    try:
+        stamp = os.path.getmtime(path)
+    except OSError:
+        return {}
+    if _hands_cache[0] != stamp:
+        hands = {}
+        try:
+            with open(path, encoding="utf-8") as f:
+                for ev in json.load(f).get("RawEvents", []):
+                    d = ev.get("Data") or {}
+                    g = d.get("gameplayVariables") or {}
+                    one = {k: g[k] for k in ("startingHand", "secondPlayerExtraCards")
+                           if isinstance(g.get(k), int) and not isinstance(g.get(k), bool) and 0 <= g[k] <= 10}
+                    if one and isinstance(d.get("eventId"), str):
+                        hands[d["eventId"]] = one
+        except (OSError, ValueError, AttributeError) as e:
+            log.warning("starting hands: could not read %s: %s", path, e)
+        _hands_cache[0], _hands_cache[1] = stamp, hands
+    return _hands_cache[1]
 
 
 _zips = {}
