@@ -10,7 +10,7 @@ echo  Run this once, on the PC that runs the server.
 echo  Every night at 4:12 it saves the server's data folder (accounts, players, decks,
 echo  bans, chat, custom cards) as one dated zip in
 echo     C:\WarpforgeRevival-backups
-echo  Old backups are kept. The folder's backup-log.txt says how each night went.
+echo  The newest 10 backups are kept. The folder's backup-log.txt says how each night went.
 echo.
 
 set "PY="

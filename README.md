@@ -199,7 +199,8 @@ honest players on one set of rules and stop casual tampering; they are not proof
 - **Back up `data/`.** `maintenance/setup-nightly-backup.bat`, run once on the server PC, makes
   a first backup and schedules one every night at 4:12: a dated zip of `data/` (and the live
   settings file) in `C:\WarpforgeRevival-backups`, checked after writing, with a line per night
-  in `backup-log.txt`. Old backups are kept. Pick a different drive than the server's if you can:
+  in `backup-log.txt`. The newest 10 are kept (older ones are removed only after a night that
+  worked; `KEEP` in the script changes the number). Pick a different drive than the server's if you can:
   `python maintenance/backup-data.py D:\somewhere` makes one by hand. To restore, stop the
   server, unzip a backup's `data` folder over `data/`, and start it again.
 - Game sessions are kept in `data/sessions.json` as fingerprints, so a restart does not sign

@@ -1,8 +1,9 @@
 """Nightly backup of the server's data (accounts, players, decks, bans, chat, custom cards).
 
 Makes one dated zip of data/ (plus the live settings file) in the backup folder, checks that
-every file in it reads back, and writes a line to backup-log.txt there. Old backups are kept;
-nothing is ever deleted (a day's backup is about 50 KB).
+every file in it reads back, and writes a line to backup-log.txt there. The newest KEEP backups
+are kept: after a backup that worked, older ones beyond that are removed (a failed night removes
+nothing, so the last good backups always stay).
 
     python maintenance/backup-data.py [backup folder]      (default C:\\WarpforgeRevival-backups)
 
@@ -20,6 +21,7 @@ SERVER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(SERVER, "data")
 SETTINGS = os.path.join(SERVER, "content", "files", "revival-settings.json")
 DEST = sys.argv[1] if len(sys.argv) > 1 else r"C:\WarpforgeRevival-backups"
+KEEP = 10                                            # backups kept in the folder
 
 
 def read(path):
@@ -74,6 +76,18 @@ def main():
         os.replace(tmp, target)
         line = "%s  OK     %d files, %.1f KB  %s" % (stamp, files, os.path.getsize(target) / 1024, os.path.basename(target))
         ok = True
+        # only after a good backup: keep the newest KEEP, remove the older ones
+        backups = sorted((f for f in os.listdir(DEST) if f.startswith("warpforge-data-") and f.endswith(".zip")),
+                         key=lambda f: os.path.getmtime(os.path.join(DEST, f)), reverse=True)
+        removed = []
+        for old in backups[KEEP:]:
+            try:
+                os.remove(os.path.join(DEST, old))
+                removed.append(old)
+            except OSError:
+                pass
+        if removed:
+            line += "  (removed %d older: %s)" % (len(removed), ", ".join(sorted(removed)))
     except Exception as e:
         line = "%s  FAILED %s" % (stamp, e)
         ok = False
