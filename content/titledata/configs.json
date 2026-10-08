@@ -288,8 +288,8 @@
    "card_level_4_min_rank": 0
   },
   "EmotesConfig": {
-   "emote_chance_after_action": 0,
-   "reply_chance": 0,
+   "emote_chance_after_action": 0.05,
+   "reply_chance": 0.3,
    "min_reply_delay": 1,
    "max_reply_delay": 2
   },
