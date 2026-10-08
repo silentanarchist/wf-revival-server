@@ -402,7 +402,7 @@
      "slotsPerSide": 4,
      "warlordLifeChange": 0,
      "deckSize": 12,
-     "overtimeTurn": 20,
+     "overtimeTurn": 8,
      "startingMana": 1,
      "startingManaSecond": 2,
      "addedManaSecond": 0,
@@ -924,7 +924,9 @@
      "shouldReshuffle": false,
      "showMulligan": true,
      "assignDefensiveCardsInEditMode": true,
-     "alternativeTraitLogic": false
+     "alternativeTraitLogic": false,
+     "startingHand": 4,
+     "secondPlayerExtraCards": 1
     },
     "drawData": {
      "EventAssets": [
