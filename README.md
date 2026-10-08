@@ -27,6 +27,7 @@ Python 3.9 or newer, standard library only. One process, one port.
 | `content/liveops/GameModes.json` | The game modes and their rules (deck size, energy, turn limits). |
 | `content/titledata/` | Configuration the game asks for at start-up. |
 | `content/files/text-terms.json` | Wording for game texts that are missing. |
+| `tools/extract_card_art.py`, `tools/extract_card_art.bat` | Extract the official card pictures from your copy of the game for the card creator's preview (see below). |
 
 ## Running it
 
@@ -138,9 +139,28 @@ out and listed in `.gitignore`. Without them:
   `content/files/creator-cards.json` are generated from your own copy of the game;
 - cards the mod should add or change come from `content/cards/*.json`, which you supply.
 - the creator's card preview shows an official card's picture when a design borrows its art only
-  if `content/files/card-art.zip` holds one picture per card, named by card id (`AM3.jpg`, ...),
-  taken from your own copy of the game. Any folder under `content/files/` can be kept as a zip
-  of the same name this way.
+  if `content/files/card-art.zip` is there (see "Card art for the creator" below). Any folder
+  under `content/files/` can be kept as a zip of the same name this way.
+
+### Card art for the creator
+
+When a design borrows an official card's art, the card creator's preview shows that card's
+picture if the server has it. The pictures come from your own copy of the game:
+
+1. Have the Windows game installed (Steam) and the server's card data in place
+   (`content/bundles/allcards_assets_all.bundle`).
+2. Install [Python](https://www.python.org/) 3.9 or newer.
+3. Double-click `tools/extract_card_art.bat`. It finds the game in Steam's usual folder (or asks
+   where it is), installs UnityPy and Pillow the first time, and writes
+   `content/files/card-art.zip`: one 384 x 384 JPEG per card, named by card id, about 25 MB.
+
+Or run it yourself: `pip install UnityPy Pillow`, then
+`python tools/extract_card_art.py --game "path\to\Warhammer 40k Warpforge"`. Options:
+`--cards` (another card data bundle), `--out` (another zip), `--size` and `--quality`.
+
+The server serves `files/card-art/<id>.jpg` straight out of the zip; no restart is needed when
+it is replaced. Run it again after the card data changes (new cards). The pictures are the
+game's own art: the zip is listed in `.gitignore`; never publish it.
 
 The card creator turns a design into the game's own card layout. Which parts of a card's data
 each effect uses was taken from the game's code, and the result is checked by rebuilding every
