@@ -131,6 +131,22 @@ class WordFilter:
         return "".join(chars), True
 
 
+class NotSignedIn(Exception):
+    """The request has no valid session (raised by _player; reported to the game as NotAuthenticated)."""
+
+
+def _retry_locked(action, tries=20, wait=0.025):
+    """Run a file action, trying again for a moment when Windows refuses it because another request
+    is reading or replacing the same file at that instant (PermissionError, "access is denied")."""
+    for i in range(tries):
+        try:
+            return action()
+        except PermissionError:
+            if i == tries - 1:
+                raise
+            time.sleep(wait)
+
+
 class Store:
     def __init__(self, root, content):
         self.root = root
@@ -160,7 +176,7 @@ class Store:
         tmp = self._sessions_file + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(self._sessions, f)
-        os.replace(tmp, self._sessions_file)
+        _retry_locked(lambda: os.replace(tmp, self._sessions_file))
 
     def issue(self, pfid):
         """A new session ticket for a player who has just signed in."""
@@ -261,8 +277,10 @@ class Store:
             return None
         p = self._path(pfid)
         if os.path.exists(p):
-            with open(p, encoding="utf-8") as f:
-                return json.load(f)
+            def read():
+                with open(p, encoding="utf-8") as f:
+                    return json.load(f)
+            return _retry_locked(read)
         return None
 
     MAX_SAVE_BYTES = 1024 * 1024        # last line of defence; the request handlers stop well before this
@@ -274,7 +292,7 @@ class Store:
         tmp = self._path(player["PlayFabId"]) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(text)
-        os.replace(tmp, self._path(player["PlayFabId"]))
+        _retry_locked(lambda: os.replace(tmp, self._path(player["PlayFabId"])))
 
     @staticmethod
     def player_id_for(kind, ext_id):
@@ -2450,7 +2468,7 @@ class PlayFabEmulator:
             try:
                 status, resp = handler(req, headers)
                 note = ""
-            except PermissionError:
+            except NotSignedIn:
                 why = self.store.signed_out_reason(headers)
                 if why:     # the mod closes the game with this message (the next start asks to sign in)
                     status, resp = err("SignedOut", why, 1074, 401)
@@ -2572,7 +2590,7 @@ class PlayFabEmulator:
     def _player(self, headers):
         p = self.store.from_session(headers)
         if p is None:
-            raise PermissionError("not logged in")
+            raise NotSignedIn("not logged in")
         return p
 
     # ------------------------------------------------------------------ login
