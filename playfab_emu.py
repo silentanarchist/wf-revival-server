@@ -247,10 +247,18 @@ class Store:
         return ""
 
     # ---- players
+    # Player ids are 16 hex characters (see player_id_for). Some arrive from the game (another
+    # player's profile, a friend, an opponent), so nothing else may become a file name here.
+    PLAYER_ID = re.compile(r"[0-9A-F]{16}")
+
     def _path(self, pfid):
+        if not isinstance(pfid, str) or not self.PLAYER_ID.fullmatch(pfid):
+            raise ValueError("not a player id")
         return os.path.join(self.players_dir, pfid + ".json")
 
     def load(self, pfid):
+        if not isinstance(pfid, str) or not self.PLAYER_ID.fullmatch(pfid):
+            return None
         p = self._path(pfid)
         if os.path.exists(p):
             with open(p, encoding="utf-8") as f:
@@ -2919,9 +2927,16 @@ class PlayFabEmulator:
     def _fn_data(self, params):
         return (params or {}).get("Data") or {}
 
+    # A LiveOps handler name arrives from the game and becomes a file name under content/liveops,
+    # so only a plain name is accepted: no path separators, no "..", no drive or network path.
+    HANDLER_NAME = re.compile(r"[A-Za-z0-9_-]{1,40}")
+    MAX_HANDLERS = 64
+
     def _liveops_handler(self, player, handler):
         """Events for one LiveOps handler: content/liveops/<Handler>.json holds {"SharedData", "RawEvents":[{"Data"}]};
         each player's progress for an event ("Persistence") is kept in their save."""
+        if not isinstance(handler, str) or not self.HANDLER_NAME.fullmatch(handler):
+            return {"SharedData": {}, "RawEvents": []}
         path = os.path.join(self.content_root, "liveops", handler + ".json")
         try:
             with open(path, encoding="utf-8") as f:
@@ -3389,11 +3404,21 @@ class PlayFabEmulator:
     def cs_ExpireDraftEvent(self, player, params):
         return self.cs_ResetCollectedDraft(player, params)
 
+    def _handler_names(self, names):
+        """The game's list of LiveOps handler names, keeping only plain names (see HANDLER_NAME), once each."""
+        out = []
+        for h in names if isinstance(names, list) else []:
+            if isinstance(h, str) and self.HANDLER_NAME.fullmatch(h) and h not in out:
+                out.append(h)
+                if len(out) >= self.MAX_HANDLERS:
+                    break
+        return out
+
     def cs_InitializeLiveOps(self, player, params):
         data = self._fn_data(params)
         td = self.store.title_data()
         return {
-            "HandlerData": {h: self._liveops_handler(player, h) for h in data.get("Handlers", [])},
+            "HandlerData": {h: self._liveops_handler(player, h) for h in self._handler_names(data.get("Handlers"))},
             "TitleData": {k: td[k] for k in data.get("Configs", []) if k in td},
             "SharedEventData": {"energyData": {"energy": 0, "lastUpdated": int(time.time() * 1000)}},
             "grantedItems": [],
