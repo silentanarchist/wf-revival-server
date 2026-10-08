@@ -1,0 +1,47 @@
+# Words the server blocks in chat messages and in player and account names.
+#
+# This file is only the starting list. Once an admin saves the list on the creator site
+# (People page > Word filter), the server uses that copy (data/word_filter.json) instead.
+#
+# One entry per line; capitals do not matter. Letters swapped for look-alikes (0 for o, 3 for e,
+# @ for a, $ for s ...), repeated letters and letters split up with dots or spaces are caught.
+#   word     the whole word only            ("ass" does not catch "class")
+#   word*    any word starting with it       ("fuck*" catches "fucking")
+#   *word*   anywhere, even inside a word   (use sparingly: it catches innocent words too)
+
+fuck*
+motherfuck*
+shit*
+bullshit*
+cunt*
+bitch*
+asshole*
+ass
+dick
+dickhead*
+cock
+cocksuck*
+pussy
+whore*
+slut*
+bastard*
+wank*
+twat*
+prick
+piss
+rape*
+rapist*
+nazi*
+kys
+nigger*
+nigga*
+faggot*
+fag
+fags
+retard*
+tranny*
+chink*
+spic
+spics
+kike*
+wetback*

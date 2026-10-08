@@ -1,0 +1,12 @@
+{
+ "Card_Trait/ferocity": "Ferocity",
+ "CardTraitDescription/ferocity": "Action. Can be used the same turn it comes into play. Do something, then return this troop to your deck",
+ "Card_Trait/huntMark": "Hunt Mark",
+ "CardTraitDescription/huntMark": "When this enemy troop is destroyed, deal damage to the enemy Warlord and Heal your Warlord equal to its number of Hunt Marks. Can stack",
+ "Card_Trait/pack": "Pack",
+ "CardTraitDescription/pack": "+1 Melee and +1 Ranged for each friendly troop in play.",
+ "Card_Trait/dontReturnFerocity": "Stays in play",
+ "CardTraitDescription/dontReturnFerocity": "This unit is not shuffled back into the deck after using Ferocity.",
+ "CardTraitDescription/huntMark#live": "When this enemy troop is destroyed, deal {0} damage to the enemy Warlord and Heal {0} to your Warlord. Can stack",
+ "MenuDeck/Error/HasNotAssignedDefensiveCard": "This deck has no Defence card assigned. Play without one?"
+}

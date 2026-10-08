@@ -1,0 +1,9 @@
+# Card creator rules
+
+WIP
+
+## Artwork
+
+- Only upload artwork you made yourself or have permission to use. Do not upload pictures taken from other games, artists or websites without permission.
+- No sexual, hateful, harassing or otherwise offensive pictures, and no real people.
+- Pictures are stored on this server as soon as you upload them, including for drafts. Admins can see every upload and will delete any that break these rules; repeated or serious cases lose access to the creator.

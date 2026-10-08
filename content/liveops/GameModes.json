@@ -1,0 +1,988 @@
+{
+ "SharedData": {
+  "ResultCounter": {},
+  "Ranked": {
+   "previousLeaderboard": "",
+   "lastPlayedSeason": 1,
+   "lastPlayedEvent": "",
+   "HighestPosition": {
+    "Position": 0,
+    "Rating": 0,
+    "Season": 0
+   },
+   "SeasonPositions": {},
+   "isHuman": true,
+   "highestScoreSeason": 0,
+   "lossStreak": 0
+  },
+  "FastMode": {
+   "previousLeaderboard": "",
+   "lastPlayedSeason": 1,
+   "lastPlayedEvent": "",
+   "HighestPosition": {
+    "Position": 0,
+    "Rating": 0,
+    "Season": 0
+   },
+   "SeasonPositions": {},
+   "isHuman": true,
+   "highestScoreSeason": 0,
+   "lossStreak": 0
+  }
+ },
+ "RawEvents": [
+  {
+   "Data": {
+    "eventId": "RevivalClassic",
+    "uploadToLive": true,
+    "uploadToPreprod": true,
+    "enabled": true,
+    "activationType": 0,
+    "dates": {
+     "startDate": 0,
+     "endDate": 0,
+     "previewable": false,
+     "previewDate": 0,
+     "expirable": false,
+     "expireDate": 0,
+     "eventStages": []
+    },
+    "filter": {
+     "army": 0,
+     "expansion": 0,
+     "hasDuration": false,
+     "eventDuration": 24,
+     "hasCooldown": false,
+     "eventCooldown": 168,
+     "eventGroups": [],
+     "Triggers": {
+      "list": []
+     },
+     "Conditions": {
+      "list": []
+     }
+    },
+    "priority": 10,
+    "location": {
+     "type": 0
+    },
+    "showInMainMenu": true,
+    "$type": "Everguild.LiveOps.RankedV3Data",
+    "seasonNumber": 1,
+    "leaderboard": "RevivalClassicS1",
+    "legendaryElo": 2500,
+    "maxEloCap": 15000,
+    "ratingDifferenceForMatchMaking": [
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000
+    ],
+    "rewardsPerTier": [],
+    "rewardsPerPosition": [],
+    "lossShieldCount": 2,
+    "boostedFactions": [],
+    "boostedFactionCount": 0,
+    "boostedFactionBonus": 0,
+    "defaultFactionBoostCount": 0,
+    "defaultFactionBoostBonus": 0,
+    "admisionPrices": [],
+    "skullsRewards": [],
+    "gameplayVariables": {
+     "maxLegendaries": 30,
+     "numberOfCopiesOtherRarities": 2,
+     "numberOfCopiesLegendary": 1,
+     "slotsPerSide": 4,
+     "warlordLifeChange": 10,
+     "deckSize": 30,
+     "overtimeTurn": 19,
+     "startingMana": 1,
+     "startingManaSecond": 1,
+     "addedManaSecond": 0,
+     "manaPerTurn": 1,
+     "drawCardsPerTurn": 1,
+     "manaAccumulation": 0,
+     "handLimit": 10,
+     "shouldReshuffle": false,
+     "showMulligan": true,
+     "assignDefensiveCardsInEditMode": true,
+     "alternativeTraitLogic": false
+    },
+    "drawData": {
+     "EventAssets": [
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "845107bbee1cc49f5ab311b7a4e4a2e4",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventComponents": [
+      {
+       "key": 35,
+       "value": {
+        "m_AssetGUID": "cc245b8011f624bcfbbc8ee3f5b63e77",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      },
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "769b53202b2cc471db62926328a5f3db",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventLabels": [
+      {
+       "key": 0,
+       "useLargeSizeOnMobile": false,
+       "value": {
+        "mTerm": "text:Classic"
+       },
+       "Args": []
+      }
+     ],
+     "ShowWindowOnTrigger": false,
+     "ShowWindowOnExpire": false,
+     "HideContainer": false,
+     "ForceRun": false,
+     "showPreviousPrice": false
+    }
+   },
+   "Persistence": {
+    "$type": "Everguild.LiveOps.RankedV3Save",
+    "currentStreak": 0,
+    "joinState": 0,
+    "defaultDeckId": "",
+    "randomSeed": 0,
+    "matchStarted": false,
+    "numberOfMatchesWon": 0,
+    "numberOfMatchesLost": 0,
+    "numberOfMatchesDraw": 0,
+    "currentRating": 0,
+    "armyStats": {}
+   }
+  },
+  {
+   "Data": {
+    "$type": "Everguild.LiveOps.PracticeEventData",
+    "eventId": "PracticeEvent",
+    "uploadToLive": true,
+    "uploadToPreprod": true,
+    "enabled": true,
+    "activationType": 0,
+    "dates": {
+     "startDate": 0,
+     "endDate": 0,
+     "previewable": false,
+     "previewDate": 0,
+     "expirable": false,
+     "expireDate": 0,
+     "eventStages": []
+    },
+    "filter": {
+     "army": 0,
+     "expansion": 0,
+     "hasDuration": false,
+     "eventDuration": 24,
+     "hasCooldown": false,
+     "eventCooldown": 168,
+     "eventGroups": [],
+     "Triggers": {
+      "list": []
+     },
+     "Conditions": {
+      "list": []
+     }
+    },
+    "priority": 5,
+    "location": {
+     "type": 0
+    },
+    "showInMainMenu": true,
+    "admisionPrices": [],
+    "skullsRewards": [],
+    "gameplayVariables": {
+     "maxLegendaries": 30,
+     "numberOfCopiesOtherRarities": 2,
+     "numberOfCopiesLegendary": 1,
+     "slotsPerSide": 4,
+     "warlordLifeChange": 0,
+     "deckSize": 30,
+     "overtimeTurn": 19,
+     "startingMana": 1,
+     "startingManaSecond": 1,
+     "addedManaSecond": 0,
+     "manaPerTurn": 1,
+     "drawCardsPerTurn": 1,
+     "manaAccumulation": 0,
+     "handLimit": 10,
+     "shouldReshuffle": false,
+     "showMulligan": true,
+     "assignDefensiveCardsInEditMode": true,
+     "alternativeTraitLogic": false
+    },
+    "EnemyDeckAddressableIds": [
+     "083319e5a1b4caf4d9df33b444a7e8b9",
+     "0ae6dc484ce9cb24589a8bd83b6234d7",
+     "2e06139f46318af4ebf6b3861540a43c",
+     "367de355868b940079f1df0186086a34",
+     "37666f1aa5ec8624db268f69e156e867",
+     "3f73a217644ca4f7c976ebc74ed760cf",
+     "44b4ca3438f9741febadc614681c1f5b",
+     "459b3ee0e4c7a42c786d70e308294c79",
+     "4639e70b380626f448e4d5e86aca5018",
+     "4ca7c68ec7e99426d9e58e49f13d8338",
+     "5de8c9efbbc9f5b409a3af84c85e4bd2",
+     "65ec89f0abafa40cf9515e850f3626a6",
+     "665869bde3ccd8440aad259a2f80cb35",
+     "67a737c87add1324998148684ca0e721",
+     "6aadd1e94f0ca214d8d2c0ca44440f98",
+     "6ca1419401e3e4bff8df1395474d9766",
+     "6db257cb9e02a8940a4f7d2a5b50a1e3",
+     "72937270ea2964344b136c38b5309430",
+     "78312192a95d04cfba1a42e8dbe66cbb",
+     "79f24cffa038d43cc8bbc604f0085595",
+     "7a5a61f37cebd4c3c96d7a4c92a4ff1c",
+     "7e6db923d5e38410da149cd5fcea6332",
+     "7edcfd487a11e46048e38849b7d55c71",
+     "86bcea02146a53942ab92a3c8ac04122",
+     "87e94a5ac8014be4b8bcbf45c7a00a24",
+     "8a4f6c5e439cb4544a9571d54917461a",
+     "930cbe108b77348adb4b0a3b29873f92",
+     "943415f5e1fc74120aca6c04963277b3",
+     "9700118c8827db240ac0d1537ccfc7bc",
+     "9704bb82cd7224c1ca43122236623943",
+     "a4be78f508c3d6f40b76825fade80b3d",
+     "a76079426444949a19214489a9ba151d",
+     "c3c6c601ec94cf14f9e2b2e9b29300ff",
+     "cb16b3981d8f7194b869c6e77a5c1dd5",
+     "ce979315960ec8d48b1bf4196a35c460",
+     "d65ae9226492d4828816338b81ef0765",
+     "e1fb51c8a410b2d409fb8d529f006e60",
+     "ea6613de93ffb4e2ab6b022d6a69753e",
+     "ebffb4f84edd1cd468980b65b3ec1fce",
+     "ee09766d9e725c24cad45ffba3c8de50",
+     "f016e5032de01470694981af7808411d",
+     "f218faafe8b5243658a24381986aab7c",
+     "f4a9a81d38305a741bb0bb606c40993e",
+     "fb3c0a6cf770444f0829bc83222c48ed",
+     "ff6995f707501474c957b64c2b18e830"
+    ],
+    "drawData": {
+     "EventAssets": [
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "acbf6af64566a4090a462824beebfc7e",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventComponents": [
+      {
+       "key": 35,
+       "value": {
+        "m_AssetGUID": "cc245b8011f624bcfbbc8ee3f5b63e77",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      },
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "c2552d81d453043359dd4283c66fa456",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventLabels": [
+      {
+       "key": 0,
+       "useLargeSizeOnMobile": false,
+       "value": {
+        "mTerm": "text:Practice"
+       },
+       "Args": []
+      }
+     ],
+     "ShowWindowOnTrigger": false,
+     "ShowWindowOnExpire": false,
+     "HideContainer": false,
+     "ForceRun": false,
+     "showPreviousPrice": false
+    }
+   },
+   "Persistence": {
+    "$type": "Everguild.LiveOps.PracticeEventSaveGame",
+    "joinState": 0,
+    "defaultDeckId": "",
+    "randomSeed": 0,
+    "matchStarted": false,
+    "numberOfMatchesWon": 0,
+    "numberOfMatchesLost": 0,
+    "numberOfMatchesDraw": 0
+   }
+  },
+  {
+   "Data": {
+    "eventId": "RevivalSkirmish",
+    "uploadToLive": true,
+    "uploadToPreprod": true,
+    "enabled": true,
+    "activationType": 0,
+    "dates": {
+     "startDate": 0,
+     "endDate": 0,
+     "previewable": false,
+     "previewDate": 0,
+     "expirable": false,
+     "expireDate": 0,
+     "eventStages": []
+    },
+    "filter": {
+     "army": 0,
+     "expansion": 0,
+     "hasDuration": false,
+     "eventDuration": 24,
+     "hasCooldown": false,
+     "eventCooldown": 168,
+     "eventGroups": [],
+     "Triggers": {
+      "list": []
+     },
+     "Conditions": {
+      "list": []
+     }
+    },
+    "priority": 9,
+    "location": {
+     "type": 0
+    },
+    "showInMainMenu": true,
+    "$type": "FastModeData",
+    "leaderboard": "RevivalSkirmishS1",
+    "maxEloCap": 15000,
+    "ratingDifferenceForMatchMaking": [
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000
+    ],
+    "rewardsPerTier": [],
+    "admisionPrices": [],
+    "skullsRewards": [],
+    "gameplayVariables": {
+     "maxLegendaries": 12,
+     "numberOfCopiesOtherRarities": 1,
+     "numberOfCopiesLegendary": 1,
+     "slotsPerSide": 4,
+     "warlordLifeChange": 0,
+     "deckSize": 12,
+     "overtimeTurn": 20,
+     "startingMana": 1,
+     "startingManaSecond": 2,
+     "addedManaSecond": 0,
+     "manaPerTurn": 2,
+     "drawCardsPerTurn": 1,
+     "manaAccumulation": 0,
+     "handLimit": 10,
+     "shouldReshuffle": false,
+     "showMulligan": true,
+     "assignDefensiveCardsInEditMode": true,
+     "alternativeTraitLogic": false
+    },
+    "drawData": {
+     "EventAssets": [
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "94801c3227e1f4128bbc79235fe35518",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventComponents": [
+      {
+       "key": 35,
+       "value": {
+        "m_AssetGUID": "60c4a88ccb2534644afc6e6ede2c450b",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      },
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "d424a0e2836e04cd8b53a1da98400edc",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventLabels": [
+      {
+       "key": 0,
+       "useLargeSizeOnMobile": false,
+       "value": {
+        "mTerm": "text:Skirmish"
+       },
+       "Args": []
+      }
+     ],
+     "ShowWindowOnTrigger": false,
+     "ShowWindowOnExpire": false,
+     "HideContainer": false,
+     "ForceRun": false,
+     "showPreviousPrice": false
+    }
+   },
+   "Persistence": {
+    "$type": "FastModeSave",
+    "collectedRewards": 0,
+    "joinState": 0,
+    "defaultDeckId": "",
+    "randomSeed": 0,
+    "matchStarted": false,
+    "numberOfMatchesWon": 0,
+    "numberOfMatchesLost": 0,
+    "numberOfMatchesDraw": 0,
+    "currentRating": 0,
+    "armyStats": {}
+   }
+  },
+  {
+   "Data": {
+    "$type": "Everguild.LiveOps.PracticeEventData",
+    "eventId": "PracticeEventClassic",
+    "uploadToLive": true,
+    "uploadToPreprod": true,
+    "enabled": true,
+    "activationType": 0,
+    "dates": {
+     "startDate": 0,
+     "endDate": 0,
+     "previewable": false,
+     "previewDate": 0,
+     "expirable": false,
+     "expireDate": 0,
+     "eventStages": []
+    },
+    "filter": {
+     "army": 0,
+     "expansion": 0,
+     "hasDuration": false,
+     "eventDuration": 24,
+     "hasCooldown": false,
+     "eventCooldown": 168,
+     "eventGroups": [],
+     "Triggers": {
+      "list": []
+     },
+     "Conditions": {
+      "list": []
+     }
+    },
+    "priority": 5,
+    "location": {
+     "type": 0
+    },
+    "showInMainMenu": false,
+    "admisionPrices": [],
+    "skullsRewards": [],
+    "gameplayVariables": {
+     "maxLegendaries": 30,
+     "numberOfCopiesOtherRarities": 2,
+     "numberOfCopiesLegendary": 1,
+     "slotsPerSide": 4,
+     "warlordLifeChange": 10,
+     "deckSize": 30,
+     "overtimeTurn": 19,
+     "startingMana": 1,
+     "startingManaSecond": 1,
+     "addedManaSecond": 0,
+     "manaPerTurn": 1,
+     "drawCardsPerTurn": 1,
+     "manaAccumulation": 0,
+     "handLimit": 10,
+     "shouldReshuffle": false,
+     "showMulligan": true,
+     "assignDefensiveCardsInEditMode": true,
+     "alternativeTraitLogic": false
+    },
+    "EnemyDeckAddressableIds": [
+     "083319e5a1b4caf4d9df33b444a7e8b9",
+     "0ae6dc484ce9cb24589a8bd83b6234d7",
+     "2e06139f46318af4ebf6b3861540a43c",
+     "367de355868b940079f1df0186086a34",
+     "37666f1aa5ec8624db268f69e156e867",
+     "3f73a217644ca4f7c976ebc74ed760cf",
+     "44b4ca3438f9741febadc614681c1f5b",
+     "459b3ee0e4c7a42c786d70e308294c79",
+     "4639e70b380626f448e4d5e86aca5018",
+     "4ca7c68ec7e99426d9e58e49f13d8338",
+     "5de8c9efbbc9f5b409a3af84c85e4bd2",
+     "65ec89f0abafa40cf9515e850f3626a6",
+     "665869bde3ccd8440aad259a2f80cb35",
+     "67a737c87add1324998148684ca0e721",
+     "6aadd1e94f0ca214d8d2c0ca44440f98",
+     "6ca1419401e3e4bff8df1395474d9766",
+     "6db257cb9e02a8940a4f7d2a5b50a1e3",
+     "72937270ea2964344b136c38b5309430",
+     "78312192a95d04cfba1a42e8dbe66cbb",
+     "79f24cffa038d43cc8bbc604f0085595",
+     "7a5a61f37cebd4c3c96d7a4c92a4ff1c",
+     "7e6db923d5e38410da149cd5fcea6332",
+     "7edcfd487a11e46048e38849b7d55c71",
+     "86bcea02146a53942ab92a3c8ac04122",
+     "87e94a5ac8014be4b8bcbf45c7a00a24",
+     "8a4f6c5e439cb4544a9571d54917461a",
+     "930cbe108b77348adb4b0a3b29873f92",
+     "943415f5e1fc74120aca6c04963277b3",
+     "9700118c8827db240ac0d1537ccfc7bc",
+     "9704bb82cd7224c1ca43122236623943",
+     "a4be78f508c3d6f40b76825fade80b3d",
+     "a76079426444949a19214489a9ba151d",
+     "c3c6c601ec94cf14f9e2b2e9b29300ff",
+     "cb16b3981d8f7194b869c6e77a5c1dd5",
+     "ce979315960ec8d48b1bf4196a35c460",
+     "d65ae9226492d4828816338b81ef0765",
+     "e1fb51c8a410b2d409fb8d529f006e60",
+     "ea6613de93ffb4e2ab6b022d6a69753e",
+     "ebffb4f84edd1cd468980b65b3ec1fce",
+     "ee09766d9e725c24cad45ffba3c8de50",
+     "f016e5032de01470694981af7808411d",
+     "f218faafe8b5243658a24381986aab7c",
+     "f4a9a81d38305a741bb0bb606c40993e",
+     "fb3c0a6cf770444f0829bc83222c48ed",
+     "ff6995f707501474c957b64c2b18e830"
+    ],
+    "drawData": {
+     "EventAssets": [
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "acbf6af64566a4090a462824beebfc7e",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventComponents": [
+      {
+       "key": 35,
+       "value": {
+        "m_AssetGUID": "cc245b8011f624bcfbbc8ee3f5b63e77",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      },
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "c2552d81d453043359dd4283c66fa456",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventLabels": [
+      {
+       "key": 0,
+       "useLargeSizeOnMobile": false,
+       "value": {
+        "mTerm": "text:Practice"
+       },
+       "Args": []
+      }
+     ],
+     "ShowWindowOnTrigger": false,
+     "ShowWindowOnExpire": false,
+     "HideContainer": false,
+     "ForceRun": false,
+     "showPreviousPrice": false
+    }
+   },
+   "Persistence": {
+    "$type": "Everguild.LiveOps.PracticeEventSaveGame",
+    "joinState": 0,
+    "defaultDeckId": "",
+    "randomSeed": 0,
+    "matchStarted": false,
+    "numberOfMatchesWon": 0,
+    "numberOfMatchesLost": 0,
+    "numberOfMatchesDraw": 0
+   }
+  },
+  {
+   "Data": {
+    "$type": "Everguild.LiveOps.DraftEventData",
+    "eventId": "RevivalDraft",
+    "uploadToLive": true,
+    "uploadToPreprod": true,
+    "enabled": true,
+    "activationType": 0,
+    "dates": {
+     "startDate": 0,
+     "endDate": 0,
+     "previewable": false,
+     "previewDate": 0,
+     "expirable": false,
+     "expireDate": 0,
+     "eventStages": []
+    },
+    "filter": {
+     "army": 0,
+     "expansion": 0,
+     "hasDuration": false,
+     "eventDuration": 24,
+     "hasCooldown": false,
+     "eventCooldown": 168,
+     "eventGroups": [],
+     "Triggers": {
+      "list": []
+     },
+     "Conditions": {
+      "list": []
+     }
+    },
+    "location": {
+     "type": 0
+    },
+    "priority": 7,
+    "showInMainMenu": true,
+    "admisionPrices": [],
+    "skullsRewards": [],
+    "gameplayVariables": {
+     "maxLegendaries": 30,
+     "numberOfCopiesOtherRarities": 2,
+     "numberOfCopiesLegendary": 1,
+     "slotsPerSide": 4,
+     "warlordLifeChange": 10,
+     "deckSize": 30,
+     "overtimeTurn": 19,
+     "startingMana": 1,
+     "startingManaSecond": 1,
+     "addedManaSecond": 0,
+     "manaPerTurn": 1,
+     "drawCardsPerTurn": 1,
+     "manaAccumulation": 0,
+     "handLimit": 10,
+     "shouldReshuffle": false,
+     "showMulligan": true,
+     "assignDefensiveCardsInEditMode": true,
+     "alternativeTraitLogic": false
+    },
+    "matches": [
+     {
+      "matchType": 0,
+      "progressionTypes": 1
+     },
+     {
+      "matchType": 0,
+      "progressionTypes": 1
+     },
+     {
+      "matchType": 0,
+      "progressionTypes": 1
+     },
+     {
+      "matchType": 0,
+      "progressionTypes": 1
+     },
+     {
+      "matchType": 0,
+      "progressionTypes": 1
+     },
+     {
+      "matchType": 0,
+      "progressionTypes": 1
+     },
+     {
+      "matchType": 0,
+      "progressionTypes": 1
+     }
+    ],
+    "maxTries": 3,
+    "draftRounds": 10,
+    "packsPerDraft": 3,
+    "warlordsPerDraft": 3,
+    "premiumPrice": 0,
+    "premium10Price": 0,
+    "premiumGuaranteedWarlords": [],
+    "specificWarlords": [],
+    "specificArmies": [
+     10,
+     20,
+     30,
+     40,
+     50,
+     60,
+     70,
+     80,
+     90,
+     100,
+     110,
+     120
+    ],
+    "guaranteedArmies": [],
+    "blacklistedWarlords": [],
+    "Rewards": [],
+    "reRollCosts": [
+     {
+      "numberOfReRolls": 1,
+      "costs": {
+       "Currency": 0,
+       "Amount": 0
+      }
+     },
+     {
+      "numberOfReRolls": 1000000,
+      "costs": {
+       "Currency": 0,
+       "Amount": 999999
+      }
+     }
+    ],
+    "drawData": {
+     "EventAssets": [
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "ad67075b6ab054264a8c4c1c8cbc92d2",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventComponents": [
+      {
+       "key": 35,
+       "value": {
+        "m_AssetGUID": "167a3d9bf611a4446be4207fe0584899",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      },
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "ac53c629080ac4175a32b07dd46623a8",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventLabels": [
+      {
+       "key": 0,
+       "useLargeSizeOnMobile": false,
+       "value": {
+        "mTerm": "text:Draft"
+       },
+       "Args": []
+      }
+     ],
+     "ShowWindowOnTrigger": false,
+     "ShowWindowOnExpire": false,
+     "HideContainer": false,
+     "ForceRun": false,
+     "showPreviousPrice": false
+    }
+   },
+   "Persistence": {
+    "$type": "Everguild.LiveOps.DraftEventSaveGame",
+    "rewardsCollected": false,
+    "allianceRewardsCollected": false,
+    "refunded": false,
+    "won": 0.0,
+    "payState": 0,
+    "lastTimeEnteredFree": 0,
+    "selectedWarlord": null,
+    "selectedPacks": [],
+    "selectedCards": [],
+    "selectableWarlords": [],
+    "cardbackId": "",
+    "currentReRolls": 0,
+    "joinState": 0,
+    "defaultDeckId": "",
+    "randomSeed": 0,
+    "matchStarted": false,
+    "numberOfMatchesWon": 0,
+    "numberOfMatchesLost": 0,
+    "numberOfMatchesDraw": 0,
+    "currentRating": 0,
+    "armyStats": {}
+   }
+  },
+  {
+   "Data": {
+    "eventId": "RevivalLongGame",
+    "uploadToLive": true,
+    "uploadToPreprod": true,
+    "enabled": true,
+    "activationType": 0,
+    "dates": {
+     "startDate": 0,
+     "endDate": 0,
+     "previewable": false,
+     "previewDate": 0,
+     "expirable": false,
+     "expireDate": 0,
+     "eventStages": []
+    },
+    "filter": {
+     "army": 0,
+     "expansion": 0,
+     "hasDuration": false,
+     "eventDuration": 24,
+     "hasCooldown": false,
+     "eventCooldown": 168,
+     "eventGroups": [],
+     "Triggers": {
+      "list": []
+     },
+     "Conditions": {
+      "list": []
+     }
+    },
+    "priority": 8,
+    "location": {
+     "type": 0
+    },
+    "showInMainMenu": true,
+    "$type": "Everguild.LiveOps.RankedV3Data",
+    "seasonNumber": 1,
+    "leaderboard": "RevivalLongGameS1",
+    "legendaryElo": 2500,
+    "maxEloCap": 15000,
+    "ratingDifferenceForMatchMaking": [
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000,
+     100000
+    ],
+    "rewardsPerTier": [],
+    "rewardsPerPosition": [],
+    "lossShieldCount": 2,
+    "boostedFactions": [],
+    "boostedFactionCount": 0,
+    "boostedFactionBonus": 0,
+    "defaultFactionBoostCount": 0,
+    "defaultFactionBoostBonus": 0,
+    "admisionPrices": [],
+    "skullsRewards": [],
+    "gameplayVariables": {
+     "maxLegendaries": 60,
+     "numberOfCopiesOtherRarities": 4,
+     "numberOfCopiesLegendary": 1,
+     "slotsPerSide": 4,
+     "warlordLifeChange": 0,
+     "deckSize": 60,
+     "overtimeTurn": 12,
+     "startingMana": 1,
+     "startingManaSecond": 2,
+     "addedManaSecond": 0,
+     "manaPerTurn": 1,
+     "drawCardsPerTurn": 1,
+     "manaAccumulation": 0,
+     "handLimit": 12,
+     "shouldReshuffle": false,
+     "showMulligan": true,
+     "assignDefensiveCardsInEditMode": true,
+     "alternativeTraitLogic": false
+    },
+    "drawData": {
+     "EventAssets": [
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "93cda5b09dc454964bd61a51c4cc2606",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventComponents": [
+      {
+       "key": 35,
+       "value": {
+        "m_AssetGUID": "60c4a88ccb2534644afc6e6ede2c450b",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      },
+      {
+       "key": 10,
+       "value": {
+        "m_AssetGUID": "769b53202b2cc471db62926328a5f3db",
+        "m_SubObjectName": "",
+        "m_SubObjectType": ""
+       }
+      }
+     ],
+     "EventLabels": [
+      {
+       "key": 0,
+       "useLargeSizeOnMobile": false,
+       "value": {
+        "mTerm": "text:Custom Test"
+       },
+       "Args": []
+      }
+     ],
+     "ShowWindowOnTrigger": false,
+     "ShowWindowOnExpire": false,
+     "HideContainer": false,
+     "ForceRun": false,
+     "showPreviousPrice": false
+    }
+   },
+   "Persistence": {
+    "$type": "Everguild.LiveOps.RankedV3Save",
+    "currentStreak": 0,
+    "joinState": 0,
+    "defaultDeckId": "",
+    "randomSeed": 0,
+    "matchStarted": false,
+    "numberOfMatchesWon": 0,
+    "numberOfMatchesLost": 0,
+    "numberOfMatchesDraw": 0,
+    "currentRating": 0,
+    "armyStats": {}
+   }
+  }
+ ]
+}

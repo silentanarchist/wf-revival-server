@@ -1,0 +1,25 @@
+# never publish: logs, player data, accounts, chat history, uploaded art
+logs/
+data/
+# https setup (certificates, local proxy config)
+https/
+# compiled mod builds handed to players
+mod/
+# the live settings file (copy revival-settings.example.json and edit it)
+content/files/revival-settings.json
+# game content: card data, asset bundles, and files generated from them
+content/bundles/
+content/bundles-android/
+content/cards/
+content/collection.json
+content/creator-examples.json
+content/creator-native.json
+content/files/creator-cards.json
+content/files/creator-schema.json
+content/files/card-text.json
+# python
+__pycache__/
+*.pyc
+# artwork guide: the example sheet shows official card art, and the kit contains it
+content/files/art-example.jpg
+content/files/art-kit.zip

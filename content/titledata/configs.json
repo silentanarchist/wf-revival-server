@@ -1,0 +1,637 @@
+{
+ "AIBotsConfig": {
+  "BotList": [
+   {
+    "botDecks": [
+     "ASH_BOT_FTUE",
+     "ASH_BOT_FTUE_EASY",
+     "AeldariDeck1",
+     "AeldariDeck2",
+     "AeldariDeck3",
+     "AeldariDeck4",
+     "AeldariDeck5",
+     "AeldariDeck6",
+     "AeldariDeck8",
+     "AeldariDeckTutorial",
+     "AstraMilitarumDeck1",
+     "AstraMilitarumDeck2",
+     "AstraMilitarumDeck3",
+     "AstraMilitarumDeck4",
+     "AstraMilitarumDeck5",
+     "AstraMilitarumDeck6",
+     "BL_BOT_FTUE",
+     "BL_BOT_FTUE_EASY",
+     "BlackLegionDeck1",
+     "BlackLegionDeck2",
+     "BlackLegionDeck3",
+     "BlackLegionDeck4",
+     "BlackLegionDeck5",
+     "BlackLegionDeck6",
+     "BlackLegionDeck8",
+     "BlackLegionDeckTutorial",
+     "BlackLegionTutorial",
+     "DarkAngelsDeck1",
+     "DarkAngelsDeck2",
+     "DarkAngelsDeck3",
+     "DarkAngelsDeck4",
+     "DarkAngelsDeck5",
+     "DarkAngelsDeck6",
+     "DarkAngelsDeck7",
+     "Deck_AstraMilitarum_Starter",
+     "Deck_BlackLegion_Starter",
+     "Deck_DarkAngels_Starter",
+     "Deck_EmperorsChildren_Starter",
+     "Deck_GenestalerCults_Starter",
+     "Deck_Goff_Starter",
+     "Deck_Leviathan_Starter",
+     "Deck_SaimHann_Starter",
+     "Deck_Sautekh_Starter",
+     "Deck_Sororitas_Starter",
+     "Deck_SpaceWolves_Starter",
+     "Deck_TauEmpire_Starter",
+     "Deck_UM_Titus",
+     "Deck_Ultramarines_Starter",
+     "EmperorsChildrenDeck1",
+     "EmperorsChildrenDeck2",
+     "EmperorsChildrenDeck3",
+     "EmperorsChildrenDeck4",
+     "EmperorsChildrenDeck5",
+     "EmperorsChildrenDeck6",
+     "GenestealersDeck1",
+     "GenestealersDeck2",
+     "GenestealersDeck3",
+     "GenestealersDeck4",
+     "GenestealersDeck5",
+     "GenestealersDeck6",
+     "LEV_Vardenghast",
+     "LeviathanDeck1",
+     "LeviathanDeck2",
+     "LeviathanDeck3",
+     "LeviathanDeck4",
+     "LeviathanDeck5",
+     "LeviathanDeck6",
+     "LeviathanDeck7",
+     "LeviathanDeck8",
+     "LeviathanDeckTutorial",
+     "NecronsTutorial",
+     "ORK_BOT_FTUE",
+     "ORK_BOT_FTUE_EASY",
+     "OrksDeck1",
+     "OrksDeck2",
+     "OrksDeck3",
+     "OrksDeck4",
+     "OrksDeck5",
+     "OrksDeck6",
+     "OrksDeck7",
+     "OrksDeck8",
+     "SAU_BOT_FTUE",
+     "SAU_BOT_FTUE_EASY",
+     "SautekhDeck1",
+     "SautekhDeck2",
+     "SautekhDeck3",
+     "SautekhDeck4",
+     "SautekhDeck5",
+     "SautekhDeck6",
+     "SautekhDeck7",
+     "SautekhDeck8",
+     "SororitasDeck1",
+     "SororitasDeck2",
+     "SororitasDeck3",
+     "SororitasDeck4",
+     "SororitasDeck5",
+     "SororitasDeck6",
+     "SororitasDeck7",
+     "SpaceWolvesDeck1",
+     "SpaceWolvesDeck2",
+     "SpaceWolvesDeck3",
+     "SpaceWolvesDeck4",
+     "SpaceWolvesDeck5",
+     "SpaceWolvesDeck6",
+     "TL_BOT_FTUE_Deck1",
+     "TL_BOT_FTUE_EASY",
+     "TauEmpireDeck1",
+     "TauEmpireDeck2",
+     "TauEmpireDeck3",
+     "TauEmpireDeck4",
+     "TauEmpireDeck5",
+     "TauEmpireDeck6",
+     "TauEmpireDeck7",
+     "UMDeck1",
+     "UMDeck2",
+     "UMDeck3",
+     "UMDeck4",
+     "UMDeck5",
+     "UMDeck6",
+     "UMDeck7",
+     "UMDeck8",
+     "UMTutorial",
+     "UM_BOT_FTUE",
+     "UM_BOT_FTUE_EASY"
+    ],
+    "skipChance": 0,
+    "minSkips": 0,
+    "maxSkips": 0,
+    "minRank": 0,
+    "maxRank": 99999,
+    "minLossStreak": 0,
+    "maxLossStreak": 99999
+   }
+  ],
+  "BotListFTUE": [
+   {
+    "botDecks": [],
+    "winCount": 0,
+    "waitTime": 0,
+    "skipChance": 0,
+    "minSkips": 0,
+    "maxSkips": 0,
+    "justForRanked": false,
+    "shouldUseFirstGameLogic": false
+   }
+  ],
+  "BotListFastMode": [
+   {
+    "botDecks": [
+     "AM_SK_1",
+     "AM_SK_1_2",
+     "AM_SK_2",
+     "AM_SK_2_2",
+     "AM_SK_3",
+     "AM_SK_3_2",
+     "AM_SK_4",
+     "AM_SK_Starter",
+     "ASH_SK_1",
+     "ASH_SK_1_2",
+     "ASH_SK_2",
+     "ASH_SK_2_2",
+     "ASH_SK_3",
+     "ASH_SK_3_2",
+     "ASH_SK_4",
+     "ASH_SK_5",
+     "ASH_SK_Starter",
+     "BL_SK_1",
+     "BL_SK_1_2",
+     "BL_SK_2",
+     "BL_SK_2_2",
+     "BL_SK_3",
+     "BL_SK_3_2",
+     "BL_SK_4",
+     "BL_SK_Starter",
+     "DA_SK_1",
+     "DA_SK_1_2",
+     "DA_SK_2",
+     "DA_SK_2_2",
+     "DA_SK_3",
+     "DA_SK_3_2",
+     "DA_SK_4",
+     "DA_SK_Starter",
+     "EC_SK_1",
+     "EC_SK_1_2",
+     "EC_SK_2",
+     "EC_SK_2_2",
+     "EC_SK_3",
+     "EC_SK_3_2",
+     "EC_SK_Starter",
+     "GSC_SK_1",
+     "GSC_SK_1_2",
+     "GSC_SK_2",
+     "GSC_SK_2_2",
+     "GSC_SK_3",
+     "GSC_SK_3_2",
+     "GSC_SK_4",
+     "GSC_SK_Starter",
+     "ORK_SK_1",
+     "ORK_SK_1_2",
+     "ORK_SK_2",
+     "ORK_SK_2_2",
+     "ORK_SK_3",
+     "ORK_SK_3_2",
+     "ORK_SK_4",
+     "ORK_SK_5",
+     "ORK_SK_6",
+     "ORK_SK_Starter",
+     "SAU_SK_1",
+     "SAU_SK_1_2",
+     "SAU_SK_2",
+     "SAU_SK_2_2",
+     "SAU_SK_3",
+     "SAU_SK_3_2",
+     "SAU_SK_4",
+     "SAU_SK_Starter",
+     "SOR_SK_1",
+     "SOR_SK_1_2",
+     "SOR_SK_2",
+     "SOR_SK_2_2",
+     "SOR_SK_3",
+     "SOR_SK_3_2",
+     "SOR_SK_4",
+     "SOR_SK_Starter",
+     "SW_SK_1",
+     "SW_SK_1_2",
+     "SW_SK_2",
+     "SW_SK_2_2",
+     "SW_SK_3",
+     "SW_SK_3_2",
+     "SW_SK_Starter",
+     "TAU_SK_1",
+     "TAU_SK_1_2",
+     "TAU_SK_2",
+     "TAU_SK_2_2",
+     "TAU_SK_3",
+     "TAU_SK_3_2",
+     "TAU_SK_4",
+     "TAU_SK_Starter",
+     "TL_SK_1",
+     "TL_SK_1_2",
+     "TL_SK_2",
+     "TL_SK_2_2",
+     "TL_SK_3",
+     "TL_SK_3_2",
+     "TL_SK_4",
+     "TL_SK_Starter",
+     "UM_SK_1",
+     "UM_SK_1_2",
+     "UM_SK_2",
+     "UM_SK_2_2",
+     "UM_SK_3",
+     "UM_SK_3_2",
+     "UM_SK_4",
+     "UM_SK_5",
+     "UM_SK_Starter"
+    ],
+    "skipChance": 0,
+    "minSkips": 0,
+    "maxSkips": 0,
+    "minRank": 0,
+    "maxRank": 99999,
+    "minLossStreak": 0,
+    "maxLossStreak": 99999
+   }
+  ],
+  "botNames": [
+   "Servitor Theta",
+   "Magos Vorn",
+   "Cadet Ilex",
+   "Sergeant Brask",
+   "Acolyte Senna"
+  ],
+  "whitelistAvatars": [],
+  "whitelistTitles": [],
+  "whitelistCardbacks": [],
+  "CardLevelConfig": {
+   "card_level_rank_offset": 0,
+   "card_level_rank_scaling_ref": 0,
+   "k_factor": 0,
+   "card_level_2_chance": 0,
+   "card_level_3_chance": 0,
+   "card_level_4_chance": 0,
+   "card_level_4_min_rank": 0
+  },
+  "EmotesConfig": {
+   "emote_chance_after_action": 0,
+   "reply_chance": 0,
+   "min_reply_delay": 1,
+   "max_reply_delay": 2
+  },
+  "PlayBehaviourConfig": {
+   "min_first_action_delay": 0.3,
+   "max_first_action_delay": 0.6,
+   "min_action_delay": 0.1,
+   "max_action_delay": 0.3,
+   "min_end_turn_delay": 0.2,
+   "max_end_turn_delay": 0.4
+  },
+  "disableFTUE": true
+ },
+ "AlliancesConfig": {
+  "maxMemberCount": 0,
+  "createAlliancePrice": {
+   "currency": {
+    "genericObjectReference": null,
+    "targetId": "",
+    "reference": null
+   },
+   "amount": 0
+  },
+  "trophies": []
+ },
+ "ArmyConfig": {
+  "Armies": []
+ },
+ "CardsSpecialConfig": {
+  "blacklistedCardsToCraft": [],
+  "cardsToHide": [],
+  "altCardsToHide": [],
+  "whereToGetCardsData": {
+   "title": "",
+   "expansionData": []
+  }
+ },
+ "CloudscriptRestrictedVersionConfig": {
+  "Versions": [
+   {
+    "clientVersion": "1.35.0",
+    "revision": 1
+   }
+  ]
+ },
+ "CurrencyConfig": {
+  "currencies": [],
+  "waprforgeToLegionsUSDFactor": 0,
+  "maxConvertedGold": 0,
+  "warpforgeToLegionsExtraGold": 0,
+  "useCurrencyConversionToLegions": false
+ },
+ "EnergyConfig": {
+  "maxRechargeableEnergy": 999,
+  "rechargeCooldown": 0,
+  "rechargeAmount": 999
+ },
+ "EventGroups": {
+  "groups": []
+ },
+ "CardTierConfig": {
+  "tiersByRarity": [],
+  "Y_Max": 0,
+  "X_Inflection": 0,
+  "Offset": 0,
+  "Base": 0,
+  "RoundPrecision": 0
+ },
+ "DailyStoresConfig": [],
+ "PointsConfig": {
+  "points": []
+ },
+ "ShopConfig": {
+  "dropTables": [],
+  "customDropTables": [],
+  "containers": [],
+  "xsollaItems": [],
+  "offerLists": [],
+  "genericArmyItems": []
+ },
+ "LeaderboardConfig": {
+  "leaderboardDefinitions": [
+   {
+    "$type": "PlayfabLeaderboardDefinition",
+    "leaderboardKey": "RevivalClassicS1",
+    "scoringMode": 2,
+    "preload": false,
+    "entryCountToFetch": 50
+   },
+   {
+    "$type": "PlayfabLeaderboardDefinition",
+    "leaderboardKey": "RevivalSkirmishS1",
+    "scoringMode": 2,
+    "preload": false,
+    "entryCountToFetch": 50
+   }
+  ]
+ },
+ "Templates": {
+  "Templates": {}
+ },
+ "FeatureConfig": {
+  "features": [],
+  "featureStatus": {},
+  "expansionsHidden": [],
+  "armiesHidden": [],
+  "expansionsNotCrafting": [],
+  "timeForAskingNotification": 0,
+  "botWaitTimes": [
+   {
+    "gamesLost": 0,
+    "maxWait": 90,
+    "minWait": 90,
+    "shouldMatchBotWithoutSearch": false
+   }
+  ],
+  "androidWebshop": {
+   "enabled": false,
+   "numberOfCombatsForEnableWebshop": 0,
+   "webShopURL": "",
+   "webShopBlackListedCountryCodes": [],
+   "webShopEnableByCountry": []
+  },
+  "iosWebshop": {
+   "enabled": false,
+   "numberOfCombatsForEnableWebshop": 0,
+   "webShopURL": "",
+   "webShopBlackListedCountryCodes": [],
+   "webShopEnableByCountry": []
+  },
+  "steamWebshop": {
+   "enabled": false,
+   "numberOfCombatsForEnableWebshop": 0,
+   "webShopURL": "",
+   "webShopBlackListedCountryCodes": [],
+   "webShopEnableByCountry": []
+  },
+  "disableAllPlaystream": true,
+  "disableCloudscriptPlaystream": true,
+  "disableErrorPlaystream": true,
+  "unityRemoteConfigData": {
+   "EnableTroopVOs": true,
+   "EnableWarlordVOs": true
+  },
+  "disableNewMatchMaking": true
+ },
+ "GameModesConfig": {
+  "rankedRanks": [
+   {
+    "division": 0,
+    "rank": 0,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 0,
+    "preventLosingRank": true,
+    "preventLosingSeals": true
+   },
+   {
+    "division": 0,
+    "rank": 1,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 150,
+    "preventLosingRank": true,
+    "preventLosingSeals": true
+   },
+   {
+    "division": 0,
+    "rank": 2,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 300,
+    "preventLosingRank": true,
+    "preventLosingSeals": true
+   },
+   {
+    "division": 1,
+    "rank": 0,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 450,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 1,
+    "rank": 1,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 600,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 1,
+    "rank": 2,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 750,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 2,
+    "rank": 0,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 900,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 2,
+    "rank": 1,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 1050,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 2,
+    "rank": 2,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 1200,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 3,
+    "rank": 0,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 1350,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 3,
+    "rank": 1,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 1500,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 3,
+    "rank": 2,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 1650,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 4,
+    "rank": 0,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 1800,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 4,
+    "rank": 1,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 1950,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 4,
+    "rank": 2,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 2100,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 5,
+    "rank": 0,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 2250,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 5,
+    "rank": 1,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 2400,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   },
+   {
+    "division": 5,
+    "rank": 2,
+    "sealsRequiredToUpdate": 3,
+    "correspondingMMR": 2550,
+    "preventLosingRank": false,
+    "preventLosingSeals": false
+   }
+  ]
+ },
+ "ItemsConfig": {
+  "limitedItems": [],
+  "itemsOrActionPrices": [],
+  "unlockOriginalArtPrices": []
+ },
+ "MissionsConfig": {
+  "tutorialMissionRef": {
+   "genericObjectReference": null,
+   "targetId": "",
+   "reference": null
+  },
+  "dailyLoginRef": {
+   "genericObjectReference": null,
+   "targetId": "",
+   "reference": {
+    "id": "",
+    "rewards": [],
+    "expansion": 0,
+    "reachMilestoneWhen": 0,
+    "challengeType": 0,
+    "cummulative": false,
+    "loopable": false,
+    "loopIndex": 0,
+    "allowOnTutorials": false,
+    "allowOnDuels": false,
+    "playModeBlocklist": [],
+    "playModeAllowlist": [],
+    "OnProgressUpdate": null,
+    "initialized": false
+   }
+  },
+  "configs": [],
+  "challenges": [],
+  "challengeLists": []
+ },
+ "PremiumConfig": {
+  "premiumItems": []
+ },
+ "ReferralConfig": {
+  "messageTemplate": {
+   "genericObjectReference": null,
+   "targetId": "",
+   "reference": {}
+  },
+  "MaxReferrals": 0,
+  "ReferralRewards": []
+ },
+ "WildcardConfig": {
+  "wildcards": []
+ }
+}

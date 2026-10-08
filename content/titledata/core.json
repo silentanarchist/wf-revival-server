@@ -1,0 +1,66 @@
+{
+  "ServerVersion": {
+    "iosVersion": "1.35.0",
+    "androidVersion": "1.35.0",
+    "pcVersion": "1.35.0",
+    "macVersion": "1.35.0",
+    "replaysVersion": "1.35.0",
+    "textVersion": 1,
+    "useNewMultiplayerVersion": false,
+    "multiplayerVersions": [],
+    "saveGameForceCompatibility": [],
+    "currentTitleDataRevision": 1,
+    "minimumTitleDataRevision": 0,
+    "photonServerRegion": 1,
+    "photonChatServerRegion": 1
+  },
+  "AndroidVersion": "1.35.0",
+  "iOSVersion": "1.35.0",
+  "LanguageVersion": "1",
+  "AddressablesConfig": {
+    "preprod": {
+      "Name": "preprod",
+      "pcBucket": "revival",
+      "macBucket": "revival",
+      "androidBucket": "revival",
+      "iosBucket": "revival"
+    },
+    "live": {
+      "Name": "production",
+      "pcBucket": "revival",
+      "macBucket": "revival",
+      "androidBucket": "revival",
+      "iosBucket": "revival"
+    },
+    "preprodBadges": {
+      "list": []
+    },
+    "liveBadges": {
+      "list": [
+        {
+          "version": "1.35.0",
+          "badge": "revival"
+        }
+      ]
+    },
+    "QABadges": {
+      "list": []
+    },
+    "debugEditorBadge": "",
+    "remoteLabels": [],
+    "remoteLabelsBeforeTutorial": [],
+    "remoteLabelsAfterTutorial": [],
+    "showDownloadContentWarning": false,
+    "mbLimitForShowingContentWarning": 100000.0
+  },
+  "ConnectionSettings": {
+    "QuickResends": 3,
+    "MaxResends": 10,
+    "BgTimout": 60000,
+    "DisconnectOnPause": false,
+    "PauseChat": false,
+    "AltPorts": false,
+    "CrcCheck": false,
+    "ChatRegion": "us"
+  }
+}

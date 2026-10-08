@@ -1,0 +1,371 @@
+{
+ "source": "Warpforge Offline Rulebook 1.5 (unofficial fan rulebook), keyword table; wording shortened and adapted to the digital game",
+ "keywords": [
+  {
+   "name": "Agenda",
+   "id": "agenda",
+   "value": false,
+   "text": "An action the unit can take instead of attacking: it triggers the card's effect."
+  },
+  {
+   "name": "Ambush",
+   "id": "ambush",
+   "value": false,
+   "text": "Played face down. If it is damaged before your next turn it is revealed with no effect; if it is not, it is revealed and its effect triggers."
+  },
+  {
+   "name": "Armour X",
+   "id": "armour",
+   "value": true,
+   "text": "All damage this unit takes is reduced by X, to a minimum of 1."
+  },
+  {
+   "name": "Artifice",
+   "id": "artifice",
+   "value": false,
+   "text": "Triggers an extra effect each time you play a stratagem."
+  },
+  {
+   "name": "Backlash",
+   "id": "backlash",
+   "value": false,
+   "text": "Triggers an effect when this unit dies."
+  },
+  {
+   "name": "Blast X",
+   "id": "blast",
+   "value": true,
+   "text": "When it attacks, it also deals X damage to the units next to the target."
+  },
+  {
+   "name": "Blind",
+   "id": "",
+   "value": false,
+   "text": "A condition: the unit's ranged attack is 0 while it is blind."
+  },
+  {
+   "name": "Blood Thirst",
+   "id": "bloodThirst",
+   "value": false,
+   "text": "Can attack up to twice during your turn."
+  },
+  {
+   "name": "Camouflage",
+   "id": "camouflage",
+   "value": false,
+   "text": "Cannot be targeted by enemy stratagems and effects until it has attacked."
+  },
+  {
+   "name": "Can't Attack",
+   "id": "cantAttack",
+   "value": false,
+   "text": "Can never attack enemy units."
+  },
+  {
+   "name": "Codex",
+   "id": "codex",
+   "value": false,
+   "text": "Triggers an effect when your energy reaches 0."
+  },
+  {
+   "name": "Companion X",
+   "id": "companion",
+   "value": true,
+   "text": "When played from your hand, you may also play up to X copies of the troop named as its companion."
+  },
+  {
+   "name": "Concussion",
+   "id": "concussive",
+   "value": false,
+   "text": "Units this unit attacks become stunned."
+  },
+  {
+   "name": "Cruelty",
+   "id": "cruelty",
+   "value": false,
+   "text": "Triggers an effect when an enemy unit is damaged but not destroyed during your turn."
+  },
+  {
+   "name": "Dark Pacts",
+   "id": "",
+   "value": false,
+   "text": "Grants one of four buffs. Blood: +2 melee and Vanguard. Excess: +2 melee and +2 ranged. Fate: +2 health and Camouflage. Resilience: +1 health and Regeneration."
+  },
+  {
+   "name": "Destroyer",
+   "id": "",
+   "value": false,
+   "text": "Always attacks a unit it can destroy before any other unit."
+  },
+  {
+   "name": "Duty",
+   "id": "duty",
+   "value": false,
+   "text": "A one-time action used instead of attacking. Other card effects can reload it so it can be used again."
+  },
+  {
+   "name": "Ecstasy X",
+   "id": "ecstasy",
+   "value": true,
+   "text": "Triggers an effect when this unit's health drops to X or less without it dying."
+  },
+  {
+   "name": "Ephemeral",
+   "id": "ephemeral",
+   "value": false,
+   "text": "If this card is still in your hand at the end of the turn, it is removed."
+  },
+  {
+   "name": "Faith",
+   "id": "",
+   "value": false,
+   "text": "Triggers an effect once your total Faith has reached the amount shown."
+  },
+  {
+   "name": "Fast",
+   "id": "",
+   "value": false,
+   "text": "Can attack any enemy unit on the turn it is played."
+  },
+  {
+   "name": "Ferocity",
+   "id": "ferocity",
+   "value": false,
+   "text": "A fast action used instead of attacking: the unit attacks, the effect triggers, then the unit is shuffled back into your deck."
+  },
+  {
+   "name": "Flank",
+   "id": "flank",
+   "value": false,
+   "text": "Can attack enemy troops (not the warlord) on the turn it is played."
+  },
+  {
+   "name": "Flying",
+   "id": "flying",
+   "value": false,
+   "text": "Cannot be targeted by melee attacks, except from other units with Flying."
+  },
+  {
+   "name": "Hunt Mark",
+   "id": "",
+   "value": false,
+   "text": "Stacks. When an enemy troop with Hunt Marks is destroyed, the enemy warlord takes damage and your warlord heals, both equal to the number of marks it had."
+  },
+  {
+   "name": "Invulnerable",
+   "id": "",
+   "value": false,
+   "text": "Cannot be damaged or destroyed."
+  },
+  {
+   "name": "Long Range",
+   "id": "longrange",
+   "value": false,
+   "text": "Takes no damage back when it makes a ranged attack. Lost once this unit has been attacked."
+  },
+  {
+   "name": "Markerlight X",
+   "id": "",
+   "value": true,
+   "text": "A condition: the unit takes X extra damage from ranged attacks. All Markerlight is removed after it takes ranged damage."
+  },
+  {
+   "name": "Mob",
+   "id": "mob",
+   "value": false,
+   "text": "Triggers an effect after a friendly troop makes a melee attack."
+  },
+  {
+   "name": "Oath X",
+   "id": "oath",
+   "value": true,
+   "text": "When the troop is deployed you may pay X extra energy to trigger its effect."
+  },
+  {
+   "name": "Pack",
+   "id": "pack",
+   "value": false,
+   "text": "+1 melee and +1 ranged for each friendly troop in play."
+  },
+  {
+   "name": "Penitence",
+   "id": "",
+   "value": false,
+   "text": "Triggers an effect when this unit is damaged but not destroyed."
+  },
+  {
+   "name": "Pindown",
+   "id": "",
+   "value": false,
+   "text": "A condition: the unit cannot make melee attacks."
+  },
+  {
+   "name": "Pray",
+   "id": "pray",
+   "value": false,
+   "text": "A slow action used instead of attacking (Adepta Sororitas)."
+  },
+  {
+   "name": "Quest",
+   "id": "",
+   "value": false,
+   "text": "For every 3 Quest you gain, a Secret is added to your deck and the deck is shuffled."
+  },
+  {
+   "name": "Rally",
+   "id": "rally",
+   "value": false,
+   "text": "Triggers an effect when the card is deployed from your hand."
+  },
+  {
+   "name": "Regeneration X",
+   "id": "regeneration",
+   "value": true,
+   "text": "Heals X at the end of every turn."
+  },
+  {
+   "name": "Regiment",
+   "id": "regiment",
+   "value": false,
+   "text": "Triggers an effect when another friendly unit makes a ranged attack."
+  },
+  {
+   "name": "Remnant",
+   "id": "remnant",
+   "value": false,
+   "text": "When this troop dies it stays on the board as a Remnant. A Remnant is destroyed when it takes damage, or at the end of its controller's turn."
+  },
+  {
+   "name": "Sabotage",
+   "id": "",
+   "value": false,
+   "text": "Creates a sabotage card in the opponent's hand."
+  },
+  {
+   "name": "Sentry X",
+   "id": "sentry",
+   "value": true,
+   "text": "Deals X damage to a unit that attacks it, before the attack resolves as normal."
+  },
+  {
+   "name": "Shield",
+   "id": "shield",
+   "value": false,
+   "text": "Prevents the next damage this unit would take, then the Shield is lost."
+  },
+  {
+   "name": "Shuriken X",
+   "id": "shuriken",
+   "value": true,
+   "text": "When it attacks, it first deals X extra damage to the target, then the attack resolves."
+  },
+  {
+   "name": "Slay",
+   "id": "slay",
+   "value": false,
+   "text": "Triggers an effect after this unit attacks and destroys a unit, if it survives."
+  },
+  {
+   "name": "Sniper",
+   "id": "sniper",
+   "value": false,
+   "text": "If its ranged attack would destroy the target, the target deals no damage back."
+  },
+  {
+   "name": "Spirit Stone",
+   "id": "",
+   "value": false,
+   "text": "A token left when an Aeldari unit with Waystone dies. It is destroyed when it takes damage. You collect it during your turn; abilities spend collected stones."
+  },
+  {
+   "name": "Stealth",
+   "id": "stealth",
+   "value": false,
+   "text": "Cannot be targeted at all for one turn, or until this unit attacks."
+  },
+  {
+   "name": "Stimulation",
+   "id": "stimulation",
+   "value": false,
+   "text": "When this unit is targeted by a stratagem, its effect triggers before the stratagem resolves."
+  },
+  {
+   "name": "Stomp",
+   "id": "stomp",
+   "value": false,
+   "text": "When it attacks, damage beyond what destroys the target hits a random enemy next to the target."
+  },
+  {
+   "name": "Strike",
+   "id": "strike",
+   "value": false,
+   "text": "Triggers an effect after this unit attacks, if it survives."
+  },
+  {
+   "name": "Stun",
+   "id": "",
+   "value": false,
+   "text": "A condition: the unit cannot act at all while stunned."
+  },
+  {
+   "name": "Swarm",
+   "id": "swarm",
+   "value": false,
+   "text": "When played to the left of a troop with the same name, the two combine into one troop with their attack and health added together."
+  },
+  {
+   "name": "Synapse",
+   "id": "synapse",
+   "value": false,
+   "text": "When targeted by a friendly stratagem, the stratagem's effect is repeated on the adjacent troops or units."
+  },
+  {
+   "name": "Talent",
+   "id": "talent",
+   "value": false,
+   "text": "Creates an Ephemeral stratagem in your hand at the start of your turn."
+  },
+  {
+   "name": "Teleport",
+   "id": "teleport",
+   "value": false,
+   "text": "Triggers an effect if the card is played on the same turn it was drawn."
+  },
+  {
+   "name": "Tide X",
+   "id": "tide",
+   "value": true,
+   "text": "When played from your hand, you can play up to X more copies this turn, each at the same energy cost."
+  },
+  {
+   "name": "Unstable",
+   "id": "unstable",
+   "value": false,
+   "text": "When this unit dies it deals 1 to 3 damage to a random unit."
+  },
+  {
+   "name": "Uprising",
+   "id": "uprising",
+   "value": false,
+   "text": "Triggers an effect each time another troop is deployed after it on the turn it was deployed."
+  },
+  {
+   "name": "Vanguard",
+   "id": "vanguard",
+   "value": false,
+   "text": "While it is in play, other friendly units cannot be targeted by attacks."
+  },
+  {
+   "name": "Vulnerable X",
+   "id": "",
+   "value": true,
+   "text": "A condition: the unit takes X extra damage whenever it is damaged."
+  },
+  {
+   "name": "Waystone",
+   "id": "waystone",
+   "value": false,
+   "text": "When this unit dies it leaves a Spirit Stone."
+  }
+ ]
+}

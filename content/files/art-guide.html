@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card artwork guide – Warpforge Revival</title>
+<style>
+  :root { --bg:#14161a; --panel:#1d2026; --line:#333842; --text:#e8e6e1; --dim:#a7a49c; --accent:#c9a24a; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:28px; margin:0 0 4px; } h2 { font-size:21px; margin:34px 0 8px; color:var(--accent); } h3 { font-size:17px; margin:20px 0 6px; }
+  p, li { color:var(--text); } .dim { color:var(--dim); }
+  a { color:var(--accent); }
+  img { max-width:100%; height:auto; border:1px solid var(--line); border-radius:6px; background:repeating-conic-gradient(#2a2e36 0% 25%, #1f2228 0% 50%) 0 0 / 24px 24px; }
+  .kit { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:14px; margin:12px 0; }
+  .kit div { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .kit strong { display:block; margin-bottom:4px; }
+  .btn { display:inline-block; margin-top:8px; padding:7px 14px; border:1px solid var(--accent); border-radius:6px; text-decoration:none; }
+  table { border-collapse:collapse; width:100%; margin:8px 0; } th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  code { background:var(--panel); padding:1px 5px; border-radius:4px; }
+  .two { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+</style></head><body><main>
+<h1>Card artwork guide</h1>
+<p class="dim">How to prepare a picture for a custom Warpforge Revival card. <a href="/creator">Back to the card creator</a></p>
+
+<h2>The short version</h2>
+<ul>
+  <li>Every card's art is one <strong>1024 × 1024</strong> picture. Bring any size or shape: the card creator's editor crops and scales it for you.</li>
+  <li><strong>Troops, vehicles and warlords</strong> use a tall painting, background included, in the middle of that square. It does <em>not</em> need a transparent background.</li>
+  <li><strong>Stratagems</strong> use the whole square.</li>
+  <li>Parts that break out over the card frame (a gun barrel, a banner) are optional and come from a second picture, the <strong>pop-out mask</strong>.</li>
+</ul>
+
+<h2>Downloads</h2>
+<div class="kit">
+  <div><strong>Everything in one file</strong>Both templates, the blank mask, the example sheet and this guide.<br><a class="btn" href="art-kit.zip" download>art-kit.zip</a></div>
+  <div><strong>Unit template</strong>Troops, vehicles, warlords. See-through overlay with the guides.<br><a class="btn" href="art-template-unit.png" download>art-template-unit.png</a></div>
+  <div><strong>Stratagem template</strong>See-through overlay with the guides.<br><a class="btn" href="art-template-stratagem.png" download>art-template-stratagem.png</a></div>
+  <div><strong>Blank mask</strong>All black, 1024 × 1024. Paint white on it.<br><a class="btn" href="art-mask-blank.png" download>art-mask-blank.png</a></div>
+</div>
+<p>The templates are see-through. In your paint program, open a template, put your picture on a layer <em>underneath</em> it, line the picture up, then hide the template layer before you export.</p>
+
+<h2>Troops, vehicles and warlords</h2>
+<div class="two">
+  <div><img src="art-template-unit.png" alt="Unit art template"></div>
+  <div>
+    <table>
+      <tr><th>Guide</th><th>What it means</th></tr>
+      <tr><td>Gold box</td><td>The picture area: 670 pixels wide (x 177 to 847), the full 1024 high. Fill all of it. Nothing outside it is used.</td></tr>
+      <tr><td>Dashed line</td><td>The edge of the card. The frame covers a thin band just inside it.</td></tr>
+      <tr><td>Clear zone</td><td>Shown at full brightness. Put the face or focal point here.</td></tr>
+      <tr><td>Red line</td><td>The card's name and rules text can start about here. The picture carries on behind the text but is darkened. Short text starts lower, so the picture should still look good down there.</td></tr>
+      <tr><td>Red circles</td><td>Covered by the faction badge, cost, attack values, armour and health.</td></tr>
+      <tr><td>Gold tint</td><td>Outside the card. Only seen where the pop-out mask says so.</td></tr>
+    </table>
+  </div>
+</div>
+
+<h3>The pop-out mask (optional)</h3>
+<p>Official cards let part of the figure overlap the frame. That is controlled by a second picture of the same size: <strong>white</strong> where the art should be drawn on top of the frame, <strong>black</strong> everywhere else. Soft grey edges give a soft blend.</p>
+<ul>
+  <li>Start from <code>art-mask-blank.png</code> and paint white over the part that should break out. Keep it small: a weapon, a hand, a crest. The official cards pop out one or two details, not the whole figure.</li>
+  <li>The mask must line up with the picture <em>as saved by the creator</em>. The safe way: place and save the artwork in the creator first, then paint the mask over that saved 1024 × 1024 picture.</li>
+  <li>No mask means everything stays neatly inside the frame. That is fine, and it is the default.</li>
+</ul>
+
+<h2>Stratagems</h2>
+<div class="two">
+  <div><img src="art-template-stratagem.png" alt="Stratagem art template"></div>
+  <div>
+    <table>
+      <tr><th>Guide</th><th>What it means</th></tr>
+      <tr><td>Gold box</td><td>The whole square is the picture. Fill all of it.</td></tr>
+      <tr><td>Clear zone</td><td>Nearly everything is shown.</td></tr>
+      <tr><td>Red circles</td><td>Top right corner: covered by the faction badge and the cost.</td></tr>
+      <tr><td>Red line</td><td>Below it the card's text box begins, so the bottom strip is hidden.</td></tr>
+    </table>
+    <p>Stratagems have no pop-out mask.</p>
+  </div>
+</div>
+
+<h2>Picture quality</h2>
+<ul>
+  <li>PNG, JPG or WebP, up to 20 MB. The creator saves it as a 1024 × 1024 PNG.</li>
+  <li>For units aim for at least 670 × 1024; for stratagems at least 1024 × 1024. Smaller pictures are enlarged and look soft.</li>
+  <li>Unit pictures are portrait (about 2 : 3). A landscape picture will be cropped hard at the sides.</li>
+  <li>Only upload artwork you made or have the right to use, and follow the <a href="/rules">card creator rules</a>.</li>
+</ul>
+
+<h2>Uploading</h2>
+<ol>
+  <li>In the card creator, fill in the card, then choose <strong>…or upload your own artwork</strong>.</li>
+  <li>Drag and zoom the picture under the guides (the same guides as the templates), then <strong>Use this artwork</strong>.</li>
+  <li>For a unit, optionally choose <strong>Add a pop-out mask</strong> and pick your mask picture.</li>
+</ol>
+
+<h2>Example: official cards</h2>
+<p>Four official cards, showing the picture in the art file, the pop-out mask stored with it, and the finished card.</p>
+<p><a href="art-example.jpg"><img src="art-example.jpg" alt="Art file, pop-out mask and finished card for four official cards"></a></p>
+<p class="dim">Measurements were taken by lining official art up against finished official cards. Example artwork belongs to its owners and is shown for reference only.</p>
+</main></body></html>

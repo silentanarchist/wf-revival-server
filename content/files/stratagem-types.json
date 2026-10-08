@@ -1,0 +1,128 @@
+{
+ "source": "Counts, factions and deck use are from the game's card data (1,351 cards). The descriptions are read from the cards and the fan rulebook and have not been traced through the game's code.",
+ "types": [
+  {
+   "id": "Normal",
+   "name": "Normal",
+   "cards": 508,
+   "faction": "All",
+   "deck": "Yes",
+   "text": "An ordinary stratagem. Use this unless another card needs to pick yours out as part of a family."
+  },
+  {
+   "id": "OffensiveCard",
+   "name": "Offensive Card",
+   "cards": 91,
+   "faction": "All",
+   "deck": "No",
+   "text": "The Offence cards the player going first chooses from at the start of a battle (39), plus 52 internal helper cards for their lasting effects. Handled outside the deck."
+  },
+  {
+   "id": "DefensiveCard",
+   "name": "Defensive Card",
+   "cards": 39,
+   "faction": "All (3 each)",
+   "deck": "No",
+   "text": "The Defence card saved with a deck and used when going second. Chosen in the deck editor's own slot, not in the card list."
+  },
+  {
+   "id": "PsychicPower",
+   "name": "Psychic Power",
+   "cards": 6,
+   "faction": "Black Legion, Ultramarines",
+   "deck": "No",
+   "text": "Created during play. Removed at end of turn if unused."
+  },
+  {
+   "id": "CombatElixir",
+   "name": "Combat Elixir",
+   "cards": 6,
+   "faction": "Emperor's Children",
+   "deck": "No",
+   "text": "Created during play."
+  },
+  {
+   "id": "MarkOfChaos",
+   "name": "Mark Of Chaos",
+   "cards": 5,
+   "faction": "Black Legion (4), Emperor's Children (1)",
+   "deck": "No",
+   "text": "The four god marks, applied to a unit as lasting effects."
+  },
+  {
+   "id": "Secret",
+   "name": "Secret",
+   "cards": 5,
+   "faction": "Dark Angels",
+   "deck": "No",
+   "text": "Shuffled into your deck by Quest."
+  },
+  {
+   "id": "Sabotage",
+   "name": "Sabotage",
+   "cards": 4,
+   "faction": "Genestealer Cults",
+   "deck": "No",
+   "text": "Created in the opponent's hand by the Sabotage keyword."
+  },
+  {
+   "id": "Genomic",
+   "name": "Genomic",
+   "cards": 4,
+   "faction": "Genestealer Cults",
+   "deck": "3 of 4",
+   "text": "Enhancements for a unit."
+  },
+  {
+   "id": "OverlordPower",
+   "name": "Overlord Power",
+   "cards": 3,
+   "faction": "Necrons (Sautekh)",
+   "deck": "Yes",
+   "text": "Deck cards."
+  },
+  {
+   "id": "Invocation",
+   "name": "Invocation",
+   "cards": 3,
+   "faction": "Tau Empire",
+   "deck": "Yes",
+   "text": "Deck cards."
+  },
+  {
+   "id": "Rune",
+   "name": "Rune",
+   "cards": 3,
+   "faction": "Space Wolves",
+   "deck": "No",
+   "text": "Created during play. Removed at end of turn if unused."
+  },
+  {
+   "id": "Codicil",
+   "name": "Codicil",
+   "cards": 3,
+   "faction": "Ultramarines",
+   "deck": "No",
+   "text": "Created during play. Removed at end of turn if unused."
+  }
+ ],
+ "unused": [
+  "Munition",
+  "Ideal",
+  "Mechadendrite",
+  "Reckoning",
+  "Teaching",
+  "Secret Order",
+  "Trap",
+  "Secret Identity",
+  "Plasma Power",
+  "Theoretical",
+  "Practical",
+  "Quest",
+  "Mutation",
+  "Wing",
+  "Spoil Of War",
+  "Mission",
+  "Weapon"
+ ]
+}
