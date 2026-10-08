@@ -424,7 +424,7 @@ ERR_AUTH = 32767                              # "invalid authentication": the cl
 # client sends.
 OP_TICKET = 160
 TICKET_SECONDS = 1800
-REQUIRE = [False]
+REQUIRE = [True]              # closed until the game server has read its settings (it sets this at start-up)
 _tickets = {}                                 # ticket -> (player id, expires at)
 _tickets_lock = threading.Lock()
 

@@ -824,6 +824,9 @@ class PlayFabEmulator:
         self.content_root = content_root
         self.store = Store(data_root, content_root)
         self.store.banned = self._banned_ids
+        # the match service asks for a match ticket whenever accounts are required - from the
+        # start, not only once someone has signed in (re-read on every reload of this file)
+        photon_emu.REQUIRE[0] = self._settings().get("requireAccount") is True
         os.makedirs(log_dir, exist_ok=True)
         self.log_path = os.path.join(log_dir, "playfab.jsonl")
         self.log_lock = threading.Lock()
