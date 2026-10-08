@@ -35,6 +35,7 @@ from urllib.parse import urlparse, unquote, parse_qs
 
 import importlib
 
+import select
 import socket
 import ssl
 
@@ -221,6 +222,23 @@ def relays():
     return tuple(str(a) for a in listed if isinstance(a, str)) if isinstance(listed, list) else ()
 
 
+class _Prefixed(io.RawIOBase):
+    """A connection with bytes already read put back in front of it."""
+    def __init__(self, prefix, sock):
+        self.prefix, self.sock = prefix, sock
+
+    def readable(self):
+        return True
+
+    def readinto(self, buf):
+        if self.prefix:
+            n = min(len(buf), len(self.prefix))
+            buf[:n] = self.prefix[:n]
+            self.prefix = self.prefix[n:]
+            return n
+        return self.sock.recv_into(buf)
+
+
 class Certificates:
     """Certificates for encrypted (https) connections on the game port.
 
@@ -350,10 +368,18 @@ class Handler(BaseHTTPRequestHandler):
             if ctx is not None:
                 self.request = ctx.wrap_socket(self.request, server_side=True)
                 self.secure = True
+                # Inside the encryption it is again either a match connection (first byte 0xFB,
+                # from the mod's match tunnel) or a web request.
+                self.first = self.request.recv(1)
+                if not self.first:
+                    self.first = None
         except (OSError, ssl.SSLError):
             self.first = None       # nothing arrived, or the encrypted connection could not be set up
         try:
             super().setup()
+            if self.secure and self.first and self.first != b"\xfb":
+                # the byte just read belongs to the web request: put it back in front
+                self.rfile = io.BufferedReader(_Prefixed(self.first, self.request), self.rbufsize if self.rbufsize > 0 else io.DEFAULT_BUFFER_SIZE)
         except OSError:             # the connection is already gone
             self.first = None
             self.rfile = self.wfile = io.BytesIO()
@@ -399,10 +425,59 @@ class Handler(BaseHTTPRequestHandler):
         if first is None:
             return
         if first == b"\xfb":
+            if self.secure:
+                return self._encrypted_match()
+            if settings().get("requireEncryptedMatches") is True and self._outside():
+                photon_emu.log.info("%s: unencrypted match connection refused", self.client_address[0])
+                return
             self.connection.settimeout(None)        # a match lasts as long as it lasts
             photon_emu.serve(self.connection, self.client_address)
             return
         super().handle()
+
+    def _encrypted_match(self):
+        """A match connection inside https (from the mod's match tunnel). The match service is handed
+        a plain local socket pair; one pump here moves the bytes between it and the encrypted
+        connection, waiting on both and reading only from the side that has something, so the
+        encrypted connection is only ever used by this one thread."""
+        tls = self.request
+        mine, theirs = socket.socketpair()
+        service = threading.Thread(target=photon_emu.serve, args=(theirs, self.client_address), daemon=True)
+        service.start()
+        try:
+            tls.settimeout(30)                      # a write or the rest of a message that stalls this long: gone
+            mine.sendall(self.first)                # the 0xFB already read
+            while True:
+                if tls.pending():
+                    ready = [tls]
+                else:
+                    ready, _, _ = select.select([tls, mine], [], [], 60)
+                    if not ready:
+                        continue                    # the match service ends silent connections itself
+                if tls in ready:
+                    data = tls.recv(65536)
+                    if not data:
+                        break
+                    mine.sendall(data)
+                if mine in ready:
+                    data = mine.recv(65536)
+                    if not data:
+                        break
+                    tls.sendall(data)
+        except (OSError, ssl.SSLError):
+            pass
+        finally:
+            for s in (mine,):
+                try:
+                    s.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+            service.join(35)
+            for s in (mine, theirs):
+                try:
+                    s.close()
+                except OSError:
+                    pass
 
     def _client(self):
         """The address a request really comes from: the caller's own, or - only when the caller is
@@ -462,19 +537,22 @@ class Handler(BaseHTTPRequestHandler):
     # see that there is an update and download it, and nothing else.
     PLAIN_ALLOWED = ("/api/v1/status", "/api/v1/mod/manifest", "/api/v1/mod/download")
 
+    def _outside(self):
+        """True for a connection from outside this machine and its home network."""
+        try:
+            peer = ipaddress.ip_address(str(self.client_address[0]).split("%")[0])
+            return not (peer.is_loopback or peer.is_private or peer.is_link_local)
+        except ValueError:
+            return True
+
     def _plain_refused(self, path):
         """With "requireHttps": true in the settings file, plain (unencrypted) http is refused to
         anyone outside this machine and its home network. Caddy, on this machine, still passes
-        the website on over plain http, and match connections are not affected."""
+        the website on over plain http. Match connections have their own setting,
+        "requireEncryptedMatches"."""
         if self.secure or settings().get("requireHttps") is not True or path in self.PLAIN_ALLOWED:
             return False
-        try:
-            peer = ipaddress.ip_address(str(self.client_address[0]).split("%")[0])
-            if peer.is_loopback or peer.is_private or peer.is_link_local:
-                return False
-        except ValueError:
-            pass
-        return True
+        return self._outside()
 
     def _refuse_plain(self):
         self.close_connection = True
@@ -529,7 +607,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/v1/status":
             return self._json(200, {"name": SERVER_NAME, "apiVersion": API_VERSION,
                                     "packVersion": pack.version, "cards": pack.card_count,
-                                    "matchService": photon_emu.SERVICE.stats(), "encrypted": bool(self.secure)})
+                                    "matchService": photon_emu.SERVICE.stats(), "encrypted": bool(self.secure),
+                                    "encryptedMatches": self.certificates is not None and self.certificates.default is not None})
         if path == "/api/v1/content/manifest":
             return self._json(200, {"apiVersion": API_VERSION, "packVersion": pack.version,
                                     "cards": pack.card_count, "size": len(pack.body),

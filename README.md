@@ -66,7 +66,8 @@ files from `content/bundles-android/` (the game's content files differ per platf
 ### Match service
 
 Matches run on this server (`photon_emu.py`), on the same port as everything else. It needs a
-direct connection to that port, so it does not go through an https proxy. If the match service
+direct connection to that port, so it does not go through an https proxy (the server's own https
+on the game port carries it, below). If the match service
 should be reached on a different port, set `"matchPort"` in the settings file.
 
 ### https
@@ -93,11 +94,17 @@ The server's first lines say whether encryption is on, and `/api/v1/status` repo
 - Once a player's mod has reached a server over https it refuses to drop back to plain http
   for that server. If your certificate expires, players cannot connect until it is renewed.
 - A server reached by number address (a home network) has no certificate and stays on plain http.
-- Match connections are not encrypted. They carry the moves of a match, not sign-in details.
+- Match connections are encrypted too, from mod 0.11.27. The game's match client only speaks
+  plain TCP, so the mod points it at a listener inside the game (127.0.0.1) and carries each
+  connection on to the game port inside https; the server unwraps it for the match service.
+  `/api/v1/status` reports `"encryptedMatches": true` when the server can do this, and the mod
+  only does it then. Older mods, and servers without a certificate, keep plain match connections.
 
 Once your players are on mod 0.11.18 or newer, set `"requireHttps": true` in the settings file:
 plain http from outside this machine and its home network is then refused, except what an
-older mod needs to find and download its update. Match connections are not affected.
+older mod needs to find and download its update. Match connections are not affected by it:
+once your players are on mod 0.11.27 or newer, `"requireEncryptedMatches": true` refuses
+unencrypted match connections from outside this machine and its home network.
 
 ### Keeping your home address private (relay)
 

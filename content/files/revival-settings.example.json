@@ -21,5 +21,6 @@
   "onlyRevivalMod": true,
   "logDays": 14,
   "requireAccount": false,
-  "requireHttps": false
+  "requireHttps": false,
+  "requireEncryptedMatches": false
 }
