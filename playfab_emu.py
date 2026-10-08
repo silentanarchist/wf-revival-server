@@ -265,10 +265,15 @@ class Store:
                 return json.load(f)
         return None
 
+    MAX_SAVE_BYTES = 1024 * 1024        # last line of defence; the request handlers stop well before this
+
     def save(self, player):
+        text = json.dumps(player, indent=1, ensure_ascii=False)
+        if len(text.encode("utf-8")) > self.MAX_SAVE_BYTES:
+            raise ValueError("player %s is too large to save" % player.get("PlayFabId"))
         tmp = self._path(player["PlayFabId"]) + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(player, f, indent=1, ensure_ascii=False)
+            f.write(text)
         os.replace(tmp, self._path(player["PlayFabId"]))
 
     @staticmethod
@@ -2642,6 +2647,20 @@ class PlayFabEmulator:
         p = self._player(headers)
         return ok({"Data": _kv(self._readonly(p), req.get("Keys")), "DataVersion": p["DataVersion"]})
 
+    # What one player may keep on the server. A normal player is about 15 KB; the limits only stop
+    # a client from filling the disk (and slowing every lookup that reads all players).
+    MAX_PLAYER_BYTES = 512 * 1024
+    MAX_USER_DATA_KEYS = 300
+    MAX_OBJECTS = 100
+
+    def _too_big(self, p):
+        """An error to answer with when a changed player would be over the limits (None when fine)."""
+        if len(p.get("UserData") or {}) > self.MAX_USER_DATA_KEYS or len(p.get("Objects") or {}) > self.MAX_OBJECTS:
+            return err("InvalidParams", "too much saved data for one player", 1000, 400)
+        if len(json.dumps(p, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) > self.MAX_PLAYER_BYTES:
+            return err("InvalidParams", "too much saved data for one player", 1000, 400)
+        return None
+
     def api_Client_UpdateUserData(self, req, headers):
         p = self._player(headers)
         with self.store.lock:
@@ -2653,6 +2672,10 @@ class PlayFabEmulator:
                     p["UserData"][k] = v
             for k in req.get("KeysToRemove") or []:
                 p["UserData"].pop(k, None)
+            refused = self._too_big(p)
+            if refused:
+                log.warning("UpdateUserData refused for %s: over the size limits", p["PlayFabId"])
+                return refused
             p["DataVersion"] += 1
             self.store.save(p)
         return ok({"DataVersion": p["DataVersion"]})
@@ -2922,6 +2945,10 @@ class PlayFabEmulator:
                     objs.pop(o.get("ObjectName"), None)
                 else:
                     objs[o.get("ObjectName")] = o.get("DataObject")
+            refused = self._too_big(p)
+            if refused:
+                log.warning("SetObjects refused for %s: over the size limits", p["PlayFabId"])
+                return refused
             p["DataVersion"] += 1
             self.store.save(p)
         return ok({"ProfileVersion": p["DataVersion"], "SetResults": []})
@@ -3216,7 +3243,7 @@ class PlayFabEmulator:
         event_id, deck_id = data.get("eventId"), data.get("deckId")
         if not event_id:
             return {"Result": False}
-        handler = "GameModes"
+        handler = None
         folder = os.path.join(self.content_root, "liveops")
         try:
             for name in sorted(os.listdir(folder)):
@@ -3229,6 +3256,8 @@ class PlayFabEmulator:
                     break
         except (OSError, ValueError) as e:
             log.warning("SetGamemodeDefaultDeck: could not look up event %s: %s", event_id, e)
+        if handler is None or not isinstance(deck_id, (str, type(None))):
+            return {"Result": False}                         # not an event of this server
         with self.store.lock:
             player.update(self.store.load(player["PlayFabId"]) or {})
             save = player.setdefault("LiveOps", {}).setdefault(handler, {}).setdefault(event_id, {})

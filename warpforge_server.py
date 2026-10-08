@@ -37,6 +37,7 @@ from urllib.parse import urlparse, unquote, parse_qs
 import importlib
 
 import select
+import shutil
 import socket
 import ssl
 
@@ -520,6 +521,21 @@ class Handler(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(payload)
 
+    def _send_file(self, full, ctype):
+        """A file from disk, sent in 1 MB pieces rather than read into memory whole."""
+        try:
+            f = open(full, "rb")
+        except OSError:
+            return self._json(404, {"error": "not found"})
+        with f:
+            size = os.fstat(f.fileno()).st_size
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(size))
+            self.end_headers()
+            if self.command != "HEAD":
+                shutil.copyfileobj(f, self.wfile, 1 << 20)
+
     def _is_android(self):
         """Phones say what they are with ?platform=android."""
         return (parse_qs(urlparse(self.path).query).get("platform") or [""])[0].lower() == "android"
@@ -635,8 +651,7 @@ class Handler(BaseHTTPRequestHandler):
             full = os.path.join(store.dir, name)
             if not os.path.isfile(full):
                 return self._json(404, {"error": "not found"})
-            with open(full, "rb") as f:
-                return self._send(200, f.read(), "application/octet-stream")
+            return self._send_file(full, "application/octet-stream")
         if path == "/api/v1/mod/manifest":
             info = self.mods.info(self._is_android())
             return self._json(200, dict(info, available=True) if info else {"available": False})
@@ -644,8 +659,7 @@ class Handler(BaseHTTPRequestHandler):
             android = self._is_android()
             if self.mods.info(android) is None:
                 return self._json(404, {"error": "not found"})
-            with open(self.mods.path(android), "rb") as f:
-                return self._send(200, f.read(), "application/octet-stream")
+            return self._send_file(self.mods.path(android), "application/octet-stream")
         if path.rstrip("/") in CREATOR_PAGES:        # one page serves every tab; it shows the one in the address
             return self._serve_file("creator.html")
         if path.startswith("/api/v1/content/files/"):
@@ -663,8 +677,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(404, {"error": "not found"})
         ctype = self.FILE_TYPES.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
         if os.path.isfile(full):
-            with open(full, "rb") as f:
-                return self._send(200, f.read(), ctype)
+            return self._send_file(full, ctype)
         # A folder of many small files can be kept as one zip instead: files/card-art/AM3.jpg is
         # also looked for inside files/card-art.zip.
         data = zipped_file(root, os.path.relpath(full, root))

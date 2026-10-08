@@ -415,6 +415,20 @@ A_NAME, A_INACTIVE = B(255), B(254)
 ERR_FULL, ERR_CLOSED, ERR_EXISTS, ERR_NO_MATCH, ERR_NO_GAME, ERR_NO_REJOIN = 32765, 32764, 32766, 32760, 32758, 32748
 ERR_AUTH = 32767                              # "invalid authentication": the client gives up and disconnects
 
+# Limits, so no client can make the service hold rooms or memory for ever. The game itself keeps a
+# dropped player's seat for 30 seconds and caches a handful of events per match.
+TTL_MAX_MS = 600000                           # a seat or an empty room is kept at most 10 minutes
+ROOM_IDLE_MAX = 15 * 60                       # a room with nobody connected closes after 15 minutes regardless
+CACHE_MAX_EVENTS = 1000                       # remembered events per room
+CACHE_MAX_BYTES = 4 * 1024 * 1024             # and their total size
+MAX_ROOMS_PER_PLAYER = 5                      # open rooms one signed-in player has created
+MAX_ROOMS = 1000                              # open rooms in all
+
+
+def _ttl(v):
+    """A seat or empty-room keep time from a client, held to 0 .. TTL_MAX_MS (-1, "for ever", becomes the most)."""
+    return TTL_MAX_MS if v < 0 else min(v, TTL_MAX_MS)
+
 # ---- who is connecting
 # The match client's own sign-in is encrypted and says nothing this service can check, so the mod
 # asks the game server for a match ticket over https (Revival/MatchTicket, with its session) and
@@ -474,6 +488,8 @@ class Room(object):
         self.empty_ttl = 0
         self.empty_since = None
         self.reserved = []                    # times at which a slot was promised to a searching player
+        self.creator = None                   # the signed-in player who opened it, when known
+        self.cache_full_noted = False
 
     def active(self):
         return [a for a in self.actors.values() if a.conn is not None]
@@ -534,6 +550,9 @@ class Service(object):
             return
         if room.empty_since is None:
             room.empty_since = now
+        if room.actors and now - room.empty_since >= ROOM_IDLE_MAX:
+            room.actors.clear()                  # only dropped players left, for far too long
+            room.empty_ttl = 0
         if not room.actors and (now - room.empty_since) * 1000 >= room.empty_ttl:
             if self.rooms.get(room.name) is room:
                 del self.rooms[room.name]
@@ -625,7 +644,14 @@ class Service(object):
             if room is None:
                 if code == 226 and mode != 1:
                     return conn.reply(code, rc=ERR_NO_GAME, debug="Game does not exist")
+                # per player only when signed in: without a ticket every player behind a relay shares one address
+                creator = conn.player
+                if len(self.rooms) >= MAX_ROOMS or (creator is not None and
+                        sum(1 for r in self.rooms.values() if r.creator == creator) >= MAX_ROOMS_PER_PLAYER):
+                    log.warning("%s: room refused, too many open rooms", conn.peer)
+                    return conn.reply(code, rc=ERR_FULL, debug="Too many open games")
                 room = self._new_room(name or str(uuid.uuid4()), p)
+                room.creator = creator
             elif code == 227:
                 return conn.reply(code, rc=ERR_EXISTS, debug="A game with the specified id already exist.")
 
@@ -682,10 +708,10 @@ class Service(object):
         if isinstance(p.get(241), bool):
             room.cleanup = p[241]
         room.flags = plain(p.get(191)) or 0
-        if isinstance(plain(p.get(235)), int):
-            room.player_ttl = plain(p[235])
-        if isinstance(plain(p.get(236)), int):
-            room.empty_ttl = plain(p[236])
+        if isinstance(plain(p.get(235)), int) and not isinstance(plain(p.get(235)), bool):
+            room.player_ttl = _ttl(plain(p[235]))
+        if isinstance(plain(p.get(236)), int) and not isinstance(plain(p.get(236)), bool):
+            room.empty_ttl = _ttl(plain(p[236]))
         self._ttl_from_props(room)
         self.rooms[name] = room
         log.info("room %s opened (lobby %r, max %s, custom %r)", name, room.lobby, room.max_players or "any", room.custom())
@@ -696,7 +722,7 @@ class Service(object):
         for key, attr in ((K_PLAYER_TTL, "player_ttl"), (K_EMPTY_TTL, "empty_ttl")):
             v = plain(room.props.get(key))
             if isinstance(v, int) and not isinstance(v, bool):
-                setattr(room, attr, v)
+                setattr(room, attr, _ttl(v))
 
     def leave(self, conn, p):
         with self.lock:
@@ -734,11 +760,15 @@ class Service(object):
             if raw is not None:
                 params[245] = Raw(raw)
             msg = event(code, params)
-            if cache in (4, 5):
-                room.cache.append((0 if cache == 5 else actor.nr, code, raw, data))
-            elif cache in (1, 2):                                # one remembered event per player and code
+            if cache in (1, 2):                                  # one remembered event per player and code
                 room.cache = [c for c in room.cache if not (c[0] == actor.nr and c[1] == code)]
-                room.cache.append((actor.nr, code, raw, data))
+            if cache in (1, 2, 4, 5):
+                if len(room.cache) < CACHE_MAX_EVENTS and \
+                        sum(len(c[2]) for c in room.cache if c[2]) + len(raw or b"") <= CACHE_MAX_BYTES:
+                    room.cache.append((0 if cache == 5 else actor.nr, code, raw, data))
+                elif not room.cache_full_noted:
+                    room.cache_full_noted = True
+                    log.warning("room %s: event cache full; further events are sent but not remembered", room.name)
             elif cache == 3:
                 room.cache = [c for c in room.cache if not (c[0] == actor.nr and c[1] == code)]
             group = plain(p.get(240)) or 0
