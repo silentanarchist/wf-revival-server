@@ -423,6 +423,20 @@ CACHE_MAX_EVENTS = 1000                       # remembered events per room
 CACHE_MAX_BYTES = 4 * 1024 * 1024             # and their total size
 MAX_ROOMS_PER_PLAYER = 5                      # open rooms one signed-in player has created
 MAX_ROOMS = 1000                              # open rooms in all
+PROPS_MAX_KEYS = 200                          # properties one room, or one player in a room, can hold
+PROPS_MAX_BYTES = 256 * 1024                  # and their total size as sent
+
+
+def _props_fit(props):
+    """Whether a room's or a player's properties stay within the limits above."""
+    if len(props) > PROPS_MAX_KEYS:
+        return False
+    out = bytearray()
+    try:
+        write(out, props)
+    except Exception:
+        return False
+    return len(out) <= PROPS_MAX_BYTES
 
 
 def _ttl(v):
@@ -640,6 +654,8 @@ class Service(object):
             if conn.room is not None:
                 return conn.reply(code, rc=-3, debug="already in a room")
             props = p.get(249) if isinstance(p.get(249), dict) else {}
+            if not _props_fit(props) or (isinstance(p.get(248), dict) and not _props_fit(p[248])):
+                return conn.reply(code, rc=-3, debug="too many properties")
             nick = plain(props.get(A_NAME)) or ""
             if room is None:
                 if code == 226 and mode != 1:
@@ -684,6 +700,10 @@ class Service(object):
                 if room.reserved:
                     room.reserved.pop(0)
             else:
+                merged = dict(back.props)
+                merged.update(props)
+                if not _props_fit(merged):
+                    return conn.reply(code, rc=-3, debug="too many properties")
                 actor = back
                 actor.conn, actor.inactive_since = conn, None
                 actor.props.pop(A_INACTIVE, None)
@@ -806,11 +826,17 @@ class Service(object):
             expected = p.get(231)
             if isinstance(expected, dict) and any(not _same(store.get(k), v) for k, v in expected.items()):
                 return conn.reply(252, rc=32742, debug="the properties changed in the meantime")
+            changed = dict(store)
             for k, v in props.items():
                 if v is None and room.flags & FLAG_DELETE_NULL:
-                    store.pop(k, None)
+                    changed.pop(k, None)
                 else:
-                    store[k] = v
+                    changed[k] = v
+            if not _props_fit(changed):
+                log.warning("room %s: %s refused, too many properties", room.name, conn.peer)
+                return conn.reply(252, rc=-3, debug="too many properties")
+            store.clear()
+            store.update(changed)
             if not target_nr:
                 self._ttl_from_props(room)
             conn.reply(252, {})
