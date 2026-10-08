@@ -985,6 +985,107 @@ class PlayFabEmulator:
             last = self._chat[-1]["id"] if self._chat else 0
         return ok({"messages": out, "last": max(last, since, 0), "history": since < 0})
 
+    # ---- reports: "Report message" on a player in the global chat
+    # The game itself only sent these to its analytics service. The mod sends them here, they are
+    # kept in data/chat_reports.json and admins see them on the creator site's People page.
+    REPORTS_KEEP = 500
+
+    def _reports_path(self):
+        return os.path.join(self.store.root, "chat_reports.json")
+
+    def _reports(self):
+        try:
+            with open(self._reports_path(), encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except (OSError, ValueError):
+            return []
+
+    def _reports_save(self, reports):
+        path = self._reports_path()
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(reports[-self.REPORTS_KEEP:], f, ensure_ascii=False, indent=1)
+        os.replace(path + ".tmp", path)
+
+    def api_Revival_ChatReport(self, req, headers):
+        """{"player": id of whoever wrote the message, "msg": its text, "timestamp": its time}."""
+        reporter = self.store.session_player_id(headers)
+        if not reporter:
+            return err("NotAuthenticated", "sign in to report a message", 1074, 401)
+        reported = str(req.get("player") or "").strip().upper()
+        text = req.get("msg") if isinstance(req.get("msg"), str) else ""
+        if not re.fullmatch(r"[0-9A-F]{16}", reported) or self.store.load(reported) is None:
+            return err("InvalidParams", "no such player")
+        if reported == reporter:
+            return ok({"reported": False})
+        if not self._allow("report", reporter, 10, 3600):
+            return err("TooManyAttempts", "too many reports - try again later", 1199, 429)
+        # Use the server's own copy of the message when it still has it, so a report cannot put
+        # words in someone's mouth; otherwise keep what the reporter's game showed, marked as such.
+        found = None
+        with self._chat_lock:
+            for e in reversed(self._chat):
+                if e["sender"] != reported:
+                    continue
+                try:
+                    data = json.loads(e["message"])
+                except ValueError:
+                    data = None
+                said = data.get("msg") if isinstance(data, dict) else e["message"]
+                stamp = data.get("timestamp") if isinstance(data, dict) else None
+                if said == text or (stamp and stamp == req.get("timestamp")):
+                    found = (e, said if isinstance(said, str) else "")
+                    break
+        with self.store.lock:
+            reports = self._reports()
+            entry = {"id": uuid.uuid4().hex[:12], "at": now_iso(), "reporter": reporter, "player": reported,
+                     "msg": (found[1] if found else text)[:1000], "verified": found is not None,
+                     "channel": found[0]["channel"] if found else "", "sent": found[0]["t"] if found else "",
+                     "closed": False}
+            # one open report per reporter and message is enough
+            if not any(r["reporter"] == reporter and r["player"] == reported and r["msg"] == entry["msg"]
+                       and not r.get("closed") for r in reports):
+                reports.append(entry)
+                self._reports_save(reports)
+                log.info("chat report %s: %s reported %s", entry["id"], reporter, reported)
+        return ok({"reported": True})
+
+    def api_Revival_CreatorReports(self, req, headers):
+        """Admins: reported chat messages, newest first (closed ones only with "closed": true)."""
+        if self._creator_role(req) < 2:
+            return err("NotAuthorized", "only admins can see reports")
+        users = self._creator_users()
+        banned = self._banned_ids()
+
+        def who(pfid):
+            p = self.store.load(pfid) or {}
+            _, account = self._creator_account_of_player(users, pfid)
+            return {"player": pfid, "code": self.friend_code(pfid), "name": p.get("DisplayName") or "",
+                    "account": account["name"] if account else "", "banned": pfid in banned}
+
+        show_closed = req.get("closed") is True
+        out = []
+        for r in reversed(self._reports()):
+            if r.get("closed") and not show_closed:
+                continue
+            out.append(dict(r, reporter=who(r["reporter"]), player=who(r["player"])))
+        return ok({"reports": out[:200]})
+
+    def api_Revival_CreatorReportClose(self, req, headers):
+        """Admins: mark a report dealt with ({"id", "closed": true/false})."""
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me or self._creator_role(req) < 2:
+                return err("NotAuthorized", "only admins can close reports")
+            reports = self._reports()
+            entry = next((r for r in reports if r.get("id") == req.get("id")), None)
+            if entry is None:
+                return err("InvalidParams", "no such report")
+            closed = req.get("closed") is not False
+            entry.update(closed=closed, closedBy=me["name"] if closed else "", closedAt=now_iso() if closed else "")
+            self._reports_save(reports)
+        return ok({"id": entry["id"], "closed": closed})
+
     # ------------------------------------------------------------------ card creator
     # The creator page (content/files/creator.html) stores card designs here. A design is only a
     # description kept in data/custom_cards/<id>.json; nothing reaches the game until approved

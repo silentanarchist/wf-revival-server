@@ -365,6 +365,12 @@
       <div class="list" id="people"></div>
     </section>
     <section>
+      <h2>Reported chat messages</h2>
+      <p class="hint">Messages players reported with <strong>Report message</strong> in the game's global chat. <strong>Checked</strong> means the server still had the message and it matches; otherwise the text is what the reporter's game showed. To act on a report, ban the account in the list above. <strong>Done</strong> takes a report off this list.</p>
+      <div class="row"><label class="hint"><input type="checkbox" id="reportsClosed"> Show done reports too</label></div>
+      <div class="list" id="reports"></div>
+    </section>
+    <section>
       <h2 id="banTitle">Banned game players</h2>
       <p class="hint" id="banHint">For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (above) are listed here too; unban those above.</p>
       <div class="row" id="banFindRow"><div class="field grow"><label>Find a player (name, friend code or id)</label><input id="banQuery" placeholder="e.g. Commander-1A2B or 1A2B-3C4D"></div><button id="banFind" type="button">Find</button></div>
@@ -1514,6 +1520,28 @@ async function loadBans(query) {
 }
 $("banFind").onclick = () => loadBans(val("banQuery").trim());
 $("banQuery").onkeydown = e => { if (e.key === "Enter") loadBans(val("banQuery").trim()); };
+// Admins: reported chat messages.
+function reportWho(p) { return `${p.name || "(no name)"} · ${p.code}${p.account ? " · site account " + p.account : ""}${p.banned ? " · banned" : ""}`; }
+async function loadReports() {
+  let d;
+  try { d = await call("CreatorReports", { closed: $("reportsClosed").checked }); } catch (e) { return; }
+  const list = $("reports"); list.textContent = "";
+  for (const r of d.reports) {
+    const when = (r.sent || r.at || "").replace("T", " ").slice(0, 16);
+    const note = `Reported by ${reportWho(r.reporter)} on ${(r.at || "").slice(0, 10)}` + (r.verified ? " · checked" : " · not checked") +
+      (r.closed ? ` · done${r.closedBy ? " by " + r.closedBy : ""}` : "");
+    const button = el("button", { class: "small", text: r.closed ? "Reopen" : "Done", onclick: async () => {
+      try { await call("CreatorReportClose", { id: r.id, closed: !r.closed }); } catch (e) { say("Not changed: " + e.message, "bad"); }
+      loadReports();
+    } });
+    list.append(el("div", { class: "item" }, el("div", {},
+      el("span", { class: "title", text: reportWho(r.player) }),
+      el("div", { text: (when ? when + " UTC  " : "") + "\u201c" + r.msg + "\u201d" }),
+      el("div", { class: "hint", text: note })), el("div", { class: "actions" }, button)));
+  }
+  if (!d.reports.length) list.append(el("p", { class: "hint", text: "No reports." }));
+}
+$("reportsClosed").onchange = loadReports;
 // Admins: the word filter.
 async function loadWords() {
   let d;
@@ -1634,7 +1662,7 @@ function show(which, replace) {                // a page name from PAGES
   if (which === "Keywords") showKeywords();
   if (which === "Profile") { say(""); loadList(); }
   if (list) loadList();
-  if (which === "People") { loadPeople(); loadBans(val("banQuery").trim()); loadWords(); loadUploads(); }
+  if (which === "People") { loadPeople(); loadReports(); loadBans(val("banQuery").trim()); loadWords(); loadUploads(); }
   if (which === "Rules") loadRules();
 }
 

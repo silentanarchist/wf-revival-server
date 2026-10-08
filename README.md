@@ -55,8 +55,10 @@ they start the game. There is one slot per kind of device:
 | `WarpforgeRevival.Android.dll` | Android players |
 
 The server reads the version out of the file itself, so replacing a file is all it takes; no
-restart. Versions are numbered together across devices: `x.y.z-w` for Windows, `x.y.z-a` for
-Android ([Android mod and patcher](https://github.com/silentanarchist/warpforge-revival-mod-android)).
+restart. Versions are numbered `x.y.z.f-w` for Windows and `x.y.z.f-a` for Android
+([Android mod and patcher](https://github.com/silentanarchist/warpforge-revival-mod-android)):
+`x.y.z` is the shared code and always the same on both; `f` counts fixes made for one of them
+only, is left off while it is 0 (`0.12.1-w`), and starts again with every new `x.y.z`.
 
 ### Phones
 
@@ -234,6 +236,12 @@ honest players on one set of rules and stop casual tampering; they are not proof
   names. The starting list is `content/word-filter.txt`; once an admin saves the list on the
   People page the server uses that copy (`data/word_filter.json`). Chat messages also carry the
   sender's real name, whatever the game wrote in them.
+- **Reports.** "Report message" on a player in the game's global chat (mod 0.12.1 or newer) is
+  sent to the server and listed for admins on the People page (`data/chat_reports.json`, the
+  latest 500). When the server still has the message, the report shows the server's own copy, so
+  nobody can be reported for words they did not write. **Block player** needs nothing from the
+  server: the game keeps the block list in the player's own saved data and hides that player's
+  chat messages on that player's side only.
 - The game only signs in the ways it actually uses; the other sign-in methods of the original
   service are refused.
 - This is a hobby server for a small community of people who know each other. Do not rely on it
