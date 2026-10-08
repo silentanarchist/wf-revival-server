@@ -935,7 +935,7 @@ class Connection(object):
         code = m[2]
         p, spans = r.params()
         s = self.service
-        if code != 253:
+        if code not in (253, OP_TICKET):      # events are too many to log; a ticket must never be written down
             log.info("%s op %d %s", self.peer, code, _brief(p))
         if code == OP_TICKET:
             who = _redeem(p.get(1))
