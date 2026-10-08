@@ -174,8 +174,10 @@ honest players on one set of rules and stop casual tampering; they are not proof
   can only sign in with an account from the creator site. From mod 0.11.19 the game shows a
   sign-in window (name and password, or create an account) and keeps a game login in
   `UserData/WarpforgeRevival/game-login.txt`, so it only asks once per computer or phone. An
-  account's first game sign-in takes over the game player that computer or phone already had,
-  so earlier progress is kept. Changing the password, unlinking or banning the account cancels
+  account's first game sign-in gets a new game player of its own, the same on every computer and
+  phone it signs in from. A player from before accounts were required keeps its progress only if
+  the owner links it to the account (set the account's `"player"` in `data/creator_users.json`).
+  Changing the password, unlinking or banning the account cancels
   every saved game login. Recommended for any server open to people you do not know.
 - **Bans.** Banning an account on the People page also bans its linked game player. Players
   without a site account can be banned on their own on the same page (kept in `data/bans.json`).
