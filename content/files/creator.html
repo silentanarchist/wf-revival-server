@@ -365,9 +365,9 @@
       <div class="list" id="people"></div>
     </section>
     <section>
-      <h2>Banned game players</h2>
-      <p class="hint">For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (above) are listed here too; unban those above.</p>
-      <div class="row"><div class="field grow"><label>Find a player (name, friend code or id)</label><input id="banQuery" placeholder="e.g. Commander-1A2B or 1A2B-3C4D"></div><button id="banFind" type="button">Find</button></div>
+      <h2 id="banTitle">Banned game players</h2>
+      <p class="hint" id="banHint">For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (above) are listed here too; unban those above.</p>
+      <div class="row" id="banFindRow"><div class="field grow"><label>Find a player (name, friend code or id)</label><input id="banQuery" placeholder="e.g. Commander-1A2B or 1A2B-3C4D"></div><button id="banFind" type="button">Find</button></div>
       <div class="list" id="banFound"></div>
       <h3>Banned now</h3>
       <div class="list" id="banList"></div>
@@ -1452,7 +1452,7 @@ function drawKeywords() {
 // Admins: bans of game players.
 function banRow(p, inList) {
   const who = `${p.name || "(no name)"} · ${p.code}${p.account ? " · site account " + p.account : ""}${p.lastLogin ? " · last played " + p.lastLogin.slice(0, 10) : ""}`;
-  const why = p.bannedHere ? `Banned by ${p.by || "?"}${p.at ? " on " + p.at.slice(0, 10) : ""}${p.reason ? ": " + p.reason : ""}` : (p.banned ? "Banned through the site account " + p.account : "");
+  const why = p.bannedHere ? `Banned by ${p.by || "?"}${p.at ? " on " + p.at.slice(0, 10) : ""}${p.reason ? ": " + p.reason : ""}` : (p.banned ? "Banned through the site account " + p.account + " - unban it in the list above" : "");
   const button = p.bannedHere
     ? el("button", { class: "small", text: "Unban", onclick: () => setBan(p, false) })
     : p.banned ? null : el("button", { class: "small danger", text: "Ban", onclick: () => setBan(p, true) });
@@ -1469,6 +1469,14 @@ async function loadBans(query) {
   let d;
   try { d = await call("CreatorGameBans", { query: query || "" }); } catch (e) { return; }
   const list = $("banList"), found = $("banFound"); list.textContent = ""; found.textContent = "";
+  // With accounts required every player has a site account, and banning the account (above) is
+  // the way to ban someone; this section then only lists who is banned.
+  const accounts = !!d.requireAccount;
+  $("banTitle").textContent = accounts ? "Banned players" : "Banned game players";
+  $("banHint").textContent = accounts
+    ? "Every player signs in with a site account, so to ban someone, set their account to Banned in the list above: they cannot sign in, and a game already running stops working at its next request. Everyone who is banned is listed here. A game player banned on its own (from before accounts were required) can be unbanned here; the others are unbanned above."
+    : "For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (above) are listed here too; unban those above.";
+  $("banFindRow").classList.toggle("hidden", accounts); found.classList.toggle("hidden", accounts);
   for (const p of d.bans) list.append(banRow(p, true));
   if (!d.bans.length) list.append(el("p", { class: "hint", text: "Nobody is banned." }));
   for (const p of d.found) found.append(banRow(p, false));

@@ -1640,7 +1640,8 @@ class PlayFabEmulator:
                 pfid = p["PlayFabId"]
                 if (query in (p.get("DisplayName") or "").lower() or pfid.startswith(key)) and len(found) < 30:
                     found.append(describe(pfid))
-        return ok({"bans": [describe(pfid) for pfid in sorted(banned)], "found": found})
+        return ok({"bans": [describe(pfid) for pfid in sorted(banned)], "found": found,
+                   "requireAccount": self._settings().get("requireAccount") is True})
 
     def api_Revival_CreatorGameBan(self, req, headers):
         """Admins: ban or unban one game player ({"player": id, "ban": true/false, "reason": ...})."""
