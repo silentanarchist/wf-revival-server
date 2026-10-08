@@ -2408,25 +2408,20 @@ class PlayFabEmulator:
         pfid = user.get("player")
         created = False
         if not pfid or self.store.load(pfid) is None:
-            # First game sign-in for this account: it takes over the game player this Steam account,
-            # phone or computer already had (so earlier progress is kept), unless that player belongs
-            # to another account or is banned; otherwise it gets a new one.
-            device = self.store.player_id_for(kind, ext_id)
-            other_key, _ = self._creator_account_of_player(users, device)
-            if other_key is None and device not in self._banned_ids():
-                if not self._may_create(kind, ext_id, headers):
-                    return self._too_many_new()
-                p, _, created = self.store.get_or_create(kind, ext_id)
-            else:
-                if not self._allow("new-account", self._address(headers), self.NEW_ACCOUNTS_PER_HOUR, 3600):
-                    return self._too_many_new()
-                p, _, created = self.store.get_or_create("account", uuid.uuid4().hex)
+            # First game sign-in for this account: it gets a game player of its own, made from the
+            # account alone - never from the Steam account, phone or computer it signs in from.
+            if not self._allow("new-account", self._address(headers), self.NEW_ACCOUNTS_PER_HOUR, 3600):
+                return self._too_many_new()
+            p, _, created = self.store.get_or_create("account", uuid.uuid4().hex)
             pfid = p["PlayFabId"]
             with self.store.lock:
                 users = self._creator_users()
                 if key in users:
                     users[key]["player"], users[key]["playerLinkedAt"] = pfid, now_iso()
                     self._creator_users_save(users)
+                p = self.store.load(pfid) or p
+                p["Login"] = {"account": users[key]["name"] if key in users else user["name"]}
+                self.store.save(p)
             log.info("site account %s now plays as %s", user["name"], pfid)
         if pfid in self._banned_ids():
             return self._banned_error()
