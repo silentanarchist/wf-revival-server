@@ -20,6 +20,8 @@ import random
 import threading
 import time
 import unicodedata
+
+import photon_emu
 import uuid
 from datetime import datetime, timezone
 
@@ -2210,7 +2212,7 @@ class PlayFabEmulator:
     #    apart in the log, useless for signing in as one;
     #  - entries older than "logDays" in revival-settings.json (default 14) are dropped once a day,
     #    and the file is cut back if it still passes 50 MB.
-    LOG_SECRET = {"passphrase", "newpassphrase", "password", "session", "key", "token", "image", "mask",
+    LOG_SECRET = {"passphrase", "newpassphrase", "password", "session", "key", "token", "ticket", "image", "mask",
                   "sessionticket", "entitytoken", "devicetoken", "x-authorization", "secret"}
     LOG_IDENTITY = {"steamticket", "androiddeviceid", "androiddevice", "customid", "iosdeviceid", "deviceid", "nintendoswitchdeviceid"}
     LOG_MAX_BYTES = 50 * 1024 * 1024
@@ -2378,6 +2380,7 @@ class PlayFabEmulator:
         ("requireAccount": true in revival-settings.json)."""
         token = headers.get("X-Revival-Login") or token
         info = req.get("InfoRequestParameters")
+        photon_emu.REQUIRE[0] = self._settings().get("requireAccount") is True
         if token:
             return self._sign_in_account(token, kind, ext_id, headers, info)
         if self._settings().get("requireAccount") is True:
@@ -2704,6 +2707,15 @@ class PlayFabEmulator:
 
     def api_Client_GetFriendsList(self, req, headers):
         return ok({"Friends": []})
+
+    def api_Revival_MatchTicket(self, req, headers):
+        """A ticket the mod hands to the match service, which cannot see the game's own sign-in."""
+        p = self._player(headers)
+        photon_emu.REQUIRE[0] = self._settings().get("requireAccount") is True
+        grant = getattr(photon_emu, "grant", None)
+        if grant is None:                     # the match service part is older (restart the server)
+            return err("NotAvailable", "restart the server to use match tickets", 1000, 503)
+        return ok({"ticket": grant(p["PlayFabId"]), "seconds": getattr(photon_emu, "TICKET_SECONDS", 1800)})
 
     def api_Client_GetPhotonAuthenticationToken(self, req, headers):
         return ok({"PhotonCustomAuthenticationToken": uuid.uuid4().hex})

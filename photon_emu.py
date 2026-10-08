@@ -413,12 +413,46 @@ def sql_match(expr, props):
 K_MAX, K_VISIBLE, K_OPEN, K_LOBBY_PROPS, K_PLAYER_TTL, K_EMPTY_TTL = B(255), B(254), B(253), B(250), B(246), B(245)
 A_NAME, A_INACTIVE = B(255), B(254)
 ERR_FULL, ERR_CLOSED, ERR_EXISTS, ERR_NO_MATCH, ERR_NO_GAME, ERR_NO_REJOIN = 32765, 32764, 32766, 32760, 32758, 32748
+ERR_AUTH = 32767                              # "invalid authentication": the client gives up and disconnects
+
+# ---- who is connecting
+# The match client's own sign-in is encrypted and says nothing this service can check, so the mod
+# asks the game server for a match ticket over https (Revival/MatchTicket, with its session) and
+# sends it here as operation OP_TICKET just before signing in. When the server requires accounts
+# (REQUIRE, set by the game server from "requireAccount"), a connection without a valid ticket is
+# refused, and a player's seat in a room belongs to the signed-in player, not to whatever name a
+# client sends.
+OP_TICKET = 160
+TICKET_SECONDS = 1800
+REQUIRE = [False]
+_tickets = {}                                 # ticket -> (player id, expires at)
+_tickets_lock = threading.Lock()
+
+
+def grant(player_id):
+    """A match ticket for a signed-in player (valid TICKET_SECONDS, usable for every connection)."""
+    ticket = uuid.uuid4().hex + uuid.uuid4().hex
+    now = time.monotonic()
+    with _tickets_lock:
+        for k in [k for k, (_, until) in _tickets.items() if until < now]:
+            del _tickets[k]
+        _tickets[ticket] = (player_id, now + TICKET_SECONDS)
+    return ticket
+
+
+def _redeem(ticket):
+    with _tickets_lock:
+        found = _tickets.get(ticket) if isinstance(ticket, str) else None
+    if found and found[1] >= time.monotonic():
+        return found[0]
+    return None
 FLAG_DELETE_NULL, FLAG_PROPS_TO_ALL = 16, 32
 
 
 class Actor(object):
     def __init__(self, nr, conn, props):
         self.nr, self.conn, self.props = nr, conn, props
+        self.player = conn.player if conn is not None else None    # the signed-in player, when known
         self.inactive_since = None
         self.groups = None                    # None: only group 0 (default); set of ints; "all"
 
@@ -595,8 +629,12 @@ class Service(object):
             elif code == 227:
                 return conn.reply(code, rc=ERR_EXISTS, debug="A game with the specified id already exist.")
 
-            # Someone who dropped out of this room and is coming back keeps their seat.
-            back = next((a for a in room.actors.values() if nick and a.name == nick), None)
+            # Someone who dropped out of this room and is coming back keeps their seat: matched by the
+            # signed-in player when known (a name alone can be copied), otherwise by name.
+            if conn.player:
+                back = next((a for a in room.actors.values() if a.player == conn.player), None)
+            else:
+                back = next((a for a in room.actors.values() if nick and not a.player and a.name == nick), None)
             if back is not None and back.conn is not None:
                 # Same player, new connection: the old one died without the server noticing yet.
                 old = back.conn
@@ -812,6 +850,7 @@ class Connection(object):
         self.left = False
         self.ready = False
         self.closed = False
+        self.player = None                    # set by a valid match ticket
 
     def send(self, data):
         if self.closed:
@@ -880,7 +919,7 @@ class Connection(object):
         kind = m[1]
         if kind & 0x80:
             # Encrypted: the game only encrypts its sign-in.
-            return self.signed_in()
+            return self.sign_in(230)
         r = Reader(m, 3)
         if kind == 6:                         # internal: key exchange, or a ping sent as an operation
             p, _ = r.params()
@@ -898,8 +937,18 @@ class Connection(object):
         s = self.service
         if code != 253:
             log.info("%s op %d %s", self.peer, code, _brief(p))
+        if code == OP_TICKET:
+            who = _redeem(p.get(1))
+            if who:
+                self.player = who
+                log.info("%s is player %s", self.peer, who)
+            else:
+                log.info("%s sent a match ticket that is unknown or expired", self.peer)
+            return
+        if REQUIRE[0] and not self.player and code in (225, 226, 227, 229, 222):
+            return self.reply(code, rc=ERR_AUTH, debug="Sign in to the game first")
         if code in (230, 231):
-            self.signed_in(code)
+            self.sign_in(code)
         elif code == 229 or code == 228:      # join / leave lobby: rooms are found by searching, nothing to list
             self.reply(code, {})
         elif code == 225:
@@ -926,6 +975,13 @@ class Connection(object):
             pass
         else:
             self.reply(code, rc=-2, debug="Unknown operation code")
+
+    def sign_in(self, code):
+        if REQUIRE[0] and not self.player:
+            log.info("%s refused: no valid match ticket", self.peer)
+            self.reply(code, rc=ERR_AUTH, debug="Sign in to the game first")
+            return
+        self.signed_in(code)
 
     def signed_in(self, code=230):
         st = self.service.stats()
