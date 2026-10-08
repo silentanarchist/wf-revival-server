@@ -214,6 +214,22 @@ class Store:
                     log.exception("could not save sessions.json")
         return hit
 
+    def sign_out_session(self, headers, reason):
+        """Ends only the session this request was made with. Returns True when there was one."""
+        ticket = headers.get("X-Authorization") or headers.get("X-EntityToken") or ""
+        if not ticket:
+            return False
+        with self._sessions_lock:
+            entry = self._sessions.get(hashlib.sha256(ticket.encode("utf-8")).hexdigest())
+            if entry is None or entry.get("out"):
+                return False
+            entry["out"] = reason
+            try:
+                self._sessions_save()
+            except OSError:
+                log.exception("could not save sessions.json")
+        return True
+
     def signed_out_reason(self, headers):
         """Why a session that used to work no longer does ("" when it is simply unknown or old)."""
         ticket = headers.get("X-Authorization") or headers.get("X-EntityToken") or ""
@@ -1536,6 +1552,14 @@ class PlayFabEmulator:
                 user["player"], user["playerLinkedAt"] = pfid, now_iso()
                 self._creator_users_save(users)
                 linked = user
+            elif op == "unlink" and self._settings().get("requireAccount") is True:
+                # The site account and its game player are one thing: "unlink" only signs this
+                # computer or phone out (its saved game login stops working); the account keeps
+                # its player, and signing in again on any device brings it back.
+                if linked:
+                    self._forget_game_login(linked, headers.get("X-Revival-Login"))
+                    self._creator_users_save(users)
+                signed_out = self.store.sign_out_session(headers, "This game was signed out of its account. Start the game again and sign in.")
             elif op == "unlink":
                 if linked:
                     for k in ("player", "playerLinkedAt", "gameLoginHash", "gameLoginAt", "gameLogins"):
@@ -1728,6 +1752,11 @@ class PlayFabEmulator:
             user["renamedFrom"], user["renamedAt"] = old_name, now_iso()
             users[new_key] = user
             self._creator_users_save(users)
+            if user.get("player"):                            # the account's player carries its name
+                p = self.store.load(user["player"])
+                if p is not None and isinstance(p.get("Login"), dict) and "account" in p["Login"]:
+                    p["Login"]["account"] = new
+                    self.store.save(p)
             if was_founder:                                   # a founding admin stays one under the new name
                 path = os.path.join(self.store.root, "creator_admins.json")
                 try:
@@ -1878,6 +1907,46 @@ class PlayFabEmulator:
             if any(hmac.compare_digest(h, digest) for h in self._game_login_hashes(user)):
                 return key, user
         return None, None
+
+    def _forget_game_login(self, user, token):
+        """Cancels one saved game login of an account (the one a device sent), if it is known."""
+        token = str(token or "").strip()
+        if token.startswith(self.GAME_LOGIN_PREFIX):
+            token = token[len(self.GAME_LOGIN_PREFIX):]
+        if len(token) < 32:
+            return False
+        digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        before = len(self._game_login_hashes(user))
+        user["gameLogins"] = [g for g in user.get("gameLogins") or [] if isinstance(g, dict) and not hmac.compare_digest(str(g.get("h") or ""), digest)]
+        if user.get("gameLoginHash") and hmac.compare_digest(user["gameLoginHash"], digest):
+            user.pop("gameLoginHash", None)
+            user.pop("gameLoginAt", None)
+        return len(self._game_login_hashes(user)) < before
+
+    def _account_player(self, users, key, user):
+        """An existing game player that belongs to this account although the account has lost its
+        link to it (made for it, Login {"account": name}), and that no other account uses. The
+        newest one wins. None when there is none."""
+        names = {key, str(user.get("name") or "").lower(), str(user.get("renamedFrom") or "").lower()} - {""}
+        taken = {u.get("player") for k, u in users.items() if k != key and u.get("player")}
+        best, best_time = None, -1.0
+        try:
+            files = os.listdir(self.store.players_dir)
+        except OSError:
+            return None
+        for name in files:
+            if not name.endswith(".json") or name[:-5] in taken:
+                continue
+            p = self.store.load(name[:-5])
+            login = (p or {}).get("Login")
+            if isinstance(login, dict) and str(login.get("account") or "").lower() in names:
+                try:
+                    when = os.path.getmtime(os.path.join(self.store.players_dir, name))
+                except OSError:
+                    when = 0.0
+                if when > best_time:
+                    best, best_time = name[:-5], when
+        return best
 
     def _new_game_login(self, user, via):
         secret = uuid.uuid4().hex + uuid.uuid4().hex
@@ -2062,7 +2131,8 @@ class PlayFabEmulator:
         people = [dict(self._creator_perms(u), name=u["name"], created=u.get("created", ""), cards=counts.get(key, 0),
                        playerName=game_name(u.get("player"))) for key, u in users.items()]
         people.sort(key=lambda p: (p["access"] != "requested", not p["admin"], p["name"].lower()))
-        return ok({"people": people, "autoApprove": self._creator_auto_approve()})
+        return ok({"people": people, "autoApprove": self._creator_auto_approve(),
+                   "requireAccount": self._settings().get("requireAccount") is True})
 
     def api_Revival_CreatorSetAccount(self, req, headers):
         """An admin changes one account: any of access, reviewer, tester, admin."""
@@ -2091,7 +2161,12 @@ class PlayFabEmulator:
                 user.setdefault("admin", old == "admin")
                 user.setdefault("reviewer", old == "reviewer")
             user.update(flags)
-            if unlink:
+            if unlink and self._settings().get("requireAccount") is True:
+                # accounts and players are one: sign the game out everywhere, keep the player
+                self._end_play(user.get("player"), "An admin signed this account out of the game. Start the game again and sign in.")
+                for k in ("gameLoginHash", "gameLoginAt", "gameLogins"):
+                    user.pop(k, None)
+            elif unlink:
                 self._end_play(user.get("player"), "An admin unlinked this game from its account. Start the game again and sign in.")
                 for k in ("player", "playerLinkedAt", "gameLoginHash", "gameLoginAt", "gameLogins"):
                     user.pop(k, None)
@@ -2485,6 +2560,16 @@ class PlayFabEmulator:
             return err("AccountNotApproved", "Your account is waiting for an admin to approve it.", 1002, 403)
         pfid = user.get("player")
         created = False
+        if not pfid or self.store.load(pfid) is None:
+            # The account lost its link (an older unlink, or an admin): its own player comes back.
+            with self.store.lock:
+                users = self._creator_users()
+                found = self._account_player(users, key, users.get(key, user))
+                if found and key in users:
+                    users[key]["player"], users[key]["playerLinkedAt"] = found, now_iso()
+                    self._creator_users_save(users)
+                    pfid = found
+                    log.info("site account %s plays as its own player %s again", user["name"], pfid)
         if not pfid or self.store.load(pfid) is None:
             # First game sign-in for this account: it gets a game player of its own, made from the
             # account alone - never from the Steam account, phone or computer it signs in from.

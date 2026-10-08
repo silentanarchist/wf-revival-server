@@ -184,8 +184,12 @@ honest players on one set of rules and stop casual tampering; they are not proof
   account's first game sign-in gets a new game player of its own, the same on every computer and
   phone it signs in from. A player from before accounts were required keeps its progress only if
   the owner links it to the account (set the account's `"player"` in `data/creator_users.json`).
-  Changing the password, unlinking or banning the account cancels
-  every saved game login. Recommended for any server open to people you do not know.
+  The account and its game player are then one thing: the game's account page offers **Sign
+  out** (that computer or phone only) instead of unlinking, an admin's button on the People page
+  signs the account out of the game everywhere, and neither takes the player away from the
+  account. If an account ever loses its link, its next game sign-in finds the player made for it
+  before it would make a new one. Changing the password or banning the account cancels every
+  saved game login. Recommended for any server open to people you do not know.
 - **Forgotten passwords.** There is no email. Each player can make a recovery code on their
   Profile page (their password is asked again); it is shown once and downloaded as a text file
   for them to keep. "Forgot your password?" on the sign-in page takes the username, the code and a

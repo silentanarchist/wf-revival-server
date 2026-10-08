@@ -348,7 +348,7 @@
       <p id="p_link"></p>
       <div id="p_gameLogin" class="hidden">
         <p class="hint">A <strong>game login file</strong> lets the game sign in as this game account without Steam – for another computer, or when Steam is not working – so you keep your decks and progress. Put the file in the game's folder under <code>UserData\WarpforgeRevival\</code> and start the game. While the file is there the game always signs in with it.</p>
-        <p class="hint">You normally do not need it: signing in from the game's own sign-in window writes this file for you. Treat it like a password: anyone who has the file can play as you. Changing your password, unlinking the account or a ban cancels every file and game sign-in at once. <span id="p_gameLoginAt"></span></p>
+        <p class="hint">You normally do not need it: signing in from the game's own sign-in window writes this file for you. Treat it like a password: anyone who has the file can play as you. Changing your password or a ban cancels every file and game sign-in at once; signing out in the game cancels that computer's or phone's. <span id="p_gameLoginAt"></span></p>
         <form id="gameLoginForm">
           <div class="row"><div class="field"><label for="p_glPass">Your password</label><input id="p_glPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
           <button type="submit">Download game login file</button>
@@ -1392,6 +1392,7 @@ async function loadPeople() {
   const box = $("people"); box.textContent = "";
   let d;
   try { d = await call("CreatorPeople"); } catch (e) { return say("Could not load the accounts: " + e.message, "bad"); }
+  const oneAccount = !!d.requireAccount;          // account and game player are one: "unlink" only signs the game out
   $("peopleHint").textContent = d.autoApprove ? "New accounts are approved automatically for now." : "New accounts wait as “requested” until an admin approves them.";
   for (const p of d.people) {
     const access = el("select", { disabled: p.fixed, onchange: e => setAccount(p.name, { access: e.target.value }, "access set to " + e.target.value) });
@@ -1404,7 +1405,9 @@ async function loadPeople() {
         p.access !== "approved" ? el("span", { class: "badge " + (p.access === "banned" ? "rejected" : "pending"), text: p.access }) : null,
         el("div", { class: "hint", text: `${p.cards} card(s)${p.created ? " · joined " + p.created.slice(0, 10) : ""}` }),
         el("div", { class: "hint" }, p.player ? `Linked to game player ${p.playerName} ` : "Not linked to a game player",
-          p.player && !p.fixed ? el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") }) : null)),
+          p.player && !p.fixed ? (oneAccount
+            ? el("button", { class: "small", text: "Sign out of game", title: "Signs this account out of the game on every computer and phone. It keeps its game player.", onclick: () => setAccount(p.name, { unlink: true }, "signed out of the game everywhere") })
+            : el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") })) : null)),
       el("div", { class: "actions", style: "align-items:center; gap:14px" }, field("Site access", access),
         el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin")))));
   }
