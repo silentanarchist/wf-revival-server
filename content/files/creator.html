@@ -325,7 +325,8 @@
       <p class="hint">If you forget your password, a recovery code lets you set a new one from the sign-in page (<strong>Forgot your password?</strong>). It is shown only once and downloaded as a file: keep it somewhere safe, away from this computer if you can. Anyone with the code and your username can take over the account. Making a new code cancels the old one, and using a code uses it up. <span id="p_recAt"></span></p>
       <form id="recoveryForm">
         <div class="row"><div class="field"><label for="p_recPass">Your password</label><input id="p_recPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
-        <button type="submit">Make a recovery code</button>
+        <button type="submit" id="p_recMake">Make a recovery code</button>
+        <button type="button" id="p_recRemove" class="hidden">Remove recovery code</button>
       </form>
       <div id="p_recShow" class="box hidden" style="margin-top:10px; border-color:var(--ok)">Your recovery code: <code id="p_recCode" style="font-size:1.2em; user-select:all"></code><br><span class="hint">It has also been downloaded. It will not be shown again.</span></div>
     </section>
@@ -1213,7 +1214,10 @@ function drawProfile() {
   $("p_gameLogin").classList.toggle("hidden", !linked);
   $("p_decks").classList.toggle("hidden", !linked);
   if (linked && !$("viewProfile").classList.contains("hidden")) loadDecks();
-  $("p_recAt").textContent = account && account.recoveryAt ? `You have a recovery code, made on ${account.recoveryAt.slice(0, 10)}.` : "You do not have a recovery code yet.";
+  const hasCode = !!(account && account.recoveryAt);
+  $("p_recAt").textContent = hasCode ? `You have a recovery code, made on ${account.recoveryAt.slice(0, 10)}.` : "You do not have a recovery code.";
+  $("p_recMake").textContent = hasCode ? "Make a new code (cancels the old one)" : "Make a recovery code";
+  $("p_recRemove").classList.toggle("hidden", !hasCode);
   $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
 }
 const sentence = e => e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".";
@@ -1256,6 +1260,15 @@ async function recoveryCode() {
     const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "text/plain" })), download: `warpforge-recovery-${d.name}.txt` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     await loadList(); say("Recovery code made and downloaded. Any earlier code no longer works.", "ok");
+  } catch (e) { say(sentence(e), "bad"); }
+}
+async function removeRecoveryCode() {
+  if (!val("p_recPass")) return say("Enter your password to remove your recovery code.", "bad");
+  if (!confirm("Remove your recovery code? Without one there is no way back in if you forget your password.")) return;
+  try {
+    await call("CreatorRecoveryCode", { passphrase: val("p_recPass"), remove: true });
+    $("p_recPass").value = ""; $("p_recShow").classList.add("hidden"); $("p_recCode").textContent = "";
+    await loadList(); say("Recovery code removed. The old code no longer works.", "ok");
   } catch (e) { say(sentence(e), "bad"); }
 }
 // Forgotten password: the recovery form on the sign-in page.
@@ -1613,6 +1626,7 @@ async function start() {
   });
   $("gameLoginForm").addEventListener("submit", e => { e.preventDefault(); gameLogin(); });
   $("recoveryForm").addEventListener("submit", e => { e.preventDefault(); recoveryCode(); });
+  $("p_recRemove").onclick = removeRecoveryCode;
   $("recoverForm").addEventListener("submit", e => { e.preventDefault(); recover(); });
   $("forgotLink").onclick = e => { e.preventDefault(); recoverMode(true); };
   $("recoverBack").onclick = e => { e.preventDefault(); recoverMode(false); $("author").focus(); };

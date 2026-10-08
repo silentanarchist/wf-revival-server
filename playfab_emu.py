@@ -1795,7 +1795,8 @@ class PlayFabEmulator:
         return hashlib.sha256(("warpforge-recovery:" + text).encode("utf-8")).hexdigest()
 
     def api_Revival_CreatorRecoveryCode(self, req, headers):
-        """Makes a new recovery code for the signed-in account (replacing any earlier one)."""
+        """Makes a new recovery code for the signed-in account (replacing any earlier one), or with
+        "remove" set, removes the account's code without making another."""
         with self.store.lock:
             me = self._creator_account(req)
             if not me or self._creator_perms(me)["access"] == "banned":
@@ -1804,6 +1805,11 @@ class PlayFabEmulator:
                 return err("InvalidPassword", "wrong password")
             users = self._creator_users()
             user = users[me["name"].lower()]
+            if req.get("remove"):
+                had = bool(user.pop("recoveryHash", None))
+                user.pop("recoveryAt", None)
+                self._creator_users_save(users)
+                return ok({"removed": had})
             code = self._recovery_new()
             user["recoveryHash"], user["recoveryAt"] = self._recovery_hash(code), now_iso()
             self._creator_users_save(users)
