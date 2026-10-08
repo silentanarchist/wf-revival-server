@@ -17,6 +17,8 @@ content/creator-native.json
 content/files/creator-cards.json
 content/files/creator-schema.json
 content/files/card-text.json
+content/files/card-art/
+content/files/card-art.zip
 # python
 __pycache__/
 *.pyc

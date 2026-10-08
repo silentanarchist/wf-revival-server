@@ -30,6 +30,7 @@ import os
 import re
 import threading
 import time
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, unquote, parse_qs
 
@@ -651,17 +652,54 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_file(unquote(path[len("/api/v1/content/files/"):]))
         return self._json(404, {"error": "not found"})
 
+    FILE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                  ".json": "application/json", ".txt": "text/plain",
+                  ".html": "text/html; charset=utf-8"}
+
     def _serve_file(self, rel):
         root = os.path.realpath(self.files_dir)
         full = os.path.realpath(os.path.join(root, rel))
-        if not full.startswith(root + os.sep) or not os.path.isfile(full):
+        if not full.startswith(root + os.sep):
             return self._json(404, {"error": "not found"})
-        ext = os.path.splitext(full)[1].lower()
-        ctype = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-                 ".json": "application/json", ".txt": "text/plain",
-                 ".html": "text/html; charset=utf-8"}.get(ext, "application/octet-stream")
-        with open(full, "rb") as f:
-            self._send(200, f.read(), ctype)
+        ctype = self.FILE_TYPES.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
+        if os.path.isfile(full):
+            with open(full, "rb") as f:
+                return self._send(200, f.read(), ctype)
+        # A folder of many small files can be kept as one zip instead: files/card-art/AM3.jpg is
+        # also looked for inside files/card-art.zip.
+        data = zipped_file(root, os.path.relpath(full, root))
+        if data is None:
+            return self._json(404, {"error": "not found"})
+        self._send(200, data, ctype)
+
+
+_zips = {}
+_zips_lock = threading.Lock()
+
+
+def zipped_file(root, rel):
+    """The bytes of files/<folder>/<name> from files/<folder>.zip, or None. The zip is opened once
+    and opened again when it changes."""
+    parts = rel.replace("\\", "/").split("/")
+    if len(parts) != 2 or not parts[0] or not parts[1] or parts[0] in (".", ".."):
+        return None
+    path = os.path.join(root, parts[0] + ".zip")
+    try:
+        stamp = os.path.getmtime(path)
+    except OSError:
+        return None
+    with _zips_lock:
+        held = _zips.get(path)
+        if held is None or held[0] != stamp:
+            try:
+                held = (stamp, zipfile.ZipFile(path))
+            except (OSError, zipfile.BadZipFile):
+                return None
+            _zips[path] = held
+        try:
+            return held[1].read(parts[1])
+        except KeyError:
+            return None
 
 
 CREATOR_PAGES = {"/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/keywords", "/artwork", "/rules", "/profile"}

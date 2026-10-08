@@ -137,6 +137,10 @@ out and listed in `.gitignore`. Without them:
 - the card creator page has no menus to show until `content/files/creator-schema.json` and
   `content/files/creator-cards.json` are generated from your own copy of the game;
 - cards the mod should add or change come from `content/cards/*.json`, which you supply.
+- the creator's card preview shows an official card's picture when a design borrows its art only
+  if `content/files/card-art.zip` holds one picture per card, named by card id (`AM3.jpg`, ...),
+  taken from your own copy of the game. Any folder under `content/files/` can be kept as a zip
+  of the same name this way.
 
 The card creator turns a design into the game's own card layout. Which parts of a card's data
 each effect uses was taken from the game's code, and the result is checked by rebuilding every

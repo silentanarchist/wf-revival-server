@@ -945,6 +945,7 @@ function artDraw(guides) {
   g.fillStyle = "#000"; g.fillRect(0, 0, ART, ART);                              // card art has no see-through parts
   if (i) { g.imageSmoothingQuality = "high"; g.drawImage(i, art.x - i.width * art.scale / 2, art.y - i.height * art.scale / 2, i.width * art.scale, i.height * art.scale); }
   g.restore();
+  artLiveSoon();
   if (!guides) return;
   const t = artGuide();
   if (t.complete && t.naturalWidth) g.drawImage(t, 0, 0, ART, ART);
@@ -966,7 +967,23 @@ function artOpen(file) {
   i.onerror = () => { URL.revokeObjectURL(url); say("That picture could not be opened.", "bad"); };
   i.src = url;
 }
-function artClose() { $("artEditor").classList.add("hidden"); art.img = null; $("artFile").value = ""; }
+function artClose() { $("artEditor").classList.add("hidden"); art.img = null; art.live = null; $("artFile").value = ""; drawArtPreview(); }
+// While a picture is open in the editor (not saved yet) the preview card shows it as placed now.
+let artLiveTimer = 0;
+function artLiveSoon() { clearTimeout(artLiveTimer); artLiveTimer = setTimeout(artLive, 120); }
+function artLive() {
+  if (!art.img) return;
+  const i = art.img, small = document.createElement("canvas"), k = 0.25, a = artArea();
+  small.width = small.height = ART * k;
+  const g = small.getContext("2d");
+  g.fillStyle = "#000"; g.fillRect(0, 0, small.width, small.height);
+  g.save(); g.beginPath(); g.rect((a.cx - a.w / 2) * k, 0, a.w * k, ART * k); g.clip();
+  g.imageSmoothingQuality = "high";
+  g.drawImage(i, (art.x - i.width * art.scale / 2) * k, (art.y - i.height * art.scale / 2) * k, i.width * art.scale * k, i.height * art.scale * k);
+  g.restore();
+  art.live = small.toDataURL("image/jpeg", 0.85);
+  drawArtPreview();
+}
 async function artUse() {
   if (!me) return say("Sign in before uploading artwork.", "bad");
   if (!val("f_name").trim()) return say("Give the card a name first.", "bad");
@@ -1018,13 +1035,26 @@ function drawArtPreview() {
   $("maskRemove").classList.toggle("hidden", !(c && c.artMask));
   $("maskPick").textContent = c && c.artMask ? "Replace the pop-out mask" : "Add a pop-out mask (optional)";
   $("maskState").textContent = c && c.artMask ? "This card has a pop-out mask." : "Without a mask the whole picture stays inside the frame.";
-  box.classList.toggle("has", !!up); box.style.backgroundImage = "";
+  box.classList.remove("has"); box.style.backgroundImage = "";
+  const place = (url, unit) => {
+    box.classList.add("has");
+    box.style.backgroundImage = `url(${url})`;
+    box.style.backgroundSize = unit ? `${ART / (COL_R - COL_L + 1) * 100}% auto` : "cover";
+    box.style.backgroundPosition = unit ? "center top" : "center";
+  };
+  if (art.img && art.live) { box.textContent = "new artwork (not saved yet)"; return place(art.live, unitArt()); }
+  const borrowed = val("f_art") && collect().art;
+  if (!up && borrowed && cardInfo[borrowed]) {
+    // an official card's picture, from the server's copy of the game's card art (if it has one)
+    const url = FILES + "card-art/" + encodeURIComponent(borrowed) + ".jpg", probe = new Image();
+    probe.onload = () => { if (collect().art === borrowed && !(art.img && art.live)) place(url, cardInfo[borrowed].kind !== "tactic"); };
+    probe.src = url;
+    return;
+  }
   if (!up) return;
   const key = c.id + c.artUpload, show = url => {
     if (!editingCard || editingCard.id + editingCard.artUpload !== key) return;
-    box.style.backgroundImage = `url(${url})`;
-    box.style.backgroundSize = unitArt() ? `${ART / (COL_R - COL_L + 1) * 100}% auto` : "cover";
-    box.style.backgroundPosition = unitArt() ? "center top" : "center";
+    place(url, unitArt());
   };
   if (art.cache[key]) return show(art.cache[key]);
   if (art.cache[key] === undefined) { art.cache[key] = null; call("CreatorArtGet", { id: c.id }).then(d => { art.cache[key] = d.image; show(d.image); }).catch(() => { delete art.cache[key]; }); }
