@@ -396,8 +396,8 @@
     "admisionPrices": [],
     "skullsRewards": [],
     "gameplayVariables": {
-     "maxLegendaries": 12,
-     "numberOfCopiesOtherRarities": 1,
+     "maxLegendaries": 4,
+     "numberOfCopiesOtherRarities": 2,
      "numberOfCopiesLegendary": 1,
      "slotsPerSide": 4,
      "warlordLifeChange": 0,
