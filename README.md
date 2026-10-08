@@ -196,6 +196,12 @@ honest players on one set of rules and stop casual tampering; they are not proof
   `revival-settings.json` (14 if left out). `logs/photon.log` (match connections, with the
   address each came from) starts a new file each night and keeps 14. An older log is cleaned the
   first time the server runs with this version.
+- **Back up `data/`.** `maintenance/setup-nightly-backup.bat`, run once on the server PC, makes
+  a first backup and schedules one every night at 4:12: a dated zip of `data/` (and the live
+  settings file) in `C:\WarpforgeRevival-backups`, checked after writing, with a line per night
+  in `backup-log.txt`. Old backups are kept. Pick a different drive than the server's if you can:
+  `python maintenance/backup-data.py D:\somewhere` makes one by hand. To restore, stop the
+  server, unzip a backup's `data` folder over `data/`, and start it again.
 - Game sessions are kept in `data/sessions.json` as fingerprints, so a restart does not sign
   players out; a session not used for 30 days stops working.
 - Requests are limited per address (size, time to arrive, requests per minute, wrong passwords,
