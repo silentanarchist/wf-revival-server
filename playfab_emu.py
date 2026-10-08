@@ -2148,6 +2148,9 @@ class PlayFabEmulator:
             others = re.sub(r"[^\w .,'+()-]", "", str(others))[:200].strip()
             if others.lower() == "none":
                 others = ""
+            # the Revival project's own optional pieces are not "other mods"
+            allowed = {"warpforge revival graphics"}
+            others = ", ".join(n for n in (x.strip() for x in others.split(",")) if n and n.lower() not in allowed)
             if others:
                 return (err("OtherModsLoaded", "This server only allows the Warpforge Revival mod. Remove these and start the game again: " + others, 1001, 401),
                         "other mods loaded: " + others)
