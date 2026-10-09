@@ -222,8 +222,9 @@ honest players on one set of rules and stop casual tampering; they are not proof
   signs the account out of the game everywhere, and neither takes the player away from the
   account. If an account ever loses its link, its next game sign-in finds the player made for it
   before it would make a new one. Changing the password or banning the account cancels every
-  saved game login. Keep it on for any server open to people you do not know: without it the
-  server takes game sign-ins on trust, and says so in its log when it starts. Add
+  saved game login. **Warning:** keep it on for any server open to people you do not know.
+  Without it the server takes the game's own sign-ins on trust, and says so in its log when it
+  starts; `revival-settings.example.json` carries the same note. Add
   `"accounts": {"autoApprove": false}` as well and every new account waits on the People page
   until an admin approves it: until then it can neither play nor use the creator site (both say
   so when it signs in).

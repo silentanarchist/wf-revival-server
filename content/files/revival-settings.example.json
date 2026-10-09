@@ -20,6 +20,7 @@
   "rulesVersion": "1",
   "onlyRevivalMod": true,
   "logDays": 14,
+  "_requireAccount": "Set requireAccount to true on any server people you do not know can reach: without it the game's own sign-ins are taken on trust.",
   "requireAccount": false,
   "requireHttps": false,
   "requireEncryptedMatches": false
