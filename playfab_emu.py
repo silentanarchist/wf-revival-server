@@ -22,6 +22,8 @@ import time
 import unicodedata
 
 import photon_emu
+if not hasattr(photon_emu, "SEEN"):        # an older photon_emu (before a restart) has no table of its own
+    photon_emu.SEEN = {}
 import uuid
 from datetime import datetime, timezone
 
@@ -980,9 +982,47 @@ class PlayFabEmulator:
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         return ok({"id": entry["id"]})
 
+    # A game that is running asks for chat every few seconds, so that is also how the server knows
+    # who is online: seen within this many seconds counts as online.
+    ONLINE_SECONDS = 45
+
+    def _friend_statuses(self, pfid):
+        """{friend id: "online" | "playing" | "offline"} for this player's friends: playing while
+        connected to a match room, online while their game asks for chat, offline otherwise. Only
+        for friends who have added this player back - adding someone does not show you when they
+        are online until they add you too."""
+        player = self.store.load(pfid) or {}
+        now = time.time()
+        playing = set()
+        try:
+            with photon_emu.SERVICE.lock:
+                for room in photon_emu.SERVICE.rooms.values():
+                    for a in room.actors.values():
+                        if a.conn is not None and a.player:
+                            playing.add(a.player)
+        except Exception:
+            pass
+        out = {}
+        for f in self._friends(player):
+            fid = f.get("id") if isinstance(f, dict) else None
+            if not isinstance(fid, str):
+                continue
+            other = self.store.load(fid) or {}
+            if not any(isinstance(g, dict) and g.get("id") == pfid for g in self._friends(other)):
+                continue
+            if fid in playing:
+                out[fid] = "playing"
+            elif now - photon_emu.SEEN.get(fid, 0) <= self.ONLINE_SECONDS:
+                out[fid] = "online"
+            else:
+                out[fid] = "offline"
+        return out
+
     def api_Revival_ChatPoll(self, req, headers):
-        if not self.store.session_player_id(headers):
+        me = self.store.session_player_id(headers)
+        if not me:
             return err("NotAuthenticated", "sign in to use the chat", 1074, 401)
+        photon_emu.SEEN[me] = time.time()
         try:
             since = int(req.get("since", -1))
         except (TypeError, ValueError):
@@ -999,7 +1039,8 @@ class PlayFabEmulator:
             else:
                 out = [e for e in self._chat if e["id"] > since]
             last = self._chat[-1]["id"] if self._chat else 0
-        return ok({"messages": out, "last": max(last, since, 0), "history": since < 0})
+        return ok({"messages": out, "last": max(last, since, 0), "history": since < 0,
+                   "friends": self._friend_statuses(me)})
 
     # ---- reports: "Report message" on a player in the global chat
     # The game itself only sent these to its analytics service. The mod sends them here, they are
@@ -2967,8 +3008,8 @@ class PlayFabEmulator:
         return params
 
     def cs_AddFriend(self, player, params):
-        """Adds a friend by id (the game looks the id up from a name or friend code first).
-        Friendship is mutual: the other player sees you in their list on their next login."""
+        """Adds a friend by id (the game looks the id up from a name or friend code first). Only to
+        this player's own list: the other player sees them only once they add them back."""
         params = self._cs_args(params)
         wanted = [v for v in (params or {}).values() if isinstance(v, str)] if isinstance(params, dict) else [str(params or "")]
         other = next((p for p in (self._find_player(w) for w in wanted) if p), None)
@@ -2979,10 +3020,6 @@ class PlayFabEmulator:
             if other and other["PlayFabId"] != player["PlayFabId"]:
                 if all(f["id"] != other["PlayFabId"] for f in mine):
                     mine.append({"name": other.get("DisplayName") or "", "id": other["PlayFabId"]})
-                theirs = self._fresh_friends(other)
-                if all(f["id"] != player["PlayFabId"] for f in theirs):
-                    theirs.append({"name": player.get("DisplayName") or "", "id": player["PlayFabId"]})
-                    self._save_friends(other, theirs)
             if json.dumps(mine, sort_keys=True) != before:      # the game also polls this to refresh its list
                 self._save_friends(player, mine)
         return mine

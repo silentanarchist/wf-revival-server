@@ -889,6 +889,7 @@ def _brief(p):
 
 
 SERVICE = Service()
+SEEN = {}          # player id -> when their game last asked the game server for chat (kept across reloads of playfab_emu)
 
 # Oakley group 1: the well-known prime the client's key exchange uses.
 _PRIME = int("FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B"
