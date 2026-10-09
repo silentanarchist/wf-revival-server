@@ -24,6 +24,8 @@ import unicodedata
 import photon_emu
 if not hasattr(photon_emu, "SEEN"):        # an older photon_emu (before a restart) has no table of its own
     photon_emu.SEEN = {}
+if not hasattr(photon_emu, "PRIVATE"):     # private messages waiting for their reader (kept across reloads of this file)
+    photon_emu.PRIVATE = {}
 import uuid
 from datetime import datetime, timezone
 
@@ -1039,8 +1041,37 @@ class PlayFabEmulator:
             else:
                 out = [e for e in self._chat if e["id"] > since]
             last = self._chat[-1]["id"] if self._chat else 0
+            private = [{"from": m["from"], "data": m["data"]} for m in photon_emu.PRIVATE.pop(me, [])
+                       if m["t"] > time.time() - self.PRIVATE_SECONDS]
         return ok({"messages": out, "last": max(last, since, 0), "history": since < 0,
-                   "friends": self._friend_statuses(me)})
+                   "friends": self._friend_statuses(me), "private": private})
+
+    # ---- private messages between two players (challenging a friend to a match)
+    # The game sent these through the publisher's chat service, which the revival does not use.
+    # The mod hands them to the server instead; the reader gets them with its next chat poll.
+    PRIVATE_SECONDS = 120          # an invitation nobody collected in this time is dropped
+    PRIVATE_MAX_BYTES = 2048
+    PRIVATE_WAITING = 50           # per reader
+
+    def api_Revival_ChatPrivate(self, req, headers):
+        """{"to": player id, "data": the game's message (text)}: passed on to that player."""
+        me = self.store.session_player_id(headers)
+        if not me:
+            return err("NotAuthenticated", "sign in to use the chat", 1074, 401)
+        to, data = str(req.get("to") or ""), req.get("data")
+        if not re.fullmatch(r"[0-9A-F]{16}", to) or not isinstance(data, str) or not data or len(data) > self.PRIVATE_MAX_BYTES:
+            return err("InvalidParams", "not a private message")
+        if to == me:
+            return ok({"sent": False})              # the game's messages to itself are not passed back
+        if not self._allow("private", me, 30, 60):
+            return err("TooManyRequests", "too many messages; wait a moment", 1199, 429)
+        if not self.store.load(to):
+            return err("NotFound", "no such player")
+        with self._chat_lock:
+            waiting = photon_emu.PRIVATE.setdefault(to, [])
+            waiting.append({"from": me, "data": data, "t": time.time()})
+            del waiting[:-self.PRIVATE_WAITING]
+        return ok({"sent": True})
 
     # ---- reports: "Report message" on a player in the global chat
     # The game itself only sent these to its analytics service. The mod sends them here, they are
