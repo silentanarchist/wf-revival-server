@@ -225,7 +225,8 @@ honest players on one set of rules and stop casual tampering; they are not proof
   saved game login. Recommended for any server open to people you do not know: without it the
   server takes game sign-ins on trust, and says so in its log when it starts. Add
   `"accounts": {"autoApprove": false}` as well and every new account waits on the People page
-  until an admin approves it (the game says so when someone signs in before that).
+  until an admin approves it: until then it can neither play nor use the creator site (both say
+  so when it signs in).
 - **Forgotten passwords.** There is no email. Each player can make a recovery code on their
   Profile page (their password is asked again); it is shown once and downloaded as a text file
   for them to keep. "Forgot your password?" on the sign-in page takes the username, the code and a

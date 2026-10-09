@@ -1148,7 +1148,7 @@ class PlayFabEmulator:
         digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
         for user in self._creator_users().values():
             if digest in user.get("sessions", []):
-                return None if user.get("access") == "banned" else user["name"]
+                return None if self._creator_perms(user)["access"] in ("banned", "requested") else user["name"]
         return None
 
     # Wrong passwords are limited per address (20 in 15 minutes) and per account name (10). The
@@ -1222,6 +1222,11 @@ class PlayFabEmulator:
             if self._creator_perms(user)["access"] == "banned":
                 return err("AccountBanned", "this account has been banned")
             self._remember_address(user, where)
+            if self._creator_perms(user)["access"] == "requested":
+                # A new account that an admin has not approved yet: nothing on the site or in the
+                # game until then (it is saved, so it appears on the People page).
+                self._creator_users_save(users)
+                return err("AccountNotApproved", "your account is waiting for an admin to approve it - try again once it is approved", 1002, 403)
             token = uuid.uuid4().hex + uuid.uuid4().hex
             user["sessions"] = (user.get("sessions", []) + [hashlib.sha256(token.encode()).hexdigest()])[-5:]
             self._creator_users_save(users)
@@ -1284,7 +1289,8 @@ class PlayFabEmulator:
         digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
         for user in self._creator_users().values():
             if digest in user.get("sessions", []):
-                return user
+                # an account set back to "requested" by an admin is signed out of the site meanwhile
+                return None if self._creator_perms(user)["access"] == "requested" else user
         return None
 
     def _creator_role(self, req):

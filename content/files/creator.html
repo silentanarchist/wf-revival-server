@@ -558,7 +558,7 @@ async function call(name, body) {
   body = Object.assign({ session: session() }, body || {});
   const r = await fetch(API + name, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok || j.code !== 200) throw new Error(j.errorMessage || ("the server answered " + r.status));
+  if (!r.ok || j.code !== 200) { const e = new Error(j.errorMessage || ("the server answered " + r.status)); e.code = j.error || ""; throw e; }
   return j.data;
 }
 /* ---------- menus built from the server's schema ---------- */
@@ -1194,7 +1194,15 @@ async function sign() {
     setSession(d.session); $("pass").value = ""; $("pass2").value = ""; loginSay("");
     say(creating ? `Account created. Welcome, ${d.name}.` : "", creating ? "ok" : "");
     loginMode(false); await loadList();
-  } catch (e) { loginSay(e.message.charAt(0).toUpperCase() + e.message.slice(1) + "."); }
+  } catch (e) {
+    if (e.code === "AccountNotApproved") {
+      // the account exists now (or already did) and waits for an admin: next time is a plain sign-in
+      const made = creating;
+      if (creating) { loginMode(false); $("pass2").value = ""; }
+      $("pass").value = "";
+      loginSay((made ? "Account created. " : "") + "An admin has to approve it before you can use the site or play. Sign in again once it is approved.");
+    } else loginSay(e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".");
+  }
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
