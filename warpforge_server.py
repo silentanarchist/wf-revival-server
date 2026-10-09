@@ -711,13 +711,19 @@ class Handler(BaseHTTPRequestHandler):
                   ".html": "text/html; charset=utf-8"}
 
     def _serve_file(self, rel):
-        if rel == "revival-settings.json":
-            return self._serve_settings()
-        if rel.lower().endswith(".zip") and rel not in self.ZIPS_FOR_DOWNLOAD:
+        # Windows ignores a dot or space at the end of a file name, so "x.zip." would open x.zip,
+        # and "name:stream" opens part of a file: such names are refused, and the checks below look
+        # at the file the path really leads to.
+        if ":" in rel or rel != rel.rstrip(". ") or any(part != part.rstrip(". ") for part in rel.replace("\\", "/").split("/") if part not in (".", "..")):
             return self._json(404, {"error": "not found"})
         root = os.path.realpath(self.files_dir)
         full = os.path.realpath(os.path.join(root, rel))
         if not full.startswith(root + os.sep):
+            return self._json(404, {"error": "not found"})
+        name = os.path.basename(full).lower()
+        if os.path.dirname(full) == root and name == "revival-settings.json":
+            return self._serve_settings()
+        if name.endswith(".zip") and not (os.path.dirname(full) == root and name in self.ZIPS_FOR_DOWNLOAD):
             return self._json(404, {"error": "not found"})
         ctype = self.FILE_TYPES.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
         if os.path.isfile(full):

@@ -418,6 +418,7 @@ ERR_AUTH = 32767                              # "invalid authentication": the cl
 # Limits, so no client can make the service hold rooms or memory for ever. The game itself keeps a
 # dropped player's seat for 30 seconds and caches a handful of events per match.
 TTL_MAX_MS = 600000                           # a seat or an empty room is kept at most 10 minutes
+TICKET_GRACE = 15                             # seconds a connection may stay without a valid match ticket (when required)
 ROOM_IDLE_MAX = 15 * 60                       # a room with nobody connected closes after 15 minutes regardless
 CACHE_MAX_EVENTS = 1000                       # remembered events per room
 CACHE_MAX_BYTES = 4 * 1024 * 1024             # and their total size
@@ -933,8 +934,14 @@ class Connection(object):
         self.sock.settimeout(30.0)            # the client pings every second; silence means it is gone
         with self.service.lock:
             self.service.conns.add(self)
+        opened = time.monotonic()
         try:
             while not self.closed:
+                if REQUIRE[0] and not self.player and time.monotonic() - opened > TICKET_GRACE:
+                    # The game shows its ticket straight after connecting; a connection that never
+                    # does is not a game and is not kept open by its pings.
+                    log.info("%s: closed, no valid match ticket within %d s", self.peer, TICKET_GRACE)
+                    break
                 first = self._read(1)[0]
                 if first == 0xF0:             # ping: answered with the server clock, which every client shares
                     stamp = self._read(4)
