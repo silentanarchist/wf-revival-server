@@ -1067,11 +1067,37 @@ class PlayFabEmulator:
             return err("TooManyRequests", "too many messages; wait a moment", 1199, 429)
         if not self.store.load(to):
             return err("NotFound", "no such player")
+        # The game asks "are you online?" before a challenge and gives up after 4 seconds, too
+        # short for a question and its answer to each wait for a chat poll. When the other game
+        # asked for chat just now, the server answers for it, in the game's own wording.
+        ack = self._online_ack(data) if time.time() - photon_emu.SEEN.get(to, 0) <= self.ACK_SECONDS else None
+        if ack is not None:
+            return ok({"sent": True, "private": [{"from": to, "data": ack}]})
         with self._chat_lock:
             waiting = photon_emu.PRIVATE.setdefault(to, [])
             waiting.append({"from": me, "data": data, "t": time.time()})
             del waiting[:-self.PRIVATE_WAITING]
         return ok({"sent": True})
+
+    ACK_SECONDS = 15               # chat polls come every 3 s in front, every 12 s in the background
+
+    @staticmethod
+    def _online_ack(data):
+        """The answer to an online check (the same message with the AckUserOnline type), or None."""
+        try:
+            msg = json.loads(data)
+        except ValueError:
+            return None
+        if not isinstance(msg, dict):
+            return None
+        kind = msg.get("messageType")
+        if kind == 4:
+            msg["messageType"] = 5
+        elif kind == "CheckUserOnline":
+            msg["messageType"] = "AckUserOnline"
+        else:
+            return None
+        return json.dumps(msg, separators=(",", ":"))
 
     # ---- reports: "Report message" on a player in the global chat
     # The game itself only sent these to its analytics service. The mod sends them here, they are
