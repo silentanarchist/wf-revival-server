@@ -2749,6 +2749,55 @@ class PlayFabEmulator:
         except ValueError:
             req = {}
         handler = getattr(self, "api_" + api.replace("/", "_"), None)
+        replay = self._replay_slot(api, headers)
+        if replay is not None and replay.get("resp") is not None:
+            self._log(api, req, replay["status"], replay["resp"], "REPLAYED: the same request sent again")
+            return replay["status"], replay["resp"]
+        try:
+            return self._handle(api, req, headers, handler, replay)
+        finally:
+            if replay is not None:
+                replay["done"].set()
+
+    # ---- the same request sent twice
+    # The mod tries a request once more when its connection failed, and the first try may have
+    # reached the server after all. Both tries carry the same X-Revival-Request id; the second gets
+    # the first one's answer instead of being carried out again (a draft pick would otherwise be
+    # refused as a pick of a pack no longer offered, or worse, taken twice).
+    REPLAY_SECONDS = 120
+
+    def _replay_slot(self, api, headers):
+        rid = str(headers.get("X-Revival-Request") or "")
+        if api != "Client/ExecuteCloudScript" or not re.fullmatch(r"[0-9a-f]{32}", rid):
+            return None
+        try:
+            me = self.store.session_player_id(headers)
+        except Exception:
+            me = None
+        if not me:
+            return None
+        now = time.time()
+        lock = self.__dict__.setdefault("_replay_lock", threading.Lock())      # also after a reload of this file
+        replays = self.__dict__.setdefault("_request_replays", {})
+        with lock:
+            for k in [k for k, v in replays.items() if v["t"] < now - self.REPLAY_SECONDS]:
+                del replays[k]
+            slot = replays.get((me, rid))
+            if slot is None:
+                if len(replays) > 5000:
+                    return None
+                slot = replays[(me, rid)] = {"t": now, "resp": None, "status": None, "done": threading.Event(), "first": True}
+                return slot
+        slot["done"].wait(15)                  # the first try is still being carried out
+        return dict(slot, first=False) if slot["resp"] is not None else None
+
+    def _handle(self, api, req, headers, handler, replay):
+        status, resp = self._handle_inner(api, req, headers, handler)
+        if replay is not None and replay.get("first"):
+            replay["status"], replay["resp"] = status, resp
+        return status, resp
+
+    def _handle_inner(self, api, req, headers, handler):
         refused, why = self._mod_refused(headers) if api.startswith("Client/Login") else (None, "")
         if refused is not None:
             status, resp = refused
@@ -3954,7 +4003,11 @@ class PlayFabEmulator:
             pack = packs.get(wanted) if isinstance(wanted, str) else None
             picked = save.get("selectedPacks") or []
             if offer is not None and wanted not in offer and picked and picked[-1] == wanted:
-                return                                  # the last pick sent again (a retry): nothing changes
+                # The last pick sent again. The game counts every accepted answer as one more
+                # pack in the deck, so this is refused (a retry of a lost request is answered
+                # with the first answer before it gets here; see _replay_slot).
+                result["refused"] = result["again"] = True
+                return
             if offer is None:
                 # a run started before the server made the offers: any pack of the warlord's army
                 ok_pick = bool(pack and pack.get("enabled") and pack.get("army") == armies.get(save.get("selectedWarlord") or ""))
@@ -3968,7 +4021,9 @@ class PlayFabEmulator:
             save["currentReRolls"] = 0
             self._draft_new_offer(save, data)
         _, save = self._draft(player, params, pick)
-        if result.get("refused"):
+        if result.get("again"):
+            log.warning("draft: %s picked the same pack twice; the second pick refused", player.get("PlayFabId"))
+        elif result.get("refused"):
             log.warning("draft: %s picked a pack that was not offered", player.get("PlayFabId"))
         return {"Result": not result.get("refused"), "Save": save}
 
