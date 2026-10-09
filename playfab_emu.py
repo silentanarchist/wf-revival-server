@@ -862,12 +862,6 @@ class PlayFabEmulator:
             self._log_tidy()
         except Exception:
             log.exception("could not tidy the request log")
-        self._draft_pool_file = os.path.join(data_root, "draft_pools.json")
-        try:
-            with open(self._draft_pool_file, encoding="utf-8") as f:
-                self._draft_pools = json.load(f)
-        except (OSError, ValueError):
-            self._draft_pools = {}
         self._chat_file = os.path.join(data_root, "chat.jsonl")
         self._chat_lock = threading.Lock()
         self._chat = []          # newest last: {"id", "channel", "sender", "message", "cid", "t"}
@@ -3480,30 +3474,45 @@ class PlayFabEmulator:
             full.update(save)
         return data, full
 
-    def _draft_warlords(self, data):
-        """The game sends every warlord it could offer; the run offers `warlordsPerDraft` of them,
-        picked at random (the event's setting, default 3)."""
-        offered = [w for w in (data.get("warlords") or []) if isinstance(w, str)]
+    # The game's army numbers (CardArmy), by the army names the card list uses.
+    ARMY_NUMBERS = {"Ultramarines": 10, "Goff": 20, "SaimHann": 30, "Sautekh": 40, "BlackLegion": 50,
+                    "Leviathan": 60, "TauEmpire": 70, "Sororitas": 80, "Genestealers": 90,
+                    "AstraMilitarum": 100, "DarkAngels": 110, "EmperorsChildren": 120, "SpaceWolves": 130}
+
+    def _draft_warlords(self, player, data):
+        """The warlords a new draft run offers: `warlordsPerDraft` (the event's setting, default 3)
+        picked at random from the warlords in this player's collection, limited to the event's
+        armies ("specificArmies") and warlords ("specificWarlords") when it names any, without its
+        "blacklistedWarlords". With every card given to everyone that is every warlord of those
+        armies; if cards are ever unlocked one by one, each player draws from their own. What the
+        game sends with the request is not used for this."""
         event_id = data.get("eventID") or data.get("eventId") or ""
-        # After a first run the game only sends back the warlords it was offered last time, which
-        # would repeat the same three forever. Remember the largest list seen and draw from that.
-        pool = self._draft_pools.get(event_id) or []
-        if len(offered) > len(pool):
-            pool = self._draft_pools[event_id] = offered
-            try:
-                with open(self._draft_pool_file, "w", encoding="utf-8") as f:
-                    json.dump(self._draft_pools, f)
-            except OSError as e:
-                log.warning("could not save the draft warlord pool: %s", e)
-        offered = pool
         _, ev = self._event_file(event_id)
+        evd = ev.get("Data", {}) if isinstance(ev, dict) else {}
+        armies = {a for a in evd.get("specificArmies") or [] if isinstance(a, int)}
+        only = {w for w in evd.get("specificWarlords") or [] if isinstance(w, str)}
+        never = {w for w in evd.get("blacklistedWarlords") or [] if isinstance(w, str)}
+        known = self._creator_known_cards()
+        pool = []
+        for item in self._inventory(player):
+            wid = item.get("ItemId")
+            card = known.get(wid) or {}
+            if item.get("ItemClass") != "Hero" or card.get("kind") != "hero" or wid in pool:
+                continue
+            if armies and self.ARMY_NUMBERS.get(card.get("army")) not in armies:
+                continue
+            if (only and wid not in only) or wid in never:
+                continue
+            pool.append(wid)
         try:
-            count = int(ev.get("Data", {}).get("warlordsPerDraft") or 3)
+            count = int(evd.get("warlordsPerDraft") or 3)
         except (TypeError, ValueError):
             count = 3
-        if count <= 0 or len(offered) <= count:
-            return offered
-        return random.sample(offered, count)
+        if not pool:
+            log.warning("draft %s: no warlord in %s's collection fits the event; nothing offered", event_id, player.get("PlayFabId"))
+        if count <= 0 or len(pool) <= count:
+            return pool
+        return random.sample(pool, count)
 
     def _draft_enter(self, player, params, pay_state):
         now = int(time.time() * 1000)
@@ -3514,7 +3523,7 @@ class PlayFabEmulator:
             save.update(json.loads(json.dumps(self.DRAFT_FRESH)))
             save["payState"] = pay_state
             save["joinState"] = 1                   # Joined: the game only offers warlords for a joined run
-            save["selectableWarlords"] = self._draft_warlords(data)
+            save["selectableWarlords"] = self._draft_warlords(player, data)
             save["lastTimeEnteredFree"] = now if pay_state == 1 else last_free
         _, full = self._draft(player, params, enter)
         return now, full
