@@ -116,6 +116,12 @@
   .deck { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
   .deck .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .deck .top strong { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+  .cfg { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .cfg th, .cfg td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  .cfg td input[type=number] { width: 72px; } .cfg td input[type=text] { width: 160px; }
+  .cfgwrap { overflow-x: auto; }
+  .cfg tr.changed td:first-child { color: var(--accent); }
+  textarea.json { width: 100%; min-height: 320px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
   .deck table { border-collapse: collapse; margin-top: 8px; width: 100%; font-size: 14px; }
   .deck td { padding: 2px 8px 2px 0; } .deck td.n { width: 2.5em; color: var(--dim); font-variant-numeric: tabular-nums; }
   .deck h4 { margin: 10px 0 2px; font-size: 13px; color: var(--dim); font-weight: 600; }
@@ -169,6 +175,7 @@
   <a id="tabMine" href="/my-cards">My cards</a>
   <a id="tabList" href="/review" class="hidden">Review queue</a>
   <a id="tabPeople" href="/people" class="hidden">People</a>
+  <a id="tabServer" href="/server" class="hidden">Server</a>
   <a id="tabExamples" href="/examples">Examples</a>
   <a id="tabKeywords" href="/keywords">Keywords</a>
   <a id="tabArtwork" href="/artwork">Artwork</a>
@@ -354,6 +361,31 @@
           <button type="submit">Download game login file</button>
         </form>
       </div>
+    </section>
+  </div>
+
+  <div id="viewServer" class="hidden">
+    <section>
+      <h2>Game modes</h2>
+      <p class="hint">Match rules for each game mode (<code>content/liveops/GameModes.json</code>). Players get changes the next time they start the game. An empty box means the game's own default. If you change how matches play, also raise the <strong>Rules version</strong> below: players are only matched with the same rules, and saved replays from older rules stop loading.</p>
+      <div class="cfgwrap"><table class="cfg" id="modeTable"></table></div>
+      <div class="row"><button class="primary" id="modeSave" type="button">Save game modes</button><span class="hint" id="modeState"></span></div>
+    </section>
+    <section>
+      <h2>Server settings</h2>
+      <p class="hint">From <code>content/files/revival-settings.json</code>. Most take effect straight away; players' games pick up game rules the next time they start.</p>
+      <div class="cfgwrap"><table class="cfg" id="setTable"></table></div>
+      <div class="row"><button class="primary" id="setSave" type="button">Save server settings</button><span class="hint" id="setState"></span></div>
+    </section>
+    <section>
+      <h2>Edit as JSON</h2>
+      <p class="hint">Everything in both files, including what the forms above do not show. Each save keeps the previous file in <code>data/config-history/</code> on the server (the last 30 of each).</p>
+      <details><summary>Game modes (GameModes.json)</summary>
+        <textarea class="json" id="modeJson" spellcheck="false"></textarea>
+        <div class="row"><button id="modeJsonSave" type="button">Save GameModes.json</button></div></details>
+      <details><summary>Server settings (revival-settings.json)</summary>
+        <textarea class="json" id="setJson" spellcheck="false"></textarea>
+        <div class="row"><button id="setJsonSave" type="button">Save revival-settings.json</button></div></details>
     </section>
   </div>
 
@@ -1206,7 +1238,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Examples: "/examples", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, ""); return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -1551,6 +1583,130 @@ async function loadReports() {
 }
 $("reportsClosed").onchange = loadReports;
 // Admins: the word filter.
+// ---------------------------------------------------------------- server settings (founding admins)
+let cfg = null;
+const MODE_NAMES = { RevivalClassic: "Classic", RevivalSkirmish: "Skirmish", RevivalDraft: "Draft", RevivalLongGame: "Long Game",
+                     PracticeEvent: "Practice", PracticeEventClassic: "Practice Classic" };
+// [key, label, kind]; "top" keys live on the mode itself, the rest in its gameplayVariables
+const MODE_ROWS = [
+  ["enabled", "Mode is on", "top"], ["showInMainMenu", "Shown on the main menu", "top"],
+  ["startingHand", "Starting hand", "num"], ["secondPlayerExtraCards", "Extra starting cards for the second player", "num"],
+  ["handLimit", "Hand limit", "num"], ["drawCardsPerTurn", "Cards drawn per turn", "num"],
+  ["startingMana", "Starting mana, first player", "num"], ["startingManaSecond", "Starting mana, second player", "num"],
+  ["manaPerTurn", "Mana gained per turn", "num"], ["addedManaSecond", "Extra mana per turn, second player", "num"],
+  ["manaAccumulation", "Mana accumulation", "num"], ["overtimeTurn", "Overtime starts on turn", "num"],
+  ["warlordLifeChange", "Warlord life change", "num"], ["slotsPerSide", "Unit slots per side", "num"],
+  ["deckSize", "Deck size", "num"], ["numberOfCopiesOtherRarities", "Copies of each card", "num"],
+  ["numberOfCopiesLegendary", "Copies of each legendary", "num"], ["maxLegendaries", "Legendaries per deck", "num"],
+  ["showMulligan", "Mulligan", "bool"], ["shouldReshuffle", "Reshuffle", "bool"], ["alternativeTraitLogic", "Alternative trait logic", "bool"]
+];
+// [path, label, kind, hint]
+const SET_ROWS = [
+  [["rulesVersion"], "Rules version", "text", "Raise it whenever match rules or cards change."],
+  [["turnSeconds"], "Turn timer (seconds)", "num", ""],
+  [["offenseCards"], "Offence cards", "bool", "The battlefield card pick before a match."],
+  [["practiceClassicWarlordLife"], "Practice Classic warlord life", "num", ""],
+  [["longGame", "warlordHealth"], "Long Game warlord health (times normal)", "dec", ""],
+  [["longGame", "classicDeckSize"], "Long Game: size of a Classic deck it is built from", "num", ""],
+  [["minModVersion"], "Oldest mod allowed", "text", "\"latest\" means the build this server hands out."],
+  [["onlyRevivalMod"], "Refuse games with other mods", "bool", ""],
+  [["accounts", "autoApprove"], "Approve new accounts automatically", "bool", "Off: you approve each one on the People page."],
+  [["requireAccount"], "Require a site account to play", "bool", "Keep on for any server strangers can reach.", true],
+  [["requireHttps"], "Refuse plain http from outside", "bool", "", true],
+  [["requireEncryptedMatches"], "Refuse unencrypted matches from outside", "bool", "", true]
+];
+function getPath(o, path) { for (const k of path) { if (!o || typeof o !== "object") return undefined; o = o[k]; } return o; }
+function setPath(o, path, v) {
+  for (const k of path.slice(0, -1)) { if (!o[k] || typeof o[k] !== "object") o[k] = {}; o = o[k]; }
+  if (v === undefined) delete o[path[path.length - 1]]; else o[path[path.length - 1]] = v;
+}
+function cfgInput(kind, value) {
+  if (kind === "bool" || kind === "top") return el("input", { type: "checkbox", checked: value === true });
+  if (kind === "text") return el("input", { type: "text", value: value == null ? "" : String(value), maxLength: 200 });
+  return el("input", { type: "number", step: kind === "dec" ? "0.1" : "1", value: value == null ? "" : String(value), placeholder: "–", title: "Empty: the game's own default" });
+}
+function cfgValue(input, kind) {
+  if (kind === "bool" || kind === "top") return input.checked;
+  if (kind === "text") return input.value.trim();
+  if (input.value.trim() === "") return undefined;
+  const n = Number(input.value);
+  if (!isFinite(n) || (kind !== "dec" && !Number.isInteger(n))) throw new Error("not a whole number: " + input.value);
+  return n;
+}
+async function loadServer() {
+  try { cfg = (await call("CreatorServerConfig")).files; } catch (e) { return say("Could not load the server settings: " + e.message, "bad"); }
+  drawServer();
+}
+function drawServer() {
+  const modes = cfg.modes, sets = cfg.settings;
+  for (const [which, id] of [["modes", "modeState"], ["settings", "setState"]]) $(id).textContent = cfg[which].problem || "";
+  const t = $("modeTable"); t.textContent = "";
+  const events = (modes.data && modes.data.RawEvents || []).filter(e => e && e.Data);
+  t.append(el("thead", {}, el("tr", {}, el("th", { text: "Setting" }), ...events.map(e => el("th", { text: MODE_NAMES[e.Data.eventId] || e.Data.eventId, title: e.Data.eventId })))));
+  const tb = el("tbody"); t.append(tb);
+  for (const [key, label, kind] of MODE_ROWS) {
+    const tr = el("tr", {}, el("td", { text: label }));
+    for (const e of events) {
+      const value = kind === "top" ? e.Data[key] : (e.Data.gameplayVariables || {})[key];
+      const input = cfgInput(kind, value); input.dataset.mode = e.Data.eventId; input.dataset.key = key; input.dataset.kind = kind;
+      input.addEventListener("input", () => tr.classList.add("changed"));
+      tr.append(el("td", {}, input));
+    }
+    tb.append(tr);
+  }
+  const st = $("setTable"); st.textContent = "";
+  const sb = el("tbody"); st.append(sb);
+  for (const [path, label, kind, hint, guard] of SET_ROWS) {
+    const input = cfgInput(kind, getPath(sets.data || {}, path)); input.dataset.path = JSON.stringify(path); input.dataset.kind = kind;
+    if (guard) input.dataset.guard = "1";
+    const tr = el("tr", {}, el("td", { text: label }), el("td", {}, input), el("td", { class: "hint", text: hint || "" }));
+    input.addEventListener("input", () => tr.classList.add("changed"));
+    sb.append(tr);
+  }
+  $("modeJson").value = modes.data ? JSON.stringify(modes.data, null, 2) : "";
+  $("setJson").value = sets.data ? JSON.stringify(sets.data, null, 2) : "";
+}
+async function saveConfig(which, data, button) {
+  button.disabled = true;
+  try {
+    const d = await call("CreatorServerConfigSave", { file: which, data, stamp: cfg[which].stamp });
+    say((which === "modes" ? "Game modes" : "Server settings") + " saved.", "ok");
+    await loadServer();
+  } catch (e) { say("Not saved: " + e.message, "bad"); }
+  finally { button.disabled = false; }
+}
+$("modeSave").onclick = () => {
+  const data = structuredClone(cfg.modes.data);
+  try {
+    for (const input of $("modeTable").querySelectorAll("input")) {
+      const ev = data.RawEvents.find(e => e && e.Data && e.Data.eventId === input.dataset.mode);
+      const v = cfgValue(input, input.dataset.kind);
+      if (input.dataset.kind === "top") ev.Data[input.dataset.key] = v;
+      else { ev.Data.gameplayVariables = ev.Data.gameplayVariables || {}; if (v === undefined) delete ev.Data.gameplayVariables[input.dataset.key]; else ev.Data.gameplayVariables[input.dataset.key] = v; }
+    }
+  } catch (e) { return say("Not saved: " + e.message, "bad"); }
+  saveConfig("modes", data, $("modeSave"));
+};
+$("setSave").onclick = () => {
+  const data = structuredClone(cfg.settings.data || {});
+  const off = [];
+  try {
+    for (const input of $("setTable").querySelectorAll("input")) {
+      const path = JSON.parse(input.dataset.path), v = cfgValue(input, input.dataset.kind);
+      if (input.dataset.guard && getPath(data, path) === true && v === false) off.push(input.closest("tr").firstChild.textContent);
+      setPath(data, path, input.dataset.kind === "text" && v === "" ? undefined : v);
+    }
+  } catch (e) { return say("Not saved: " + e.message, "bad"); }
+  if (off.length && !confirm("You are turning off protection: " + off.join(", ") + ". Anyone who can reach the server is then trusted more. Save anyway?")) return;
+  saveConfig("settings", data, $("setSave"));
+};
+for (const [which, area, button] of [["modes", "modeJson", "modeJsonSave"], ["settings", "setJson", "setJsonSave"]])
+  $(button).onclick = () => {
+    let data;
+    try { data = JSON.parse($(area).value); } catch (e) { return say("That is not valid JSON: " + e.message, "bad"); }
+    saveConfig(which, data, $(button));
+  };
+
 async function loadWords() {
   let d;
   try { d = await call("CreatorWordFilter"); } catch (e) { return; }
@@ -1646,6 +1802,9 @@ async function loadList() {
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
     $("tabPeople").classList.toggle("hidden", role < 2);
+    const founder = !!(d.account && d.account.fixed);
+    $("tabServer").classList.toggle("hidden", !founder);
+    if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
     if (role < 2 && !$("viewPeople").classList.contains("hidden")) show("Mine");
     $("tabList").classList.toggle("hidden", !role);
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
@@ -1657,21 +1816,22 @@ async function loadList() {
     drawList();
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
-const TITLES = { Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Examples: "Examples", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 function show(which, replace) {                // a page name from PAGES
   if (me) goto(PAGES[which], replace);
   if (me) document.title = TITLES[which] + " – Card Creator";
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["People", "Rules", "Profile", "Examples", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Create", "Mine", "List", "People", "Rules", "Examples", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["People", "Server", "Rules", "Profile", "Examples", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   if (which === "Examples") showExamples();
   if (which === "Keywords") showKeywords();
   if (which === "Profile") { say(""); loadList(); }
   if (list) loadList();
   if (which === "People") { loadPeople(); loadReports(); loadBans(val("banQuery").trim()); loadWords(); loadUploads(); }
   if (which === "Rules") loadRules();
+  if (which === "Server") loadServer();
 }
 
 async function start() {

@@ -1107,6 +1107,156 @@ class PlayFabEmulator:
                 log.info("chat report %s: %s reported %s", entry["id"], reporter, reported)
         return ok({"reported": True})
 
+    # ---------------------------------------------------------------- server settings (founding admins)
+    # The site's "Server" page edits the game modes (content/liveops/GameModes.json) and the server
+    # settings (content/files/revival-settings.json). Only founding admins (data/creator_admins.json)
+    # may read or change them. Every save keeps the previous file in data/config-history/ and is
+    # refused if the file changed since the page loaded it (someone edited it by hand meanwhile).
+    CONFIG_FILES = {"modes": ("liveops", "GameModes.json"), "settings": ("files", "revival-settings.json")}
+    CONFIG_MAX_BYTES = 512 * 1024
+    CONFIG_HISTORY_KEEP = 30
+    _config_lock = threading.Lock()
+
+    # gameplayVariables: whole numbers in a sane range, and switches
+    MODE_NUMBERS = {"maxLegendaries": (0, 200), "numberOfCopiesOtherRarities": (1, 60), "numberOfCopiesLegendary": (1, 60),
+                    "slotsPerSide": (1, 8), "warlordLifeChange": (-100, 100), "deckSize": (1, 200), "overtimeTurn": (1, 100),
+                    "startingMana": (0, 50), "startingManaSecond": (0, 50), "addedManaSecond": (0, 50), "manaPerTurn": (0, 50),
+                    "drawCardsPerTurn": (0, 20), "manaAccumulation": (0, 50), "handLimit": (1, 30),
+                    "startingHand": (0, 10), "secondPlayerExtraCards": (0, 10)}
+    MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic")
+    SETTING_SWITCHES = ("offenseCards", "onlyRevivalMod", "requireAccount", "requireHttps", "requireEncryptedMatches")
+
+    def _config_founder(self, req):
+        me = self._creator_account(req)
+        if not me:
+            return None
+        perms = self._creator_perms(me)
+        return me if perms["fixed"] else None
+
+    def _config_path(self, which):
+        return os.path.join(self.content_root, *self.CONFIG_FILES[which])
+
+    def _config_read(self, which):
+        try:
+            with open(self._config_path(which), "rb") as f:
+                return f.read()
+        except OSError:
+            return b""
+
+    @staticmethod
+    def _config_stamp(raw):
+        return hashlib.sha256(raw).hexdigest()[:16]
+
+    @staticmethod
+    def _whole(v):
+        return isinstance(v, int) and not isinstance(v, bool)
+
+    def _config_check(self, which, data):
+        """None when the new content may be saved, else what is wrong with it."""
+        if not isinstance(data, dict):
+            return "the file must be a JSON object"
+        if which == "modes":
+            events = data.get("RawEvents")
+            if not isinstance(events, list) or not events:
+                return '"RawEvents" must be a list of game modes'
+            seen = set()
+            for e in events:
+                d = e.get("Data") if isinstance(e, dict) else None
+                if not isinstance(d, dict) or not isinstance(d.get("eventId"), str) or not d["eventId"].strip():
+                    return "every game mode needs Data.eventId"
+                eid = d["eventId"]
+                if eid in seen:
+                    return "two game modes are called " + eid
+                seen.add(eid)
+                if not isinstance(d.get("$type"), str):
+                    return eid + ": Data.$type is missing"
+                gv = d.get("gameplayVariables")
+                if gv is None:
+                    continue
+                if not isinstance(gv, dict):
+                    return eid + ": gameplayVariables must be an object"
+                for k, (lo, hi) in self.MODE_NUMBERS.items():
+                    if k in gv and (not self._whole(gv[k]) or not lo <= gv[k] <= hi):
+                        return f"{eid}: {k} must be a whole number from {lo} to {hi}"
+                for k in self.MODE_SWITCHES:
+                    if k in gv and not isinstance(gv[k], bool):
+                        return f"{eid}: {k} must be true or false"
+                if self._whole(gv.get("startingHand")) and self._whole(gv.get("handLimit")) and gv["startingHand"] > gv["handLimit"]:
+                    return f"{eid}: the starting hand is bigger than the hand limit"
+            return None
+        for k in self.SETTING_SWITCHES:
+            if k in data and not isinstance(data[k], bool):
+                return k + " must be true or false"
+        if "turnSeconds" in data and (not self._whole(data["turnSeconds"]) or not 10 <= data["turnSeconds"] <= 3600):
+            return "turnSeconds must be a whole number from 10 to 3600"
+        if "practiceClassicWarlordLife" in data and (not self._whole(data["practiceClassicWarlordLife"]) or not 1 <= data["practiceClassicWarlordLife"] <= 1000):
+            return "practiceClassicWarlordLife must be a whole number from 1 to 1000"
+        for k in ("rulesVersion", "minModVersion", "creatorUrl"):
+            if k in data and not (isinstance(data[k], str) and len(data[k]) <= 200 or self._whole(data[k])):
+                return k + " must be a short text"
+        if "relays" in data and not (isinstance(data["relays"], list) and all(isinstance(r, str) for r in data["relays"])):
+            return "relays must be a list of addresses"
+        for k in ("accounts", "longGame", "photon"):
+            if k in data and not isinstance(data[k], dict):
+                return k + " must be an object"
+        if "autoApprove" in (data.get("accounts") or {}) and not isinstance(data["accounts"]["autoApprove"], bool):
+            return "accounts.autoApprove must be true or false"
+        return None
+
+    def api_Revival_CreatorServerConfig(self, req, headers):
+        """Founding admins: the game modes and server settings files, each with a stamp to save against."""
+        me = self._config_founder(req)
+        if not me:
+            return err("NotAuthorized", "only founding admins can see the server settings")
+        out = {}
+        for which in self.CONFIG_FILES:
+            raw = self._config_read(which)
+            try:
+                data = json.loads(raw.decode("utf-8-sig")) if raw else {}
+                problem = None
+            except ValueError as e:
+                data, problem = None, "the file on the server is not valid JSON (%s); fix it by hand" % e
+            out[which] = {"data": data, "stamp": self._config_stamp(raw), "problem": problem}
+        return ok({"files": out})
+
+    def api_Revival_CreatorServerConfigSave(self, req, headers):
+        """Founding admins: {"file": "modes" | "settings", "data": {...}, "stamp"} replaces that file."""
+        me = self._config_founder(req)
+        if not me:
+            return err("NotAuthorized", "only founding admins can change the server settings")
+        which = req.get("file")
+        if which not in self.CONFIG_FILES:
+            return err("InvalidParams", "unknown settings file")
+        data = req.get("data")
+        problem = self._config_check(which, data)
+        if problem:
+            return err("InvalidParams", problem)
+        body = (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+        if len(body) > self.CONFIG_MAX_BYTES:
+            return err("InvalidParams", "that is too big for a settings file")
+        with self._config_lock:
+            raw = self._config_read(which)
+            if self._config_stamp(raw) != str(req.get("stamp") or ""):
+                return err("Conflict", "the file changed on the server since this page loaded it; reload the page and make the change again")
+            history = os.path.join(self.store.root, "config-history")
+            os.makedirs(history, exist_ok=True)
+            base = os.path.splitext(self.CONFIG_FILES[which][1])[0]
+            if raw:
+                with open(os.path.join(history, "%s-%s.json" % (base, time.strftime("%Y%m%d-%H%M%S", time.gmtime()))), "wb") as f:
+                    f.write(raw)
+            old = sorted(n for n in os.listdir(history) if n.startswith(base + "-"))
+            for n in old[:-self.CONFIG_HISTORY_KEEP]:
+                try:
+                    os.remove(os.path.join(history, n))
+                except OSError:
+                    pass
+            path = self._config_path(which)
+            with open(path + ".tmp", "wb") as f:
+                f.write(body)
+            _retry_locked(lambda: os.replace(path + ".tmp", path))
+        log.info("server settings: %s saved %s", me["name"], self.CONFIG_FILES[which][1])
+        return ok({"stamp": self._config_stamp(body)})
+
     def api_Revival_CreatorReports(self, req, headers):
         """Admins: reported chat messages, newest first (closed ones only with "closed": true)."""
         if self._creator_role(req) < 2:
