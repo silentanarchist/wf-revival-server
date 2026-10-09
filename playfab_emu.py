@@ -2525,8 +2525,11 @@ class PlayFabEmulator:
             if others.lower() == "none":
                 others = ""
             # the Revival project's own optional pieces are not "other mods"
+            # (the graphics plugin is retired; logged so the owner can tell when no phone has it any more)
             allowed = {"warpforge revival graphics"}
-            others = ", ".join(n for n in (x.strip() for x in others.split(",")) if n and n.lower() not in allowed)
+            names = [n for n in (x.strip() for x in others.split(",")) if n]
+            retired = any(n.lower() in allowed for n in names)
+            others = ", ".join(n for n in names if n.lower() not in allowed)
             if others:
                 return (err("OtherModsLoaded", "This server only allows the Warpforge Revival mod. Remove these and start the game again: " + others, 1001, 401),
                         "other mods loaded: " + others)
@@ -2535,6 +2538,8 @@ class PlayFabEmulator:
             if sent != "unknown" and served.get("h") and has and has == self._version_number(served.get("v")) and sent != str(served["h"]).lower():
                 return (err("ModChanged", "This copy of the Warpforge Revival mod is not the one this server hands out. Let the game update the mod, or download it again.", 1001, 401),
                         "mod file of %s differs from the one served" % mine)
+            if retired:
+                return None, "still has the retired Warpforge Revival graphics plugin"
         return None, ""
 
     def handle(self, path, headers, body_bytes):
@@ -2554,7 +2559,7 @@ class PlayFabEmulator:
         else:
             try:
                 status, resp = handler(req, headers)
-                note = ""
+                note = why     # a sign-in let through can still carry a note (the retired graphics plugin)
             except NotSignedIn:
                 why = self.store.signed_out_reason(headers)
                 if why:     # the mod closes the game with this message (the next start asks to sign in)
@@ -3529,14 +3534,17 @@ class PlayFabEmulator:
         armies = {a for a in evd.get("specificArmies") or [] if isinstance(a, int)}
         only = {w for w in evd.get("specificWarlords") or [] if isinstance(w, str)}
         never = {w for w in evd.get("blacklistedWarlords") or [] if isinstance(w, str)}
-        known = self._creator_known_cards()
+        try:
+            known = self._creator_known_cards()
+        except (OSError, ValueError, KeyError):
+            known = None    # no card list on this server: go by the inventory's own "Hero" class alone
         pool = []
         for item in self._inventory(player):
             wid = item.get("ItemId")
-            card = known.get(wid) or {}
-            if item.get("ItemClass") != "Hero" or card.get("kind") != "hero" or wid in pool:
+            card = (known or {}).get(wid) or {}
+            if item.get("ItemClass") != "Hero" or wid in pool or (known is not None and card.get("kind") != "hero"):
                 continue
-            if armies and self.ARMY_NUMBERS.get(card.get("army")) not in armies:
+            if armies and known is not None and self.ARMY_NUMBERS.get(card.get("army")) not in armies:
                 continue
             if (only and wid not in only) or wid in never:
                 continue
