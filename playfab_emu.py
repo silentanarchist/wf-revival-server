@@ -902,9 +902,9 @@ class PlayFabEmulator:
             "SetGamemodeDefaultDeck": self.cs_SetGamemodeDefaultDeck,
             "OrderPlayerDecks": self.cs_OrderPlayerDecks,
             "onPracticeMatchFinished": self.cs_match_finished,
-            "saveMatchRecording": self.cs_battle_log_current,       # recordings themselves are not kept
+            "saveMatchRecording": self.cs_saveMatchRecording,
             "pinMatchRecording": self.cs_pinMatchRecording,
-            "recoverMatchRecording": lambda player, params: {},     # no recording: the game says the replay cannot be loaded
+            "recoverMatchRecording": self.cs_recoverMatchRecording,
             "removeNotSavedBattleRecord": lambda player, params: {},
             "AddFriend": self.cs_AddFriend,
             "changeCosmetics": self.cs_changeCosmetics,
@@ -3294,7 +3294,7 @@ class PlayFabEmulator:
                      "ownSkulls": max(0, num("milestone")), "enemySkulls": max(0, num("enemymilestone", "enemyMilestone")),
                      # a unique id so a match can be pinned; there is no recording behind it
                      "recordingIndex": uuid.uuid4().hex[:16], "matchType": match_type,
-                     "replaysVersion": text("ReplaysVersion") or "", "pinned": False,
+                     "replaysVersion": text("ReplaysVersion") or self._replays_version(), "pinned": False,
                      "playerClan": "", "enemyClan": "", "botAltid": ""}
             # skulls taken, per mode (the profile's record panel adds them up)
             rec = player.setdefault("MatchRecord", {}).setdefault(text("eventId") or "unknown", {"Won": 0, "Loss": 0, "Draw": 0})
@@ -3313,6 +3313,7 @@ class PlayFabEmulator:
                     kept.append(e)
                     free -= 1
             self._battle_log_save(player, kept)
+            self._replays_prune(player["PlayFabId"], kept)
         return kept
 
     STAT_MODES = (("Classic", ("RevivalClassic",)), ("Skirmish", ("RevivalSkirmish",)), ("Draft", ("RevivalDraft",)),
@@ -3337,6 +3338,89 @@ class PlayFabEmulator:
         modes.append(row("Other", [r for e, r in record.items() if e not in named]))
         modes = [m for m in modes if m["won"] + m["lost"] + m["draw"] > 0]
         return ok({"playerId": player["PlayFabId"], "total": row("Overall", list(record.values())), "modes": modes})
+
+    # ---------------------------------------------------------------- replays
+    # After a match the game sends its recording (shuffle values, both decks, mulligans and every
+    # action) under the recordingIndex of the match-history entry the server just made for it.
+    # Recordings are kept one file each in data/replays/<player id>/, only for matches in that
+    # player's history, and are deleted with the entry when it drops off the list. Each is stamped
+    # with revival-settings.json "rulesVersion": a replay only re-runs the moves, so after a rules
+    # change old recordings would play out wrongly - bumping rulesVersion retires them.
+    REPLAY_MAX_BYTES = 256 * 1024
+    RECORD_NAME = re.compile(r"[0-9a-f]{16}")
+
+    def _replay_dir(self, pfid):
+        return os.path.join(self.store.root, "replays", pfid)
+
+    def _replay_rules(self):
+        return str(self._settings().get("rulesVersion", ""))
+
+    def _replays_prune(self, pfid, entries):
+        """Delete recordings whose match is no longer in the player's history."""
+        keep = {str(e.get("recordingIndex")) for e in entries}
+        d = self._replay_dir(pfid)
+        try:
+            names = os.listdir(d)
+        except OSError:
+            return
+        for name in names:
+            if name.endswith(".json") and name[:-5] not in keep:
+                try:
+                    os.remove(os.path.join(d, name))
+                except OSError:
+                    pass
+
+    def cs_saveMatchRecording(self, player, params):
+        """{"recordName", "battleRecord", "cancelled"}: keep the recording of a match in this
+        player's history. Answers with the history, as before."""
+        data = self._fn_data(params)
+        name = str(data.get("recordName") or "")
+        record = data.get("battleRecord")
+        with self.store.lock:
+            player.update(self.store.load(player["PlayFabId"]) or {})
+            entries = self._battle_log(player)
+            if self.RECORD_NAME.fullmatch(name) and isinstance(record, dict) \
+                    and any(str(e.get("recordingIndex")) == name for e in entries):
+                body = json.dumps({"rules": self._replay_rules(), "record": record}, separators=(",", ":"))
+                if len(body) <= self.REPLAY_MAX_BYTES:
+                    d = self._replay_dir(player["PlayFabId"])
+                    os.makedirs(d, exist_ok=True)
+                    path = os.path.join(d, name + ".json")
+                    with open(path + ".tmp", "w", encoding="utf-8") as f:
+                        f.write(body)
+                    os.replace(path + ".tmp", path)
+                else:
+                    log.warning("replay %s of %s not kept: %d bytes", name, player["PlayFabId"], len(body))
+            self._replays_prune(player["PlayFabId"], entries)
+        return {"BattleLogData": entries}
+
+    def cs_recoverMatchRecording(self, player, params):
+        """{"recordName", "targetPlayerId"}: a recording for the replay screen, from this player's
+        history or (from a profile) another player's. Empty when there is none, which the game
+        shows as "replay cannot be loaded"."""
+        data = self._fn_data(params)
+        name = str(data.get("recordName") or "")
+        owner = str(data.get("targetPlayerId") or data.get("targetPlayerID") or player["PlayFabId"])
+        if not self.RECORD_NAME.fullmatch(name) or not re.fullmatch(r"[0-9A-F]{16}", owner):
+            return {}
+        try:
+            with open(os.path.join(self._replay_dir(owner), name + ".json"), encoding="utf-8") as f:
+                kept = json.load(f)
+        except (OSError, ValueError):
+            return {}
+        if not isinstance(kept, dict) or str(kept.get("rules", "")) != self._replay_rules():
+            return {}
+        return {"recordingData": kept.get("record")}
+
+    def _replays_version(self):
+        try:
+            with open(os.path.join(self.content_root, "titledata", "core.json"), encoding="utf-8") as f:
+                sv = json.load(f).get("ServerVersion") or {}
+            if isinstance(sv, str):
+                sv = json.loads(sv)
+            return str(sv.get("replaysVersion") or "")
+        except (OSError, ValueError, AttributeError):
+            return ""
 
     def cs_battle_log_current(self, player, params):
         with self.store.lock:

@@ -183,6 +183,8 @@ Three optional settings in `revival-settings.json`:
 - `"rulesVersion": "1"` - your own label for the cards and rules this server serves. Players are
   only matched with players on the same label and the same mod rules number. Change it when you
   change cards or rules.
+  Changing it also retires every saved replay: a replay re-runs the recorded moves, so it would
+  play out wrongly under new rules. Change it too when a mod update changes card rules.
 
 What a game says about itself can be faked by someone who rewrites the mod. These settings keep
 honest players on one set of rules and stop casual tampering; they are not proof against cheats.
