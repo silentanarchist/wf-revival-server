@@ -3701,14 +3701,17 @@ class PlayFabEmulator:
 
     # ---- Draft -----------------------------------------------------------------------------
     # A draft run: enter -> pick a warlord -> pick card packs -> play matches until the run is
-    # won or lost -> collect. The game does the picking and random offers itself; the server
-    # only has to remember the run ("save") between steps and hand it back.
+    # won or lost -> collect. The server remembers the run ("save") between steps and makes the
+    # random choices: the warlords offered (from the player's collection) and, each round, the
+    # packs offered (from content/draft/DraftPacks.json, the game's own ready-made packs). The
+    # pack offer is kept in the save as "revivalDraftOffer"; the mod shows exactly those packs,
+    # and only a pack from the offer is accepted, with the server's own list of its cards.
 
     DRAFT_FRESH = {"rewardsCollected": False, "allianceRewardsCollected": False, "refunded": False,
                    "won": 0.0, "payState": 0, "selectedWarlord": None, "selectedPacks": [], "selectedCards": [],
                    "selectableWarlords": [], "cardbackId": "", "currentReRolls": 0,
                    "joinState": 0, "matchStarted": False, "numberOfMatchesWon": 0, "numberOfMatchesLost": 0,
-                   "numberOfMatchesDraw": 0, "lastOpponentInfo": None}
+                   "numberOfMatchesDraw": 0, "lastOpponentInfo": None, "revivalDraftOffer": []}
 
     def _event_file(self, event_id):
         """(handler name, event entry) for an event id, looked up in content/liveops/*.json."""
@@ -3809,22 +3812,95 @@ class PlayFabEmulator:
         _, save = self._draft_enter(player, params, 3 if data.get("isTen") else 2)
         return {"AmountRemoved": 0, "Save": save}      # entry is free on a revival server
 
+    def _draft_packs(self):
+        """({pack id: pack}, {card id: army number}) from content/draft/DraftPacks.json, re-read when it changes."""
+        path = os.path.join(self.content_root, "draft", "DraftPacks.json")
+        try:
+            stamp = os.path.getmtime(path)
+        except OSError:
+            return {}, {}
+        if getattr(self, "_packs_stamp", None) != stamp:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    doc = json.load(f)
+                packs = {p["id"]: p for p in doc.get("packs", []) if isinstance(p, dict) and isinstance(p.get("id"), str)}
+                armies = {k: v for k, v in (doc.get("cardArmies") or {}).items() if isinstance(v, int)}
+            except (OSError, ValueError, KeyError, AttributeError) as e:
+                log.warning("draft packs: %s could not be read: %s", path, e)
+                return {}, {}
+            self._packs, self._packs_stamp = (packs, armies), stamp
+        return self._packs
+
+    def _draft_settings(self, event_id):
+        evd = (self._event_file(event_id)[1] or {}).get("Data", {})
+        num = lambda k, d: evd[k] if isinstance(evd.get(k), int) and not isinstance(evd.get(k), bool) and evd[k] > 0 else d
+        free = 0
+        for step in evd.get("reRollCosts") or []:            # rerolls priced at nothing, before the first paid one
+            cost = (step.get("costs") or {}).get("Amount") if isinstance(step, dict) else None
+            if cost:
+                break
+            free += step.get("numberOfReRolls") or 0 if isinstance(step, dict) else 0
+        return num("draftRounds", 10), num("packsPerDraft", 3), free
+
+    def _draft_new_offer(self, save, data):
+        """A fresh random offer for the run's next pack pick ([] once every round is picked)."""
+        rounds, per_round, _ = self._draft_settings(data.get("eventID") or data.get("eventId") or "")
+        packs, armies = self._draft_packs()
+        army = armies.get(save.get("selectedWarlord") or "")
+        if army is None or len(save.get("selectedPacks") or []) >= rounds:
+            save["revivalDraftOffer"] = []
+            return
+        pool = [pid for pid, p in packs.items() if p.get("enabled") and p.get("army") == army]
+        if not pool:
+            log.warning("draft: no packs for army %s (warlord %s)", army, save.get("selectedWarlord"))
+        save["revivalDraftOffer"] = random.sample(pool, min(per_round, len(pool)))
+
     def cs_PickDraftWarlord(self, player, params):
+        result = {}
+
         def pick(save, data):
-            save["selectedWarlord"] = data.get("warlord") or None
+            wanted = data.get("warlord") or None
+            offered = save.get("selectableWarlords") or []
+            if wanted and save.get("selectedWarlord") == wanted:
+                return                                  # the same pick sent again (a retry): nothing changes
+            if save.get("selectedWarlord") or (offered and wanted not in offered):
+                result["refused"] = True                # not one of the warlords this run offered
+                return
+            save["selectedWarlord"] = wanted
             save["currentReRolls"] = 0
+            self._draft_new_offer(save, data)
         _, save = self._draft(player, params, pick)
-        return {"Result": True, "Save": save}
+        if result.get("refused"):
+            log.warning("draft: %s picked a warlord that was not offered", player.get("PlayFabId"))
+        return {"Result": not result.get("refused"), "Save": save}
 
     def cs_PickDraftPack(self, player, params):
+        result = {}
+
         def pick(save, data):
-            save.setdefault("selectedPacks", []).append(data.get("pack"))
-            cards = data.get("cards")
-            if isinstance(cards, list):
-                save.setdefault("selectedCards", []).extend(cards)     # the game sends this pack's cards only
+            wanted = data.get("pack")
+            offer = save.get("revivalDraftOffer")
+            packs, armies = self._draft_packs()
+            pack = packs.get(wanted) if isinstance(wanted, str) else None
+            picked = save.get("selectedPacks") or []
+            if offer is not None and wanted not in offer and picked and picked[-1] == wanted:
+                return                                  # the last pick sent again (a retry): nothing changes
+            if offer is None:
+                # a run started before the server made the offers: any pack of the warlord's army
+                ok_pick = bool(pack and pack.get("enabled") and pack.get("army") == armies.get(save.get("selectedWarlord") or ""))
+            else:
+                ok_pick = bool(pack) and wanted in offer
+            if not ok_pick:
+                result["refused"] = True
+                return
+            save.setdefault("selectedPacks", []).append(wanted)
+            save.setdefault("selectedCards", []).extend(pack["cards"])     # the server's list, not the game's
             save["currentReRolls"] = 0
+            self._draft_new_offer(save, data)
         _, save = self._draft(player, params, pick)
-        return {"Result": True, "Save": save}
+        if result.get("refused"):
+            log.warning("draft: %s picked a pack that was not offered", player.get("PlayFabId"))
+        return {"Result": not result.get("refused"), "Save": save}
 
     def cs_SaveSelectedDraftCards(self, player, params):
         def keep(save, data):
@@ -3835,9 +3911,13 @@ class PlayFabEmulator:
 
     def cs_RerollDraft(self, player, params):
         def again(save, data):
+            if int(save.get("currentReRolls", 0)) >= self._draft_settings(data.get("eventID") or data.get("eventId") or "")[2]:
+                return                                  # no free reroll left this round: the offer stays
             save["currentReRolls"] = int(save.get("currentReRolls", 0)) + 1
+            self._draft_new_offer(save, data)
         _, save = self._draft(player, params, again)
-        return {"cost": {"Currency": 40, "Amount": 0}, "currentReRolls": save.get("currentReRolls", 0)}
+        return {"cost": {"Currency": 40, "Amount": 0}, "currentReRolls": save.get("currentReRolls", 0),
+                "revivalDraftOffer": save.get("revivalDraftOffer") or []}
 
     def cs_DraftMatchFound(self, player, params):
         def found(save, data):
