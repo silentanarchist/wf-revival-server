@@ -3899,7 +3899,7 @@ class PlayFabEmulator:
             free += step.get("numberOfReRolls") or 0 if isinstance(step, dict) else 0
         return num("draftRounds", 10), num("packsPerDraft", 3), free
 
-    def _draft_new_offer(self, save, data):
+    def _draft_new_offer(self, save, data, avoid_offer=False):
         """A fresh random offer for the run's next pack pick ([] once every round is picked)."""
         rounds, per_round, _ = self._draft_settings(data.get("eventID") or data.get("eventId") or "")
         packs, armies = self._draft_packs()
@@ -3910,7 +3910,20 @@ class PlayFabEmulator:
         pool = [pid for pid, p in packs.items() if p.get("enabled") and p.get("army") == army]
         if not pool:
             log.warning("draft: no packs for army %s (warlord %s)", army, save.get("selectedWarlord"))
-        save["revivalDraftOffer"] = random.sample(pool, min(per_round, len(pool)))
+        # Packs already picked this run are not offered again, nor (on a reroll) the offer being
+        # replaced: a pack offered again right after it was picked looked like the screen had not
+        # changed, and a quick second tap picked it twice. Only when too few packs are left does
+        # the offer fall back to the whole pool.
+        used = set(save.get("selectedPacks") or [])
+        if avoid_offer:
+            used |= set(save.get("revivalDraftOffer") or [])
+        fresh = [pid for pid in pool if pid not in used]
+        if len(fresh) < per_round:
+            fresh = [pid for pid in pool if pid not in set(save.get("selectedPacks") or [])]
+        if len(fresh) < per_round:
+            last = (save.get("selectedPacks") or [None])[-1]
+            fresh = [pid for pid in pool if pid != last] or pool     # never the pack just picked
+        save["revivalDraftOffer"] = random.sample(fresh, min(per_round, len(fresh)))
 
     def cs_PickDraftWarlord(self, player, params):
         result = {}
@@ -3971,7 +3984,7 @@ class PlayFabEmulator:
             if int(save.get("currentReRolls", 0)) >= self._draft_settings(data.get("eventID") or data.get("eventId") or "")[2]:
                 return                                  # no free reroll left this round: the offer stays
             save["currentReRolls"] = int(save.get("currentReRolls", 0)) + 1
-            self._draft_new_offer(save, data)
+            self._draft_new_offer(save, data, avoid_offer=True)
         _, save = self._draft(player, params, again)
         return {"cost": {"Currency": 40, "Amount": 0}, "currentReRolls": save.get("currentReRolls", 0),
                 "revivalDraftOffer": save.get("revivalDraftOffer") or []}
