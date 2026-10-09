@@ -2524,12 +2524,7 @@ class PlayFabEmulator:
             others = re.sub(r"[^\w .,'+()-]", "", str(others))[:200].strip()
             if others.lower() == "none":
                 others = ""
-            # the Revival project's own optional pieces are not "other mods"
-            # (the graphics plugin is retired; logged so the owner can tell when no phone has it any more)
-            allowed = {"warpforge revival graphics"}
-            names = [n for n in (x.strip() for x in others.split(",")) if n]
-            retired = any(n.lower() in allowed for n in names)
-            others = ", ".join(n for n in names if n.lower() not in allowed)
+            others = ", ".join(n for n in (x.strip() for x in others.split(",")) if n)
             if others:
                 return (err("OtherModsLoaded", "This server only allows the Warpforge Revival mod. Remove these and start the game again: " + others, 1001, 401),
                         "other mods loaded: " + others)
@@ -2538,8 +2533,6 @@ class PlayFabEmulator:
             if sent != "unknown" and served.get("h") and has and has == self._version_number(served.get("v")) and sent != str(served["h"]).lower():
                 return (err("ModChanged", "This copy of the Warpforge Revival mod is not the one this server hands out. Let the game update the mod, or download it again.", 1001, 401),
                         "mod file of %s differs from the one served" % mine)
-            if retired:
-                return None, "still has the retired Warpforge Revival graphics plugin"
         return None, ""
 
     def handle(self, path, headers, body_bytes):
@@ -2559,7 +2552,7 @@ class PlayFabEmulator:
         else:
             try:
                 status, resp = handler(req, headers)
-                note = why     # a sign-in let through can still carry a note (the retired graphics plugin)
+                note = ""
             except NotSignedIn:
                 why = self.store.signed_out_reason(headers)
                 if why:     # the mod closes the game with this message (the next start asks to sign in)
