@@ -225,9 +225,11 @@ def relays():
 
 
 class _Prefixed(io.RawIOBase):
-    """A connection with bytes already read put back in front of it."""
-    def __init__(self, prefix, sock):
-        self.prefix, self.sock = prefix, sock
+    """A web connection as the request handler reads it: with bytes already read put back in
+    front, and a time by which the current request must have arrived in full (`owner.deadline`),
+    so sending a request very slowly cannot hold a connection open."""
+    def __init__(self, prefix, sock, owner=None):
+        self.prefix, self.sock, self.owner = prefix, sock, owner
 
     def readable(self):
         return True
@@ -238,6 +240,12 @@ class _Prefixed(io.RawIOBase):
             buf[:n] = self.prefix[:n]
             self.prefix = self.prefix[n:]
             return n
+        deadline = getattr(self.owner, "deadline", None)
+        if deadline is not None:
+            left = deadline - time.time()
+            if left <= 0:
+                raise socket.timeout("the request took too long to arrive")
+            self.sock.settimeout(min(self.owner.timeout, left))
         return self.sock.recv_into(buf)
 
 
@@ -351,6 +359,12 @@ class Handler(BaseHTTPRequestHandler):
     timeout = 30                        # seconds a web request may take to arrive (not match connections)
     MAX_BODY = 8 * 1024 * 1024          # largest request body accepted (an uploaded picture is about 5.5 MB)
     REQUESTS_PER_MINUTE = 900           # per address; a game start is a burst of about 60 requests
+    REQUEST_DEADLINE = 60               # seconds for a request line and headers to arrive in full
+    BODY_DEADLINE = 180                 # ... and for its body (an uploaded picture on a slow line)
+    MAX_WEB_CONNECTIONS = 256           # web connections served at once (match connections not counted)
+    _web = [0]
+    _web_lock = threading.Lock()
+    deadline = None
     _hits = {}
     _hits_lock = threading.Lock()
 
@@ -379,9 +393,11 @@ class Handler(BaseHTTPRequestHandler):
             self.first = None       # nothing arrived, or the encrypted connection could not be set up
         try:
             super().setup()
-            if self.secure and self.first and self.first != b"\xfb":
-                # the byte just read belongs to the web request: put it back in front
-                self.rfile = io.BufferedReader(_Prefixed(self.first, self.request), self.rbufsize if self.rbufsize > 0 else io.DEFAULT_BUFFER_SIZE)
+            if self.first and self.first != b"\xfb":
+                # A web request: read through _Prefixed, which keeps each request to its deadline
+                # (and, inside https, puts back the byte already read).
+                self.rfile = io.BufferedReader(_Prefixed(self.first if self.secure else b"", self.request, self),
+                                               self.rbufsize if self.rbufsize > 0 else io.DEFAULT_BUFFER_SIZE)
         except OSError:             # the connection is already gone
             self.first = None
             self.rfile = self.wfile = io.BytesIO()
@@ -435,7 +451,26 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(None)        # a match lasts as long as it lasts
             photon_emu.serve(self.connection, self.client_address)
             return
-        super().handle()
+        with Handler._web_lock:
+            busy = Handler._web[0] >= self.MAX_WEB_CONNECTIONS
+            if not busy:
+                Handler._web[0] += 1
+        if busy:
+            log.warning("%s: refused, %d web connections already open", self.client_address[0], self.MAX_WEB_CONNECTIONS)
+            try:
+                self.request.sendall(b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+            except OSError:
+                pass
+            return
+        try:
+            super().handle()
+        finally:
+            with Handler._web_lock:
+                Handler._web[0] -= 1
+
+    def handle_one_request(self):
+        self.deadline = time.time() + self.REQUEST_DEADLINE     # a fresh allowance for every request
+        super().handle_one_request()
 
     def _encrypted_match(self):
         """A match connection inside https (from the mod's match tunnel). The match service is handed
@@ -551,9 +586,9 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code, obj):
         self._send(code, json.dumps(obj, ensure_ascii=False).encode())
 
-    # Plain http that may still be used when "requireHttps" is on: an older mod has to be able to
-    # see that there is an update and download it, and nothing else.
-    PLAIN_ALLOWED = ("/api/v1/status", "/api/v1/mod/manifest", "/api/v1/mod/download")
+    # Plain http that may still be used when "requireHttps" is on: only the status check. (Mods
+    # before 0.11.18 updated themselves over plain http; they now have to be updated by hand.)
+    PLAIN_ALLOWED = ("/api/v1/status",)
 
     def _outside(self):
         """True for a connection from outside this machine and its home network."""
@@ -591,7 +626,11 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True            # the body is not read, so the connection cannot be reused
             return self._json(413, {"code": 413, "status": "PayloadTooLarge", "error": "RequestTooLarge",
                                     "errorCode": 1000, "errorMessage": "that request is too large"})
+        self.deadline = time.time() + self.BODY_DEADLINE
         body = self.rfile.read(length) if length else b""
+        if len(body) < length:
+            self.close_connection = True
+            return
         if self._too_many(ip):
             return self._json(429, {"code": 429, "status": "TooManyRequests", "error": "TooManyRequests",
                                     "errorCode": 1199, "errorMessage": "too many requests - wait a minute and try again"})

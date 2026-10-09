@@ -104,8 +104,8 @@ The server's first lines say whether encryption is on, and `/api/v1/status` repo
   only does it then. Older mods, and servers without a certificate, keep plain match connections.
 
 Once your players are on mod 0.11.18 or newer, set `"requireHttps": true` in the settings file:
-plain http from outside this machine and its home network is then refused, except what an
-older mod needs to find and download its update. Match connections are not affected by it:
+plain http from outside this machine and its home network is then refused (a mod older than
+0.11.18 cannot update itself then and has to be replaced by hand). Match connections are not affected by it:
 once your players are on mod 0.11.27 or newer, `"requireEncryptedMatches": true` refuses
 unencrypted match connections from outside this machine and its home network.
 
@@ -223,7 +223,9 @@ honest players on one set of rules and stop casual tampering; they are not proof
   account. If an account ever loses its link, its next game sign-in finds the player made for it
   before it would make a new one. Changing the password or banning the account cancels every
   saved game login. Recommended for any server open to people you do not know: without it the
-  server takes game sign-ins on trust, and says so in its log when it starts.
+  server takes game sign-ins on trust, and says so in its log when it starts. Add
+  `"accounts": {"autoApprove": false}` as well and every new account waits on the People page
+  until an admin approves it (the game says so when someone signs in before that).
 - **Forgotten passwords.** There is no email. Each player can make a recovery code on their
   Profile page (their password is asked again); it is shown once and downloaded as a text file
   for them to keep. "Forgot your password?" on the sign-in page takes the username, the code and a
