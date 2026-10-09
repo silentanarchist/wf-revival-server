@@ -850,6 +850,10 @@ class PlayFabEmulator:
         # the match service asks for a match ticket whenever accounts are required - from the
         # start, not only once someone has signed in (re-read on every reload of this file)
         photon_emu.REQUIRE[0] = self._settings().get("requireAccount") is True
+        if not photon_emu.REQUIRE[0]:
+            # Steam and phone sign-ins carry no proof the server can check, so without accounts
+            # anyone who knows a player's Steam id or device id can play as that player.
+            log.warning("requireAccount is off: game sign-ins are taken on trust (see README, 'Accounts and safety')")
         os.makedirs(log_dir, exist_ok=True)
         self.log_path = os.path.join(log_dir, "playfab.jsonl")
         self.log_lock = threading.Lock()
@@ -1147,6 +1151,35 @@ class PlayFabEmulator:
                 return None if user.get("access") == "banned" else user["name"]
         return None
 
+    # Wrong passwords are limited per address (20 in 15 minutes) and per account name (10). The
+    # per-name limit alone would let anyone lock any account - an admin's included - by guessing
+    # badly on purpose, so it does not apply to the addresses that account has signed in from before.
+    KNOWN_ADDRESSES_KEPT = 10
+
+    @staticmethod
+    def _address_mark(user, where):
+        """A fingerprint of an address, salted per account (the address itself is never stored)."""
+        return hashlib.sha256((str(user.get("salt") or "") + "|addr|" + where).encode("utf-8")).hexdigest()[:32]
+
+    def _name_locked(self, name, where, user):
+        """True when too many wrong passwords were tried for this name and `where` is not one of
+        the addresses the account has signed in from."""
+        if self._allow("signin-fail-name", name.lower(), 10, 900, count=False):
+            return False
+        return not (user and where != "unknown" and self._address_mark(user, where) in (user.get("knownAddresses") or []))
+
+    def _remember_address(self, user, where):
+        if where == "unknown":
+            return
+        mark = self._address_mark(user, where)
+        known = [m for m in user.get("knownAddresses") or [] if m != mark]
+        user["knownAddresses"] = (known + [mark])[-self.KNOWN_ADDRESSES_KEPT:]
+
+    def _count_wrong_password(self, name, where):
+        self._allow("signin-fail", where, 20, 900)
+        if name:
+            self._allow("signin-fail-name", name.lower(), 10, 900)
+
     def api_Revival_CreatorSignIn(self, req, headers):
         """Signs in, or creates the account when the name is new and "create" is set."""
         name = " ".join(str(req.get("name") or "").split())[:30]
@@ -1164,11 +1197,13 @@ class PlayFabEmulator:
             return err("InvalidParams", "enter a name and a password")
         where = self._address(headers)
         slow = err("TooManyAttempts", "too many attempts - wait a few minutes and try again", 1199, 429)
-        if not self._allow("signin-fail", where, 20, 900, count=False) or not self._allow("signin-fail-name", name.lower(), 10, 900, count=False):
+        if not self._allow("signin-fail", where, 20, 900, count=False):
             return slow
         with self.store.lock:
             users = self._creator_users()
             user = users.get(name.lower())
+            if self._name_locked(name, where, user):
+                return slow
             if user is None:
                 if not req.get("create"):
                     self._allow("signin-fail", where, 20, 900)
@@ -1182,11 +1217,11 @@ class PlayFabEmulator:
             elif req.get("create"):
                 return err("NameNotAvailable", "that name is taken - sign in instead, or pick another name")
             elif not hmac.compare_digest(user["hash"], self._creator_hash(passphrase, user["salt"])):
-                self._allow("signin-fail", where, 20, 900)
-                self._allow("signin-fail-name", name.lower(), 10, 900)
+                self._count_wrong_password(name, where)
                 return err("InvalidPassword", "wrong password")
             if self._creator_perms(user)["access"] == "banned":
                 return err("AccountBanned", "this account has been banned")
+            self._remember_address(user, where)
             token = uuid.uuid4().hex + uuid.uuid4().hex
             user["sessions"] = (user.get("sessions", []) + [hashlib.sha256(token.encode()).hexdigest()])[-5:]
             self._creator_users_save(users)
@@ -1676,9 +1711,14 @@ class PlayFabEmulator:
                 name = " ".join(str(req.get("name") or "").split())
                 user = users.get(name.lower())
                 passphrase = str(req.get("passphrase") or "")
+                # the same wrong-password limits as the sign-in page, so linking is no way around them
+                where = self._address(headers)
+                if not self._allow("signin-fail", where, 20, 900, count=False) or (name and self._name_locked(name, where, user)):
+                    return err("TooManyAttempts", "too many attempts - wait a few minutes and try again", 1199, 429)
                 if user is None or not passphrase or not hmac.compare_digest(user["hash"], self._creator_hash(passphrase, user["salt"])):
                     fails[pfid] = recent + [time.time()]
                     self._link_fails = fails
+                    self._count_wrong_password(name, where)
                     return err("InvalidPassword", "wrong username or password")
                 if self._creator_perms(user)["access"] == "banned":
                     return err("AccountBanned", "this account has been banned")
@@ -2368,13 +2408,19 @@ class PlayFabEmulator:
         """True while `who` has done `what` fewer than `times` in the last `seconds`. With count=False it only asks."""
         now = time.time()
         with cls._limits_lock:
-            if len(cls._limits) > 20000:                       # never let the table itself become the problem
-                cls._limits.clear()
-            hits = [t for t in cls._limits.get((what, who), ()) if t > now - seconds]
+            if len(cls._limits) > 20000:
+                # Never let the table itself become the problem - but only forget what has run out,
+                # so many addresses cannot wipe everyone's counts.
+                for k in [k for k, (span, ts) in cls._limits.items() if not ts or ts[-1] <= now - span]:
+                    del cls._limits[k]
+            hits = [t for t in cls._limits.get((what, who), (seconds, ()))[1] if t > now - seconds]
             ok_now = len(hits) < times
             if ok_now and count:
                 hits.append(now)
-            cls._limits[(what, who)] = hits
+            if hits:
+                cls._limits[(what, who)] = (seconds, hits)
+            else:
+                cls._limits.pop((what, who), None)
             return ok_now
 
     @staticmethod
@@ -3570,7 +3616,8 @@ class PlayFabEmulator:
         td = self.store.title_data()
         return {
             "HandlerData": {h: self._liveops_handler(player, h) for h in self._handler_names(data.get("Handlers"))},
-            "TitleData": {k: td[k] for k in data.get("Configs", []) if k in td},
+            "TitleData": {k: td[k] for k in (data.get("Configs") if isinstance(data.get("Configs"), list) else [])
+                          if isinstance(k, str) and k in td},
             "SharedEventData": {"energyData": {"energy": 0, "lastUpdated": int(time.time() * 1000)}},
             "grantedItems": [],
         }

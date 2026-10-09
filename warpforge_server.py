@@ -494,8 +494,9 @@ class Handler(BaseHTTPRequestHandler):
     def _too_many(self, ip):
         now = time.time()
         with Handler._hits_lock:
-            if len(Handler._hits) > 20000:
-                Handler._hits.clear()
+            if len(Handler._hits) > 20000:          # drop the addresses whose minute is over, not everyone's count
+                for k in [k for k, (t, _) in Handler._hits.items() if now - t >= 60]:
+                    del Handler._hits[k]
             first, count = Handler._hits.get(ip, (now, 0))
             if now - first >= 60:
                 first, count = now, 0
@@ -673,6 +674,8 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_file(self, rel):
         if rel == "revival-settings.json":
             return self._serve_settings()
+        if rel.lower().endswith(".zip") and rel not in self.ZIPS_FOR_DOWNLOAD:
+            return self._json(404, {"error": "not found"})
         root = os.path.realpath(self.files_dir)
         full = os.path.realpath(os.path.join(root, rel))
         if not full.startswith(root + os.sep):
@@ -688,11 +691,19 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, data, ctype)
 
 
+    # What the mod reads from the settings file. Everything else in it (relays, sign-in and https
+    # rules, version and mod checks, account settings) stays on the server.
+    SETTINGS_FOR_GAMES = ("turnSeconds", "creatorUrl", "rulesVersion", "matchPort",
+                          "practiceClassicWarlordLife", "offenseCards", "longGame")
+    # Whole archives are not handed out; the files inside some of them are (card-art.zip ->
+    # files/card-art/<name>), and art-kit.zip is the download the art guide links to.
+    ZIPS_FOR_DOWNLOAD = ("art-kit.zip",)
+
     def _serve_settings(self):
         """The settings file as the mod reads it, plus the starting hand of each game mode that
         sets one ("startingHand" / "secondPlayerExtraCards" in its gameplayVariables in
         content/liveops/GameModes.json), as {"startingHands": {eventId: {...}}}."""
-        data = dict(settings())
+        data = {k: v for k, v in settings().items() if k in self.SETTINGS_FOR_GAMES}
         hands = mode_hands()
         if hands:
             data["startingHands"] = hands
