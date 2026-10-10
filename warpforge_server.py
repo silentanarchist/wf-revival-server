@@ -358,7 +358,9 @@ class Handler(BaseHTTPRequestHandler):
     # Limits, so one connection cannot tie the server up:
     timeout = 30                        # seconds a web request may take to arrive (not match connections)
     MAX_BODY = 8 * 1024 * 1024          # largest request body accepted (an uploaded picture is about 5.5 MB)
-    REQUESTS_PER_MINUTE = 900           # per address; a game start is a burst of about 60 requests
+    REQUESTS_PER_MINUTE = 1800          # per address; a game start is a burst of about 60 requests, a running
+                                        # game asks about 20 a minute, and a household can share one address
+    LIMIT_LOG = None                    # logs/limits.log, set at start-up
     REQUEST_DEADLINE = 60               # seconds for a request line and headers to arrive in full
     BODY_DEADLINE = 180                 # ... and for its body (an uploaded picture on a slow line)
     MAX_WEB_CONNECTIONS = 256           # web connections served at once (match connections not counted)
@@ -549,7 +551,26 @@ class Handler(BaseHTTPRequestHandler):
             if now - first >= 60:
                 first, count = now, 0
             Handler._hits[ip] = (first, count + 1)
-            return count + 1 > self.REQUESTS_PER_MINUTE
+            over = count + 1 > self.REQUESTS_PER_MINUTE
+        if over and count == self.REQUESTS_PER_MINUTE:        # once per address and minute: which address, asking what
+            self._note_limit(ip)
+        return over
+
+    def _note_limit(self, ip):
+        """Writes a refused-for-too-many-requests moment to logs/limits.log (and the console): a short
+        fingerprint of the address (never the address), and what it was asking for, so the cause of a
+        "too many requests" report can be found."""
+        mark = hashlib.sha256(("limits|" + str(ip)).encode("utf-8")).hexdigest()[:10]
+        path = urlparse(getattr(self, "path", "") or "").path[:80]
+        line = "%s address #%s over %d requests/minute (now asking %s)" % (
+            time.strftime("%Y-%m-%d %H:%M:%S"), mark, self.REQUESTS_PER_MINUTE, path)
+        log.warning(line)
+        if Handler.LIMIT_LOG:
+            try:
+                with open(Handler.LIMIT_LOG, "a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+            except OSError:
+                pass
 
     def log_message(self, fmt, *args):
         if "/playfab/Revival/ChatPoll" in (getattr(self, "path", "") or ""):
@@ -856,6 +877,7 @@ def main():
     os.makedirs(Handler.files_dir, exist_ok=True)
     base = os.path.dirname(os.path.abspath(__file__))
     Handler.playfab_args = dict(data_root=args.data, content_root=args.content, log_dir=os.path.join(base, "logs"))
+    Handler.LIMIT_LOG = os.path.join(base, "logs", "limits.log")
     Handler.current_playfab()
     Handler.pack.refresh()
     folders = [args.certs] if args.certs else [
