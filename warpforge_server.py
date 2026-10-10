@@ -467,6 +467,7 @@ class Handler(BaseHTTPRequestHandler):
                 Handler._web_by[who] = mine + 1
         if busy:
             log.warning("%s: refused, %d web connections open (%d from this address)", who, Handler._web[0], mine)
+            self._note_busy(who, mine)
             try:
                 self.request.sendall(b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
             except OSError:
@@ -555,6 +556,28 @@ class Handler(BaseHTTPRequestHandler):
         if over and count == self.REQUESTS_PER_MINUTE:        # once per address and minute: which address, asking what
             self._note_limit(ip)
         return over
+
+    _busy_noted = {}
+
+    def _note_busy(self, who, mine):
+        """A connection turned away because too many were open: written to logs/limits.log too (at most
+        once a minute per address), with a fingerprint of the address, never the address."""
+        now = time.time()
+        with Handler._web_lock:
+            if now - Handler._busy_noted.get(who, 0) < 60:
+                return
+            if len(Handler._busy_noted) > 5000:
+                Handler._busy_noted.clear()
+            Handler._busy_noted[who] = now
+        mark = hashlib.sha256(("limits|" + str(who)).encode("utf-8")).hexdigest()[:10]
+        line = "%s address #%s turned away: %d connections open from it (most %d), %d open in all (most %d)" % (
+            time.strftime("%Y-%m-%d %H:%M:%S"), mark, mine, self.MAX_WEB_PER_ADDRESS, Handler._web[0], self.MAX_WEB_CONNECTIONS)
+        if Handler.LIMIT_LOG:
+            try:
+                with open(Handler.LIMIT_LOG, "a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+            except OSError:
+                pass
 
     def _note_limit(self, ip):
         """Writes a refused-for-too-many-requests moment to logs/limits.log (and the console): a short
