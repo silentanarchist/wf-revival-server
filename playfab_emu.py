@@ -768,11 +768,17 @@ class CardCompiler:
                  useOverDraw=0 if kind == "tactic" else 1)
         tag = self.n["armyTags"].get(card.get("army") or "", card.get("army") or "Neutral")
         d["m_Name"] = "%s %s-%s" % ("war" if kind == "hero" else ("T" if kind == "tactic" else "") + "C", tag, card["name"])
-        if card.get("token"):
+        if card.get("token") or card.get("enchantment"):
             # how the game marks cards created by other cards (seen on every such official card):
             # not shown in the collection, not part of the inventory, never picked by "random card" effects
             d.update(showInCollectionOptions=0, inventoryOptions=10, cantBeRandomlyCreated=1)
             d["m_Name"] = "Z-NC " + d["m_Name"].split(" ", 1)[1]
+        if card.get("enchantment"):
+            # an enchantment: a hidden card other cards attach with a buff of type enchantment (the 80 official
+            # ones are named "<card>_enchantment"); its abilities run as the host card's
+            d["m_Name"] += "_enchantment"
+            if not card.get("abilities"):
+                self.notes.append("an enchantment does nothing without abilities - add what it does to the card it is attached to")
         d["deckCriteria"]["triggerIf"] = 1
         d["normalAbilityBoardCriteria"]["triggerIf"] = 1
         d["attackScoringCriteria"] = copy.deepcopy(self.n["attackScoring"])
@@ -1665,6 +1671,10 @@ class PlayFabEmulator:
                "designNotes": str(card.get("designNotes") or "")[:1000],
                # a card that only exists when another card creates it: not in the collection, not for decks
                "token": card.get("token") is True and card.get("kind") != "hero"}
+        if card.get("enchantment") is True and kind != "hero":
+            # a hidden card other cards attach with an enchantment buff (always a token)
+            out["enchantment"] = True
+            out["token"] = True
         if kind != "tactic":
             out["melee"] = self._creator_int(card.get("melee", 0), 0, 30, "melee")
             out["ranged"] = self._creator_int(card.get("ranged", 0), 0, 30, "ranged")
