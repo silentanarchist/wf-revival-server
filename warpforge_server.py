@@ -456,7 +456,10 @@ class Handler(BaseHTTPRequestHandler):
         who = self.client_address[0]
         with Handler._web_lock:
             mine = Handler._web_by.get(who, 0)
-            busy = Handler._web[0] >= self.MAX_WEB_CONNECTIONS or mine >= self.MAX_WEB_PER_ADDRESS
+            # every website request arrives from Caddy on this computer, so loopback has no per-address
+            # cap (only the overall one); the real visitor is not known until the headers are read (review #18b)
+            local = who in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+            busy = Handler._web[0] >= self.MAX_WEB_CONNECTIONS or (not local and mine >= self.MAX_WEB_PER_ADDRESS)
             if not busy:
                 Handler._web[0] += 1
                 Handler._web_by[who] = mine + 1

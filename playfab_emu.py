@@ -1446,8 +1446,17 @@ class PlayFabEmulator:
     def _site_seen_save(self):
         now = time.time()
         seen = self._site_seen()
-        for k in [k for k, t in seen.items() if t < now - self.SITE_SESSION_DAYS * 86400]:
-            del seen[k]                               # expired: refused anyway, no need to remember
+        # An expired session is kept as 0 (still refused), never deleted: a session with no time at all
+        # counts as one from before this existed and would be accepted again (review #15a). Entries go
+        # only once the session is gone from every account (signed out, password changed, replaced).
+        live = {d for u in self._creator_users().values() for d in (u.get("sessions") or [])}
+        for k in list(seen):
+            if k not in live:
+                del seen[k]
+            elif seen[k] < now - self.SITE_SESSION_DAYS * 86400:
+                seen[k] = 0
+        for k in live - set(seen):
+            seen[k] = now                             # sessions from before this existed: their 30 days start now
         path = os.path.join(self.store.root, "creator_sessions_seen.json")
         with open(path + ".tmp", "w", encoding="utf-8") as f:
             json.dump(seen, f)
