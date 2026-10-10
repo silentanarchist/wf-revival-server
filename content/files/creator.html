@@ -109,21 +109,33 @@
   .faceBox { --w: 300px; width: var(--w); height: calc(var(--w) * 960 / 684); position: relative; overflow: hidden; margin: 0 auto 12px; flex: none; }
   .face { position: absolute; left: 0; top: 0; width: 684px; height: 960px; transform-origin: 0 0; }
   .face > * { position: absolute; }
-  .face .fBack { left: 105px; top: 70px; width: 474px; height: 860px; background: #0b0c0f; }
-  .face .fArt { left: -170px; top: -36px; width: 1024px; height: 1024px; background: center / cover no-repeat; clip-path: inset(72px 262px 34px 262px); }   /* only inside the frame's border */
-  .face .fShade { left: 105px; width: 474px; top: 470px; height: 420px; background: linear-gradient(transparent, #000d 38%, #000f); }
+  /* positions: the frame texture's pixels minus the crop (170, 36); art placement from the art guide's
+     measurements of official cards (units: the card edge is art x 227-802, y 100-961; stratagems: the
+     whole square, shrunk into the window above the text box) */
+  .face .fBack { left: 51px; top: 38px; width: 584px; height: 917px; background: #0b0c0f; }
+  .face .fArt { background: center / 100% 100% no-repeat; }
+  .face .fArt.unit { left: -180px; top: -21px; width: 1040px; height: 1040px; clip-path: inset(59px 225px 64px 231px); }
+  .face .fArt.strat { left: 96px; top: 98px; width: 498px; height: 498px; clip-path: inset(0 18px 45px 11px); }
+  .face .fPop { left: -180px; top: -21px; width: 1040px; height: 1040px; background: center / 100% 100% no-repeat;
+                -webkit-mask: center / 100% 100% no-repeat; mask: center / 100% 100% no-repeat; }
+  .face .fShade { left: 51px; width: 584px; top: 430px; height: 525px; background: linear-gradient(transparent, #000c 30%, #000e 60%, #000f); }
   .face .fFrame { left: 0; top: 0; width: 684px; height: 960px; }
-  .face .fName { left: 120px; width: 444px; text-align: center; color: #f3ead7; font: 700 34px/1.1 Georgia, serif; text-shadow: 0 2px 6px #000, 0 0 2px #000; }
-  .face .fType { left: 120px; width: 444px; text-align: center; color: #c9b98f; font: 600 17px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; text-shadow: 0 1px 3px #000; }
-  .face .fText { left: 128px; width: 428px; color: #ece6da; font: 24px/1.28 system-ui, sans-serif; text-align: center; white-space: pre-wrap; text-shadow: 0 1px 3px #000; }
-  .face .fText b { color: #f2c35c; }
-  .face .fCost { left: 44px; top: 34px; width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; color: #fff;
-                 font: 800 54px/1 Georgia, serif; text-shadow: 0 2px 4px #000; border: 5px solid #c9b37a;
-                 background: radial-gradient(circle at 35% 30%, #7fc4ff, #1b5fa8 55%, #0b2c55); box-shadow: 0 3px 10px #000a; }
+  .face .fBlock { left: 116px; width: 452px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .face .fName { color: #f6f0e2; font: 400 42px/1.1 Georgia, "Times New Roman", serif; text-shadow: 0 2px 5px #000, 0 0 2px #000; }
+  .face .fFaction { color: #f0a25c; font: 500 24px/1.3 system-ui, sans-serif; text-shadow: 0 1px 3px #000; margin-bottom: 12px; }
+  .face .fText { color: #f2eee6; font: 25px/1.3 system-ui, sans-serif; white-space: pre-wrap; text-shadow: 0 1px 3px #000; }
+  .face .fText b { color: #fff; font-weight: 700; }
+  .face .fUnit { left: 112px; width: 460px; top: 806px; text-align: center; color: #f0a25c; font: 500 25px/1 system-ui, sans-serif; text-shadow: 0 1px 3px #000; }
+  .face .fCost { width: 112px; height: 112px; margin: -56px 0 0 -56px; display: grid; place-items: center; color: #fff; font: 600 62px/1 system-ui, sans-serif;
+                 text-shadow: 0 2px 4px #000; background: #b9c4cc; clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+  .face .fCost::before { content: ""; position: absolute; inset: 7px; z-index: -1; background: radial-gradient(circle at 45% 35%, #2a8fd8, #0d3d73 60%, #071d3a);
+                 clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+  .face .fCost { isolation: isolate; }
   .face .fStat { width: 96px; height: 96px; margin: -48px 0 0 -48px; display: grid; place-items: center; color: #fff;
-                 font: 800 46px/1 Georgia, serif; text-shadow: 0 0 4px #000, 0 2px 3px #000; -webkit-text-stroke: 1.5px #000; }
-  .face .fArmour { width: 76px; height: 84px; margin: -42px 0 0 -38px; display: grid; place-items: center; color: #fff; font: 800 38px/1 Georgia, serif;
-                   background: linear-gradient(#9aa3ad, #4c545e); clip-path: polygon(50% 0, 100% 14%, 92% 62%, 50% 100%, 8% 62%, 0 14%); text-shadow: 0 1px 3px #000; }
+                 font: 600 52px/1 system-ui, sans-serif; text-shadow: 0 0 4px #000, 0 2px 3px #000; }
+  .face .fArmour { width: 76px; height: 86px; margin: -43px 0 0 -38px; display: grid; place-items: center; color: #fff; font: 600 44px/1 system-ui, sans-serif;
+                   background: linear-gradient(#2b3a46, #121a21); border: 0; clip-path: polygon(50% 0, 100% 14%, 92% 62%, 50% 100%, 8% 62%, 0 14%); text-shadow: 0 1px 3px #000; }
+  .face .fGem { width: 34px; height: 34px; margin: -17px 0 0 -17px; transform: rotate(45deg); border: 3px solid #d8dde2; box-shadow: 0 0 8px #0008; }
   .cv { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
   .cvList { max-height: 75vh; overflow: auto; border: 1px solid var(--line); border-radius: 6px; background: #13151a; }
   .cvList .it { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 8px; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #22252c; }
@@ -1401,8 +1413,14 @@ function drawArtPreview() {
   $("maskPick").textContent = c && c.artMask ? "Replace the pop-out mask" : "Add a pop-out mask (optional)";
   $("maskState").textContent = c && c.artMask ? "This card has a pop-out mask." : "Without a mask the whole picture stays inside the frame.";
   box.classList.remove("has"); box.style.backgroundImage = "";
-  const place = (url, unit) => {
+  const place = (url, unit, mask, luminance) => {
     const fa = document.querySelector("#pvFace .fArt"); if (fa) fa.style.backgroundImage = `url("${url}")`;   // the card drawn like the game
+    const face = document.querySelector("#pvFace .face");
+    if (face && mask && unit) {                    // an official unit's pop-out, over the frame
+      const pop = el("div", { class: "fPop" }); pop.style.backgroundImage = `url("${url}")`; pop.style.webkitMaskImage = pop.style.maskImage = `url("${mask}")`;
+      if (luminance) pop.style.maskMode = "luminance";        // an uploaded mask is black and white, not see-through
+      face.querySelector(".fFrame").after(pop);
+    }
     box.classList.add("has");
     box.style.backgroundImage = `url(${url})`;
     box.style.backgroundSize = unit ? `${ART / (COL_R - COL_L + 1) * 100}% auto` : "cover";
@@ -1413,17 +1431,19 @@ function drawArtPreview() {
   if (!up && borrowed && (cardInfo[borrowed] || /^[0-9a-f]{32}$/.test(borrowed))) {      // hidden official cards (tokens) have art too
     // an official card's picture, from the server's copy of the game's card art (if it has one)
     const url = FILES + "card-art/" + encodeURIComponent(borrowed) + ".jpg", probe = new Image();
-    probe.onload = () => { if (collect().art === borrowed && !(art.img && art.live)) place(url, (cardInfo[borrowed] || { kind: val("f_kind") }).kind !== "tactic"); };
+    probe.onload = () => { if (collect().art === borrowed && !(art.img && art.live)) place(url, (cardInfo[borrowed] || { kind: val("f_kind") }).kind !== "tactic", maskUrlOf(borrowed)); };
     probe.src = url;
     return;
   }
   if (!up) return;
-  const key = c.id + c.artUpload, show = url => {
-    if (!editingCard || editingCard.id + editingCard.artUpload !== key) return;
-    place(url, unitArt());
+  // the uploaded picture and its pop-out mask (if any), fetched once per version of each
+  const key = c.id + c.artUpload + (c.artMask || ""), show = url => {
+    if (!editingCard || editingCard.id + editingCard.artUpload + (editingCard.artMask || "") !== key) return;
+    place(url, unitArt(), art.masks[key], true);
   };
+  art.masks = art.masks || {};
   if (art.cache[key]) return show(art.cache[key]);
-  if (art.cache[key] === undefined) { art.cache[key] = null; call("CreatorArtGet", { id: c.id }).then(d => { art.cache[key] = d.image; show(d.image); }).catch(() => { delete art.cache[key]; }); }
+  if (art.cache[key] === undefined) { art.cache[key] = null; call("CreatorArtGet", { id: c.id }).then(d => { art.cache[key] = d.image; art.masks[key] = d.mask || ""; show(d.image); }).catch(() => { delete art.cache[key]; }); }
 }
 // Mechanics that belong to another faction than the card's: allowed, but pointed out.
 function factionWarnings() {
@@ -1622,35 +1642,48 @@ function richText(box, text) {                  // **Keyword** -> bold, as the g
     if (/^\*\*[^*]+\*\*$/.test(part)) box.append(el("b", { text: part.slice(2, -2) })); else if (part) box.append(document.createTextNode(part));
   });
 }
-function cardFace(c, artUrl, width) {
+function cardFace(c, artUrl, width, maskUrl) {
   const strat = c.kind === "tactic";
   const frame = c.frame || `${c.army}_${strat ? "stratagem" : "troop"}_${TIERS[c.rarity] || 1}`;
   width = width || 300;
   const box = el("div", { class: "faceBox" }); box.style.setProperty("--w", width + "px");
   const f = el("div", { class: "face", style: `transform:scale(${width / 684})` });
-  const y = strat ? { name: 574, type: 618, text: 652, textMax: 250 } : { name: 548, type: 592, text: 626, textMax: 150 };
-  const art = el("div", { class: "fArt" }); if (artUrl) art.style.backgroundImage = `url("${artUrl}")`;
+  const art = el("div", { class: "fArt " + (strat ? "strat" : "unit") }); if (artUrl) art.style.backgroundImage = `url("${artUrl}")`;
   const img = el("img", { class: "fFrame", alt: "", src: FILES + "card-frames/" + encodeURIComponent(frame) + ".webp" });
   img.onerror = () => { img.remove(); f.style.outline = "3px solid #555"; };
-  const text = el("div", { class: "fText" }); richText(text, c.text);
-  const len = String(c.text || "").length;
-  text.style.fontSize = (len > 220 ? 18 : len > 150 ? 20 : len > 90 ? 22 : 24) + "px";
-  text.style.top = y.text + "px"; text.style.maxHeight = y.textMax + "px"; text.style.overflow = "hidden";
-  const kindName = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" }[c.kind] || "";
   f.append(el("div", { class: "fBack" }), art);
   if (!strat) f.append(el("div", { class: "fShade" }));
-  f.append(img, el("div", { class: "fName", style: `top:${y.name}px`, text: c.name || "" }),
-    el("div", { class: "fType", style: `top:${y.type}px`, text: [kindName, c.keyword && lab(schema.keywords, c.keyword)].filter(Boolean).join(" · ") }), text);
-  if (c.kind !== "hero" && c.cost != null && c.cost >= 0) f.append(el("div", { class: "fCost", text: String(c.cost) }));
+  f.append(img);
+  // parts of a unit's art drawn over the frame: the same picture through its pop-out mask
+  if (!strat && artUrl && maskUrl) {
+    const pop = el("div", { class: "fPop" });
+    pop.style.backgroundImage = `url("${artUrl}")`; pop.style.webkitMaskImage = pop.style.maskImage = `url("${maskUrl}")`;
+    f.append(pop);
+  }
+  const text = el("div", { class: "fText" }); richText(text, c.text);
+  const len = String(c.text || "").length;
+  text.style.fontSize = (len > 200 ? 20 : len > 140 ? 23 : len > 90 ? 25 : 28) + "px";
+  const block = el("div", { class: "fBlock" }, el("div", { class: "fName", text: c.name || "" }),
+    el("div", { class: "fFaction", text: lab(schema.armies, c.army) }), text);
+  // official layout: a unit's name and text sit just above its unit type; a stratagem's start at the top of the text box
+  if (strat) block.style.top = "568px"; else block.style.bottom = "168px";
+  if (!strat) { const nm = block.firstChild; if (len > 150) nm.style.fontSize = "36px"; }
+  f.append(block);
+  if (!strat) f.append(el("div", { class: "fUnit", text: c.kind === "hero" ? "Warlord" : c.keyword && c.keyword !== "none" ? lab(schema.keywords, c.keyword) : "" }));
+  if (c.kind !== "hero" && c.cost != null && c.cost >= 0)
+    f.append(el("div", { class: "fCost", style: strat ? "left:559px;top:266px" : "left:572px;top:284px", text: String(c.cost) }));
   if (!strat) {
     const stat = (x, yy, v) => el("div", { class: "fStat", style: `left:${x}px;top:${yy}px`, text: String(v ?? 0) });
-    f.append(stat(88, 826, c.melee), stat(161, 894, c.ranged), stat(564, 880, c.health));
-    if (c.armour) f.append(el("div", { class: "fArmour", style: "left:488px;top:880px", text: String(c.armour) }));
+    f.append(stat(88, 827, c.melee), stat(161, 894, c.ranged), stat(563, 879, c.health));
+    if (c.armour) f.append(el("div", { class: "fArmour", style: "left:608px;top:791px", text: String(c.armour) }));
   }
+  const gem = { Common: "#cfe4ea", Rare: "#3f8fe0", Epic: "#9b4fd8", Legendary: "#f0a030" }[c.rarity];
+  if (gem) f.append(el("div", { class: "fGem", style: `left:342px;top:922px;background:${gem}` }));
   box.append(f);
   return box;
 }
 function artUrlOf(id) { return id ? FILES + "card-art/" + encodeURIComponent(id) + ".jpg" : ""; }
+function maskUrlOf(id) { return id ? FILES + "card-masks/" + encodeURIComponent(id) + ".png" : ""; }   // pop-out mask (units only)
 
 /* ---------- card viewer ---------- */
 let cvCards = null, cvPick = "", cvAsk = 0;
@@ -1696,7 +1729,7 @@ async function viewCard(id) {
     ["In the game", { collectible: "Collectible", created: "Created by other cards (not in the collection)", defence: "Defence card" }[c.status]],
     d.design.traits && d.design.traits.length ? ["Keywords", d.design.traits.map(t => lab(schema.traits, t.name) + (t.value ? " " + t.value : "")).join(", ")] : null].filter(Boolean);
   const text = el("p", {}); richText(text, c.text);
-  box.append(el("div", { class: "top" }, cardFace(c, artUrlOf(c.id), 320),
+  box.append(el("div", { class: "top" }, cardFace(c, artUrlOf(c.id), 320, maskUrlOf(c.id)),
     el("div", { class: "facts" }, el("h2", { text: c.name, style: "margin-top:0" }), text,
       el("table", {}, ...facts.map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { text: String(v) })))),
       d.lore ? el("p", { class: "hint", style: "font-style:italic", text: d.lore }) : null,

@@ -7,8 +7,10 @@ Reads, from your own copy of the game:
     picture is stored;
   - the game's card art bundles (Warpforge_Data/StreamingAssets/aa/StandaloneWindows64/
     *cardassets_assets_all.bundle).
-Writes content/files/card-art.zip: one JPEG per card, named by card id (AM3.jpg, ...). The server
-serves files/card-art/<id>.jpg straight out of that zip; no restart is needed when it changes.
+Writes content/files/card-art.zip: one JPEG per card, named by card id (AM3.jpg, ...), and for cards
+and content/files/card-masks.zip: for the units whose art breaks out over the frame, the pop-out mask
+(AM3.png: opaque where the art is drawn over the frame, half the picture's size). The server serves
+files/card-art/<name> and files/card-masks/<name> straight out of the zips; no restart is needed.
 
 Needs Python 3.9+ with UnityPy and Pillow:  pip install UnityPy Pillow
 
@@ -129,7 +131,7 @@ def main():
 
     try:
         import UnityPy
-        from PIL import Image
+        from PIL import Image, ImageStat
     except ImportError:
         sys.exit("This needs UnityPy and Pillow. Install them with:  pip install UnityPy Pillow")
 
@@ -168,7 +170,8 @@ def main():
     tmp = args.out + ".tmp"
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     written = 0
-    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as z:
+    masks_out = os.path.join(os.path.dirname(os.path.abspath(args.out)), "card-masks.zip")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as z, zipfile.ZipFile(masks_out + ".tmp", "w", zipfile.ZIP_STORED) as zm:
         for b, ids in sorted(by_bundle.items()):
             path = os.path.join(bundles_dir, b)
             if not os.path.exists(path):
@@ -181,17 +184,27 @@ def main():
                 if iid not in textures:
                     continue
                 src = textures[iid].read().image.convert("RGBA")
-                img = Image.new("RGB", src.size, (0, 0, 0))               # see-through parts become black
-                img.paste(src, mask=src.split()[3])
-                img = img.resize((args.size, args.size), Image.LANCZOS)
+                # The colour channels are the whole picture. The alpha channel is NOT see-through: it is the
+                # pop-out mask (white where the art is drawn over the frame), so it is kept apart.
+                img = src.convert("RGB").resize((args.size, args.size), Image.LANCZOS)
                 buf = io.BytesIO()
                 img.save(buf, "JPEG", quality=args.quality, optimize=True)
+                mask = src.split()[3]
+                lo, hi = mask.getextrema()
+                pop = None
+                if hi > 0 and ImageStat.Stat(mask).mean[0] < 200:       # stratagems' masks are (nearly) all white: not used
+                    pop = io.BytesIO()
+                    m = mask.resize((args.size // 2, args.size // 2), Image.LANCZOS)        # soft edges: half size is plenty
+                    Image.merge("LA", (Image.new("L", m.size, 255), m)).save(pop, "PNG", optimize=True)   # see-through except the pop-out
                 for cid in cids:
                     z.writestr(cid + ".jpg", buf.getvalue())
+                    if pop:
+                        zm.writestr(cid + ".png", pop.getvalue())        # opacity: how much of the picture shows over the frame
                     written += 1
                     n += 1
             print("  %-60s %4d" % (b, n))
     os.replace(tmp, args.out)
+    os.replace(masks_out + ".tmp", masks_out)
     print("Wrote %d pictures to %s (%.1f MB)" % (written, args.out, os.path.getsize(args.out) / 1e6))
 
 

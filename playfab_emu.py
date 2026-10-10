@@ -1900,7 +1900,11 @@ class PlayFabEmulator:
                 return err("InvalidParams", "this card has no uploaded artwork")
             with open(art, "rb") as f:
                 raw = f.read()
-        return ok({"image": "data:image/png;base64," + base64.b64encode(raw).decode("ascii"), "stamp": card["artUpload"]})
+            mask = None
+            if card.get("artMask") and os.path.isfile(art[:-4] + ".mask.png"):     # white = drawn over the frame
+                with open(art[:-4] + ".mask.png", "rb") as f:
+                    mask = "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+        return ok({"image": "data:image/png;base64," + base64.b64encode(raw).decode("ascii"), "stamp": card["artUpload"], "mask": mask})
 
     def api_Revival_CreatorArtRemove(self, req, headers):
         with self.store.lock:
