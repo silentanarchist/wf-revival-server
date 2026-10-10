@@ -4033,7 +4033,7 @@ class PlayFabEmulator:
 
     def _draft_warlords(self, player, data):
         """The warlords a new draft run offers: `warlordsPerDraft` (the event's setting, default 3)
-        picked at random from the warlords in this player's collection, limited to the event's
+        picked at random from the warlords in this player's collection, each from a different army, limited to the event's
         armies ("specificArmies") and warlords ("specificWarlords") when it names any, without its
         "blacklistedWarlords". With every card given to everyone that is every warlord of those
         armies; if cards are ever unlocked one by one, each player draws from their own. What the
@@ -4067,7 +4067,19 @@ class PlayFabEmulator:
             log.warning("draft %s: no warlord in %s's collection fits the event; nothing offered", event_id, player.get("PlayFabId"))
         if count <= 0 or len(pool) <= count:
             return pool
-        return random.sample(pool, count)
+        if known is None:
+            return random.sample(pool, count)
+        # one warlord per army: armies drawn at random, then a warlord from each; only when there are
+        # fewer armies than warlords to offer does an army appear twice
+        by_army = {}
+        for wid in pool:
+            by_army.setdefault(known.get(wid, {}).get("army") or "", []).append(wid)
+        armies_drawn = random.sample(list(by_army), min(count, len(by_army)))
+        picked = [random.choice(by_army[a]) for a in armies_drawn]
+        rest = [w for w in pool if w not in picked]
+        picked += random.sample(rest, count - len(picked))
+        random.shuffle(picked)
+        return picked
 
     def _draft_enter(self, player, params, pay_state):
         now = int(time.time() * 1000)
