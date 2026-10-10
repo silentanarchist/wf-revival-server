@@ -1028,7 +1028,6 @@ class PlayFabEmulator:
         connected to a match room, online while their game asks for chat, offline otherwise. Only
         for friends who have added this player back - adding someone does not show you when they
         are online until they add you too."""
-        player = self.store.load(pfid) or {}
         now = time.time()
         playing = set()
         try:
@@ -1040,12 +1039,8 @@ class PlayFabEmulator:
         except Exception:
             pass
         out = {}
-        for f in self._friends(player):
-            fid = f.get("id") if isinstance(f, dict) else None
-            if not isinstance(fid, str):
-                continue
-            other = self.store.load(fid) or {}
-            if not any(isinstance(g, dict) and g.get("id") == pfid for g in self._friends(other)):
+        for fid in self._friend_ids(pfid):
+            if not re.fullmatch(r"[0-9A-F]{16}", fid) or pfid not in self._friend_ids(fid):
                 continue
             if fid in playing:
                 out[fid] = "playing"
@@ -1100,8 +1095,10 @@ class PlayFabEmulator:
             return ok({"sent": False})              # the game's messages to itself are not passed back
         if not self._allow("private", me, 30, 60):
             return err("TooManyRequests", "too many messages; wait a moment", 1199, 429)
-        if not self.store.load(to):
-            return err("NotFound", "no such player")
+        if me not in self._friend_ids(to):
+            # only players who have the sender on their friend list hear from them, and the sender is
+            # not told either way (review #17): no messages from strangers, no "online?" probing
+            return ok({"sent": True})
         # The game asks "are you online?" before a challenge and gives up after 4 seconds, too
         # short for a question and its answer to each wait for a chat poll. When the other game
         # asked for chat just now, the server answers for it, in the game's own wording.
@@ -1217,6 +1214,15 @@ class PlayFabEmulator:
                     "startingHand": (0, 10), "secondPlayerExtraCards": (0, 10)}
     MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic")
     SETTING_SWITCHES = ("offenseCards", "onlyRevivalMod", "requireAccount", "requireHttps", "requireEncryptedMatches")
+    # every top-level key the server or the mod reads; keys starting with "_" are notes (review #21)
+    SETTING_KEYS = SETTING_SWITCHES + ("turnSeconds", "practiceClassicWarlordLife", "rulesVersion", "minModVersion", "creatorUrl",
+                                       "relays", "accounts", "longGame", "photon", "logDays", "matchPort", "startingHands")
+
+    def _config_unknown(self, which, data):
+        """Top-level settings nothing reads (most likely a typo) - warned about, not refused."""
+        if which != "settings" or not isinstance(data, dict):
+            return []
+        return sorted(k for k in data if not str(k).startswith("_") and k not in self.SETTING_KEYS)
 
     def _config_founder(self, req):
         me = self._creator_account(req)
@@ -1316,6 +1322,12 @@ class PlayFabEmulator:
         me = self._config_founder(req)
         if not me:
             return err("NotAuthorized", "only founding admins can change the server settings")
+        # the password again, so a session token lifted from a browser cannot change the server (review #15)
+        if not self._allow("config-pass-fail", me["name"].lower(), 5, 900, count=False):
+            return err("TooManyAttempts", "too many wrong passwords - wait a few minutes and try again", 1199, 429)
+        if not self._creator_check_passphrase(me, req.get("passphrase")):
+            self._allow("config-pass-fail", me["name"].lower(), 5, 900)
+            return err("InvalidPassword", "enter your password to save server settings")
         which = req.get("file")
         if which not in self.CONFIG_FILES:
             return err("InvalidParams", "unknown settings file")
@@ -1347,7 +1359,7 @@ class PlayFabEmulator:
                 f.write(body)
             _retry_locked(lambda: os.replace(path + ".tmp", path))
         log.info("server settings: %s saved %s", me["name"], self.CONFIG_FILES[which][1])
-        return ok({"stamp": self._config_stamp(body)})
+        return ok({"stamp": self._config_stamp(body), "unknown": self._config_unknown(which, data)})
 
     def api_Revival_CreatorReports(self, req, headers):
         """Admins: reported chat messages, newest first (closed ones only with "closed": true)."""
@@ -1417,16 +1429,65 @@ class PlayFabEmulator:
     def _creator_hash(passphrase, salt):
         return hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), bytes.fromhex(salt), 200000).hex()
 
-    def _creator_user(self, req):
-        """Display name of the signed-in author, or None."""
+    # Site sessions stop working after SITE_SESSION_DAYS without use (security review #15). When each was
+    # last used is kept in its own small file with its own lock, so a lookup can note the time even
+    # while the caller holds the store lock. Sessions from before this existed count from first use.
+    SITE_SESSION_DAYS = 30
+
+    def _site_seen(self):
+        if getattr(self, "_site_seen_cache", None) is None:
+            try:
+                with open(os.path.join(self.store.root, "creator_sessions_seen.json"), encoding="utf-8") as f:
+                    self._site_seen_cache = {k: float(v) for k, v in json.load(f).items()}
+            except (OSError, ValueError, TypeError, AttributeError):
+                self._site_seen_cache = {}
+        return self._site_seen_cache
+
+    def _site_seen_save(self):
+        now = time.time()
+        seen = self._site_seen()
+        for k in [k for k, t in seen.items() if t < now - self.SITE_SESSION_DAYS * 86400]:
+            del seen[k]                               # expired: refused anyway, no need to remember
+        path = os.path.join(self.store.root, "creator_sessions_seen.json")
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(seen, f)
+        os.replace(path + ".tmp", path)
+
+    def _site_session_fresh(self, digest, new=False):
+        """True if this site session may be used now; notes the time of use (saved at most hourly per session)."""
+        if not hasattr(self, "_site_seen_lock"):
+            self._site_seen_lock = threading.Lock()
+        now = time.time()
+        with self._site_seen_lock:
+            seen = self._site_seen()
+            last = seen.get(digest)
+            if last is not None and not new and last < now - self.SITE_SESSION_DAYS * 86400:
+                return False
+            if new or last is None or last < now - 3600:
+                seen[digest] = now
+                try:
+                    self._site_seen_save()
+                except OSError:
+                    log.warning("could not save when site sessions were last used")
+        return True
+
+    def _creator_session_owner(self, req):
+        """The account a site session token belongs to (expired sessions belong to nobody), or None."""
         token = str(req.get("session") or "")
         if not token:
             return None
         digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
         for user in self._creator_users().values():
             if digest in user.get("sessions", []):
-                return None if self._creator_perms(user)["access"] in ("banned", "requested") else user["name"]
+                return user if self._site_session_fresh(digest) else None
         return None
+
+    def _creator_user(self, req):
+        """Display name of the signed-in author, or None."""
+        user = self._creator_session_owner(req)
+        if user is None:
+            return None
+        return None if self._creator_perms(user)["access"] in ("banned", "requested") else user["name"]
 
     # Wrong passwords are limited per address (20 in 15 minutes) and per account name (10). The
     # per-name limit alone would let anyone lock any account - an admin's included - by guessing
@@ -1507,6 +1568,7 @@ class PlayFabEmulator:
             token = uuid.uuid4().hex + uuid.uuid4().hex
             user["sessions"] = (user.get("sessions", []) + [hashlib.sha256(token.encode()).hexdigest()])[-5:]
             self._creator_users_save(users)
+        self._site_session_fresh(hashlib.sha256(token.encode()).hexdigest(), new=True)
         return ok({"name": user["name"], "session": token, "account": self._creator_perms(user)})
 
     def api_Revival_CreatorSignOut(self, req, headers):
@@ -1560,15 +1622,9 @@ class PlayFabEmulator:
 
     def _creator_account(self, req):
         """The signed-in account, or None."""
-        token = str(req.get("session") or "")
-        if not token:
-            return None
-        digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        for user in self._creator_users().values():
-            if digest in user.get("sessions", []):
-                # an account set back to "requested" by an admin is signed out of the site meanwhile
-                return None if self._creator_perms(user)["access"] == "requested" else user
-        return None
+        user = self._creator_session_owner(req)
+        # an account set back to "requested" by an admin is signed out of the site meanwhile
+        return None if user is None or self._creator_perms(user)["access"] == "requested" else user
 
     def _creator_role(self, req):
         """2 admin, 1 reviewer, 0 anyone else or not signed in."""
@@ -2852,7 +2908,7 @@ class PlayFabEmulator:
                     return None
                 slot = replays[(me, rid)] = {"t": now, "resp": None, "status": None, "done": threading.Event(), "first": True}
                 return slot
-        slot["done"].wait(15)                  # the first try is still being carried out
+        slot["done"].wait(10)                  # the first try is still being carried out (10 s: review #18)
         return dict(slot, first=False) if slot["resp"] is not None else None
 
     def _handle(self, api, req, headers, handler, replay):
@@ -3298,6 +3354,23 @@ class PlayFabEmulator:
                                                  "Created": p["Created"], "LastLogin": p.get("LastLogin"),
                                                  "isBanned": False}}})
 
+    def _friend_ids(self, pfid):
+        """The ids on a player's friend list, cached until their player file changes (review #19:
+        every chat poll asks for each friend's list, which would otherwise read every file every 3 s)."""
+        try:
+            stamp = os.stat(self.store._path(pfid)).st_mtime_ns
+        except (OSError, ValueError):
+            return frozenset()
+        cache = self.__dict__.setdefault("_friend_ids_cache", {})
+        hit = cache.get(pfid)
+        if hit and hit[0] == stamp:
+            return hit[1]
+        ids = frozenset(f.get("id") for f in self._friends(self.store.load(pfid) or {}) if isinstance(f, dict) and isinstance(f.get("id"), str))
+        if len(cache) > 5000:
+            cache.clear()
+        cache[pfid] = (stamp, ids)
+        return ids
+
     def _friends(self, player):
         try:
             return (json.loads(player.get("UserData", {}).get("FriendsData") or "{}").get("friendList")) or []
@@ -3667,6 +3740,30 @@ class PlayFabEmulator:
     # with revival-settings.json "rulesVersion": a replay only re-runs the moves, so after a rules
     # change old recordings would play out wrongly - bumping rulesVersion retires them.
     REPLAY_MAX_BYTES = 256 * 1024
+    PINNED_MAX = 20                                   # pinned matches per player (review #16)
+    REPLAY_PLAYER_MAX_BYTES = 10 * 1024 * 1024        # all of a player's recordings together
+
+    def _replay_room(self, pfid, name, size, entries):
+        """Make room for a new recording of `size` bytes within the player's byte cap, dropping the oldest
+        recordings of unpinned matches first. False if it still does not fit."""
+        d = self._replay_dir(pfid)
+        pinned = {str(e.get("recordingIndex")) for e in entries if e.get("pinned")}
+        try:
+            files = [(n, os.stat(os.path.join(d, n))) for n in os.listdir(d) if n.endswith(".json") and n[:-5] != name]
+        except OSError:
+            return True
+        used = sum(st.st_size for _, st in files)
+        for n, st in sorted(files, key=lambda f: f[1].st_mtime):
+            if used + size <= self.REPLAY_PLAYER_MAX_BYTES:
+                break
+            if n[:-5] in pinned:
+                continue
+            try:
+                os.remove(os.path.join(d, n))
+                used -= st.st_size
+            except OSError:
+                pass
+        return used + size <= self.REPLAY_PLAYER_MAX_BYTES
     RECORD_NAME = re.compile(r"[0-9a-f]{16}")
 
     def _replay_dir(self, pfid):
@@ -3702,15 +3799,17 @@ class PlayFabEmulator:
             if self.RECORD_NAME.fullmatch(name) and isinstance(record, dict) \
                     and any(str(e.get("recordingIndex")) == name for e in entries):
                 body = json.dumps({"rules": self._replay_rules(), "record": record}, separators=(",", ":"))
-                if len(body) <= self.REPLAY_MAX_BYTES:
+                if len(body) > self.REPLAY_MAX_BYTES:
+                    log.warning("replay %s of %s not kept: %d bytes", name, player["PlayFabId"], len(body))
+                elif not self._replay_room(player["PlayFabId"], name, len(body), entries):
+                    log.warning("replay %s of %s not kept: the player's recordings are full", name, player["PlayFabId"])
+                else:
                     d = self._replay_dir(player["PlayFabId"])
                     os.makedirs(d, exist_ok=True)
                     path = os.path.join(d, name + ".json")
                     with open(path + ".tmp", "w", encoding="utf-8") as f:
                         f.write(body)
                     os.replace(path + ".tmp", path)
-                else:
-                    log.warning("replay %s of %s not kept: %d bytes", name, player["PlayFabId"], len(body))
             self._replays_prune(player["PlayFabId"], entries)
         return {"BattleLogData": entries}
 
@@ -3754,6 +3853,8 @@ class PlayFabEmulator:
             player.update(self.store.load(player["PlayFabId"]) or {})
             entries = self._battle_log(player)
             changed = False
+            if pinned and sum(1 for e in entries if e.get("pinned")) >= self.PINNED_MAX:
+                return {"BattleLogData": entries}     # at most PINNED_MAX pinned matches; unpin one first
             for e in entries:
                 if index and str(e.get("recordingIndex")) == index and bool(e.get("pinned")) != pinned:
                     e["pinned"], changed = pinned, True
@@ -3993,7 +4094,8 @@ class PlayFabEmulator:
             try:
                 with open(path, encoding="utf-8") as f:
                     doc = json.load(f)
-                packs = {p["id"]: p for p in doc.get("packs", []) if isinstance(p, dict) and isinstance(p.get("id"), str)}
+                packs = {p["id"]: p for p in doc.get("packs", []) if isinstance(p, dict) and isinstance(p.get("id"), str)
+                         and isinstance(p.get("cards"), list) and p["cards"]}     # a pack without cards is skipped (review #20)
                 armies = {k: v for k, v in (doc.get("cardArmies") or {}).items() if isinstance(v, int)}
             except (OSError, ValueError, KeyError, AttributeError) as e:
                 log.warning("draft packs: %s could not be read: %s", path, e)
@@ -4081,7 +4183,7 @@ class PlayFabEmulator:
                 result["refused"] = True
                 return
             save.setdefault("selectedPacks", []).append(wanted)
-            save.setdefault("selectedCards", []).extend(pack["cards"])     # the server's list, not the game's
+            save.setdefault("selectedCards", []).extend(pack.get("cards") or [])     # the server's list, not the game's
             save["currentReRolls"] = 0
             self._draft_new_offer(save, data)
         _, save = self._draft(player, params, pick)

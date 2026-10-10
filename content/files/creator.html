@@ -292,10 +292,16 @@
       </section>
 
       <section>
+        <h2>Action</h2>
+        <div id="action"></div>
+        <p class="hint">Something the player chooses to do during their turn, instead of something that happens by itself. Pick its kind here – Duty, Ferocity, Pray, Agenda or Oath, or a plain action – and the card gets that keyword automatically. A card has at most one action.</p>
+      </section>
+
+      <section>
         <h2>Keywords</h2>
         <div id="traits"></div>
         <button class="small" id="addTrait">+ Add keyword</button>
-        <p class="hint">Some keywords work by themselves (Flying, Stealth, Vanguard): just add them. Others, like Rally, Artifice or Strike, say <em>when</em> something happens: pick one and a box opens under it for <em>what</em> happens. Duty and Ferocity are things the player chooses to do, and open a box for that. Ephemeral works by itself (the card leaves your hand at the end of the turn) and is only found on stratagems. The number after each name is how many official cards use it.</p>
+        <p class="hint">Some keywords work by themselves (Flying, Stealth, Vanguard): just add them. Others, like Rally, Artifice or Strike, say <em>when</em> something happens: pick one and a box opens under it for <em>what</em> happens. Actions (Duty, Ferocity, Pray, Agenda, Oath) are set up in the Action section above. Ephemeral works by itself (the card leaves your hand at the end of the turn) and is only found on stratagems. The number after each name is how many official cards use it.</p>
       </section>
 
       <section>
@@ -304,12 +310,6 @@
         <button class="small" id="addAbility">+ Add ability</button>
         <div id="choose"></div>
         <p class="hint">For abilities that belong to no keyword. An ability is one trigger followed by one or more effects, resolved in order. Entries used by many official cards are the safest choices; ones marked 0 exist in the engine but no official card uses them.</p>
-      </section>
-
-      <section>
-        <h2>Action</h2>
-        <div id="action"></div>
-        <p class="hint">For an action that belongs to no keyword. An action is something the player chooses to do during their turn, instead of something that happens by itself. Duty and Ferocity are actions too, but are set up under their keyword. A card has at most one action.</p>
       </section>
 
       <section>
@@ -417,6 +417,13 @@
   </div>
 
   <div id="viewServer" class="hidden">
+    <section>
+      <div class="row" style="margin-bottom:0">
+        <div class="field"><label for="cfgPass">Your password (asked for every save)</label>
+          <input type="password" id="cfgPass" autocomplete="current-password" maxlength="200"></div>
+        <p class="hint" style="flex:1;min-width:240px">Changing the server needs your password as well as being signed in, so a sign-in left on another computer cannot change it.</p>
+      </div>
+    </section>
     <section>
       <h2>Game modes</h2>
       <p class="hint">Match rules for each game mode (<code>content/liveops/GameModes.json</code>). Players get changes the next time they start the game. An empty box means the game's own default. If you change how matches play, also raise the <strong>Rules version</strong> below: players are only matched with the same rules, and saved replays from older rules stop loading.</p>
@@ -2135,8 +2142,10 @@ function drawServer() {
 async function saveConfig(which, data, button) {
   button.disabled = true;
   try {
-    const d = await call("CreatorServerConfigSave", { file: which, data, stamp: cfg[which].stamp });
-    say((which === "modes" ? "Game modes" : "Server settings") + " saved.", "ok");
+    if (!val("cfgPass")) { $("cfgPass").focus(); throw new Error("enter your password at the top of the page"); }
+    const d = await call("CreatorServerConfigSave", { file: which, data, stamp: cfg[which].stamp, passphrase: val("cfgPass") });
+    say((which === "modes" ? "Game modes" : "Server settings") + " saved." +
+        (d.unknown && d.unknown.length ? ` Nothing reads ${d.unknown.join(", ")} – check the spelling.` : ""), d.unknown && d.unknown.length ? "info" : "ok");
     await loadServer();
   } catch (e) { say("Not saved: " + e.message, "bad"); }
   finally { button.disabled = false; }

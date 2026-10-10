@@ -362,7 +362,9 @@ class Handler(BaseHTTPRequestHandler):
     REQUEST_DEADLINE = 60               # seconds for a request line and headers to arrive in full
     BODY_DEADLINE = 180                 # ... and for its body (an uploaded picture on a slow line)
     MAX_WEB_CONNECTIONS = 256           # web connections served at once (match connections not counted)
+    MAX_WEB_PER_ADDRESS = 32            # ... and from one address, so one player cannot take them all
     _web = [0]
+    _web_by = {}
     _web_lock = threading.Lock()
     deadline = None
     _hits = {}
@@ -451,12 +453,15 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(None)        # a match lasts as long as it lasts
             photon_emu.serve(self.connection, self.client_address)
             return
+        who = self.client_address[0]
         with Handler._web_lock:
-            busy = Handler._web[0] >= self.MAX_WEB_CONNECTIONS
+            mine = Handler._web_by.get(who, 0)
+            busy = Handler._web[0] >= self.MAX_WEB_CONNECTIONS or mine >= self.MAX_WEB_PER_ADDRESS
             if not busy:
                 Handler._web[0] += 1
+                Handler._web_by[who] = mine + 1
         if busy:
-            log.warning("%s: refused, %d web connections already open", self.client_address[0], self.MAX_WEB_CONNECTIONS)
+            log.warning("%s: refused, %d web connections open (%d from this address)", who, Handler._web[0], mine)
             try:
                 self.request.sendall(b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
             except OSError:
@@ -467,6 +472,11 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             with Handler._web_lock:
                 Handler._web[0] -= 1
+                left = Handler._web_by.get(who, 1) - 1
+                if left > 0:
+                    Handler._web_by[who] = left
+                else:
+                    Handler._web_by.pop(who, None)
 
     def handle_one_request(self):
         self.deadline = time.time() + self.REQUEST_DEADLINE     # a fresh allowance for every request
