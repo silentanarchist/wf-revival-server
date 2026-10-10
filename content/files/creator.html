@@ -741,7 +741,7 @@ function newTargets() { return { pool: "target", friendly: false, enemy: true, t
                                  excludeFriendlyWarlord: false, excludeEnemyWarlord: false, excludeCondition: false, excludeKeyword: false,
                                  fromChoice: false, anyState: false, army: "", armyMode: "", stratagemType: "",
                                  attack: STAT(), health: STAT(), cost: STAT(), rarity: STAT(), cards: [], notEnchantedBy: [] }; }
-function newBuff() { return { type: "", melee: 0, ranged: 0, health: 0, armour: 0, cost: 0, trait: "", traitValue: 0, duration: "",
+function newBuff() { return { type: "", melee: 0, ranged: 0, health: 0, armour: 0, cost: 0, trait: "", traitValue: 0, duration: "", alsoLasts: "",
                               meleeFrom: "", rangedFrom: "", healthFrom: "", armourFrom: "", costFrom: "", random: 0,
                               permanent: false, doNotStack: false, enchantAnim: false, mark: "", daemonHost: "", mutation: "", race: "",
                               enchantment: "", effectName: "", effectText: "" }; }
@@ -756,7 +756,8 @@ function newAbility(trigger, keyword) { return { trigger: trigger || "ThisCardPl
 function mergeTargets(t) { const n = newTargets(); if (!t) return n; Object.assign(n, t); for (const k of ["attack", "health", "cost", "rarity"]) n[k] = Object.assign(STAT(), t[k] || {}); n.cards = (t.cards || []).slice(); n.notEnchantedBy = (t.notEnchantedBy || []).slice(); return n; }
 function mergeEffect(fx) {
   const n = newEffect(); Object.assign(n, fx);
-  n.targets = mergeTargets(fx.targets); n.buff = Object.assign(newBuff(), fx.buff || {}); n.per = fx.per ? mergeTargets(fx.per) : null;
+  n.targets = mergeTargets(fx.targets); n.buff = Object.assign(newBuff(), fx.buff || {});
+  if (Array.isArray(n.buff.duration)) { const d = n.buff.duration; n.buff.duration = d[0] || ""; n.buff.alsoLasts = d[1] || ""; }   // several at once n.per = fx.per ? mergeTargets(fx.per) : null;
   n.hand = Object.assign({ players: "", uses: 0, targets: null }, fx.hand || {}); n.hand.targets = n.hand.targets ? mergeTargets(n.hand.targets) : null; n.mana = Object.assign(newEffect().mana, fx.mana || {});
   n.summon = Object.assign(newEffect().summon, fx.summon || {}); n.summon.cards = (n.summon.cards || []).filter(Boolean);
   if (n.summon.cards.length) { n.card = n.summon.cards[0]; n.summon.cards = n.summon.cards.slice(1); }   // the first card is "Which card", the rest "More cards" 
@@ -842,7 +843,8 @@ function drawBuff(b) {
   const stats = !type || ["addStats", "addStatsDropPod", "setMeleeAttack", "setRangeAttack", "setHealth", "setCurrentHealth"].includes(type);
   const trait = !type || ["addTrait", "removeTrait", "addTraitRemnant"].includes(type);
   const cost = !type || ["changeCost", "setCost", "changeAbilityCost"].includes(type);
-  const adv = ["meleeFrom", "rangedFrom", "healthFrom", "armourFrom", "costFrom", "random", "permanent", "doNotStack", "enchantAnim", "effectName", "effectText"].some(k => isSet(b[k]));
+  const adv = ["meleeFrom", "rangedFrom", "healthFrom", "armourFrom", "costFrom", "random", "permanent", "doNotStack", "enchantAnim", "effectName", "effectText", "alsoLasts"].some(k => isSet(b[k]))
+    || (ench && b.traitValue);
   const from = (key, label) => field(label, sel(schema.valueSources, b[key], v => { b[key] = v; }, false, "the number"));
   return el("div", {},
     el("div", { class: "row" },
@@ -863,6 +865,9 @@ function drawBuff(b) {
       el("div", { class: "row" }, from("meleeFrom", "Melee from"), from("rangedFrom", "Ranged from"), from("healthFrom", "Health from"), from("armourFrom", "Armour from"), from("costFrom", "Cost from"),
         field("Random ±", num(b.random, v => { b.random = v; }, 0, 30))),
       el("p", { class: "hint", text: "\"From\" takes the number from the game instead of the box (the target's attack, this card's health, ...). Random ± adds or takes away up to that much." }),
+      el("div", { class: "row" },
+        b.duration ? field("…and also ends", sel(schema.durations.filter(d => d.id !== b.duration), b.alsoLasts, v => { b.alsoLasts = v; }, false, "no second limit")) : null,
+        !trait ? field("Number (e.g. an enchantment's value)", num(b.traitValue, v => { b.traitValue = v; }, 0, 20)) : null),
       el("div", { class: "checks", style: "margin-bottom:8px" }, check("Permanent (survives silence)", b, "permanent"), check("Does not stack", b, "doNotStack"), check("Play the enchant animation", b, "enchantAnim")),
       el("div", { class: "row" }, field("Shown as (name)", textInput(b, "effectName", "name shown on the card"), true), field("Shown as (text)", textInput(b, "effectText", "text shown on the card", 200), true))));
 }
@@ -985,12 +990,7 @@ function drawAction() {
     kind.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(a.keyword); window.scrollTo(0, 0); } }) : null));
   a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
   b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
-  if (a.effects.some(fx => fx.targets && fx.targets.pool === "target") || a.choose) {
-    b.append(el("div", { class: "checks", style: "margin:8px 0" }, el("label", {}, el("input", { type: "checkbox", checked: !!a.choose,
-      onchange: e => { a.choose = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }) : null; redraw(); } }),
-      "Say exactly what the player may choose for the action")));
-    if (a.choose) b.append(drawTargets(a.choose, "The player may choose one of these"));
-  }
+  if (a.effects.some(fx => fx.targets && fx.targets.pool === "target") || a.choose != null) b.append(drawChoice(a, "What the player picks for the action"));
   box.append(b);
 }
 function labelsFor(trigger) { return schema.traits.filter(t => t.trigger === trigger && t.id.toLowerCase() !== trigger.toLowerCase()); }
@@ -1039,18 +1039,28 @@ function drawAbilityOptions(ab) {
     ab.countEach ? drawTargets(ab.countEach, "Once for each of these") : null,
     ab.victim ? drawTargets(ab.victim, "The unit the event hit must match") : null);
 }
-// What the player picks when the card is played. Normally the filter on a "The chosen target" effect says
-// it, and the game's one choice per card is built from the first such effect. Cards whose effects need
-// a different filter than the choice itself (or several "chosen target" effects) say the choice here.
+// What the player picks. Three ways, stored in "choose": left out (null) = taken from the first
+// "chosen target" effect; a filter = exactly what may be picked (each effect's own filter is then written
+// as it is); false = the player picks nothing, and "the chosen target" means what the event hit
+// (official cards such as Fall Back, Angel's Wrath and Fenrisian Wolf).
+const CHOICE_MODES = [{ id: "filter", label: "Say exactly what the player may choose" },
+                      { id: "none", label: "The player picks nothing: \"the chosen target\" is what the event hit" }];
+function drawChoice(holder, title) {
+  const mode = holder.choose === false ? "none" : holder.choose ? "filter" : "";
+  const out = el("div", { style: "margin:8px 0" },
+    field(title, sel(CHOICE_MODES, mode, v => {
+      holder.choose = v === "none" ? false : v === "filter" ? mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }) : null; },
+      false, "Taken from the first \"chosen target\" effect"), true));
+  if (holder.choose) out.append(el("div", { class: "box" }, drawTargets(holder.choose, "The player may choose one of these"),
+    el("p", { class: "hint", text: "With this set, the filters on each \"chosen target\" effect are written as they are (they can narrow what the effect does to the chosen card)." })));
+  if (holder.choose === false) out.append(el("p", { class: "hint", text: "Nothing is picked when the card is played; effects aimed at \"the chosen target\" act on the unit the trigger is about, and their filters are written as they are." }));
+  return out;
+}
 function drawChoose() {
   const box = $("choose"); box.textContent = "";
   const usesTarget = [...state.abilities, ...(state.action ? [state.action] : [])].some(a => a.effects.some(fx => fx.targets && fx.targets.pool === "target"));
-  if (!usesTarget && !state.choose) return;
-  box.append(el("div", { class: "checks", style: "margin:8px 0" }, el("label", {}, el("input", { type: "checkbox", checked: !!state.choose,
-    onchange: e => { state.choose = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }) : null; redraw(); } }),
-    "Say exactly what the player may choose (otherwise it is taken from the first \"chosen target\" effect)")));
-  if (state.choose) box.append(el("div", { class: "box" }, drawTargets(state.choose, "The player may choose one of these"),
-    el("p", { class: "hint", text: "With this set, the filters on each \"chosen target\" effect are written as they are (they can narrow what the effect does to the chosen card)." })));
+  if (!usesTarget && state.choose == null) return;
+  box.append(drawChoice(state, "What the player picks when playing the card"));
 }
 function drawAbilities() {
   const box = $("abilities"); box.textContent = "";
@@ -1095,7 +1105,8 @@ function cleanTargets(t) {
 function cleanBuff(b) {
   const out = {};
   for (const k of ["melee", "ranged", "health", "armour", "cost", "trait", "traitValue", "duration"]) out[k] = b[k];
-  for (const k of Object.keys(newBuff())) if (!(k in out) && b[k]) out[k] = b[k];
+  for (const k of Object.keys(newBuff())) if (!(k in out) && k !== "alsoLasts" && b[k]) out[k] = b[k];
+  if (b.alsoLasts && b.duration && b.alsoLasts !== b.duration) out.duration = [b.duration, b.alsoLasts];
   return out;
 }
 function trimEffect(fx) {
@@ -1138,9 +1149,9 @@ function collect() {
               traits: state.traits.map(t => ({ name: t.name, value: t.value || 0 })),
               abilities: state.abilities.map(trimAbility) };
   if (ench) c.enchantment = true;
-  if (state.choose) c.choose = cleanTargets(state.choose);
+  if (state.choose) c.choose = cleanTargets(state.choose); else if (state.choose === false) c.choose = false;
   if (state.action) { c.action = { keyword: state.action.keyword || "", cost: state.action.cost || 0, note: state.action.note || "", effects: state.action.effects.map(trimEffect) };
-    if (state.action.choose) c.action.choose = cleanTargets(state.action.choose); }
+    if (state.action.choose) c.action.choose = cleanTargets(state.action.choose); else if (state.action.choose === false) c.action.choose = false; }
   if (kind === "tactic") c.stratagemType = val("f_stratagemType") || "Normal";
   else Object.assign(c, { melee: ival("f_melee"), ranged: ival("f_ranged"), health: Math.max(1, ival("f_health")), armour: ival("f_armour"), keyword: val("f_keyword") });
   if (editingId) c.id = editingId;
@@ -1424,12 +1435,12 @@ function fill(c) {
   state.traits = (c.traits || []).map(t => ({ name: t.name, value: t.value || 0 }));
   fillAction(c);
   state.abilities = (c.abilities || []).map(mergeAbility);
-  state.choose = c.choose && typeof c.choose === "object" ? mergeTargets(c.choose) : null;
+  state.choose = c.choose === false ? false : c.choose && typeof c.choose === "object" ? mergeTargets(c.choose) : null;
   redraw();
 }
 function fillAction(c) {
   const a = c && c.action;
-  state.action = a ? { keyword: a.keyword || "", cost: a.cost || 0, note: a.note || "", choose: a.choose && typeof a.choose === "object" ? mergeTargets(a.choose) : null,
+  state.action = a ? { keyword: a.keyword || "", cost: a.cost || 0, note: a.note || "", choose: a.choose === false ? false : a.choose && typeof a.choose === "object" ? mergeTargets(a.choose) : null,
     effects: (a.effects || []).map(mergeEffect) } : null;
 }
 // The rules are a plain text file on the server ("# title", "## heading", "- point", blank line between paragraphs).

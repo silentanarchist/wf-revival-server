@@ -491,6 +491,9 @@ class CardCompiler:
         if kind in ("addTrait", "removeTrait", "addTraitRemnant") or b.get("trait"):
             out["trait"] = self._enum("DefinedTrait", b.get("trait"), "keyword")
             out["traitValue"] = self._int(b.get("traitValue"))
+        elif b.get("traitValue"):
+            # a value without a keyword: an enchantment's number (Hunters of Heretics attaches "Vulnerable 4")
+            out["traitValue"] = self._int(b["traitValue"])
         if kind in ("changeCost", "setCost", "changeAbilityCost") or (b.get("type") and stats["cost"]):
             out["costChange"] = stats["cost"]
         if kind not in ("addTrait", "removeTrait", "changeCost", "setCost", "changeAbilityCost") or b.get("type"):
@@ -505,17 +508,20 @@ class CardCompiler:
                     self.notes.append(f"buff type '{kind}' does not recalculate its numbers, so '{k} from {src}' has no effect")
         if b.get("random"):
             out["randomValueChange"] = self._int(b["random"])
-        duration = b.get("duration")
-        if duration == "aura":
-            # how official cards mark "only while the source is in play": the plain flag for
-            # "while in play", the counted one where the size follows a count
-            out["extrinsicVariable" if trigger == "WhileInPlayVariable" else "extrinsic"] = 1
-        elif duration:
-            field = self.BUFF_DURATIONS.get(duration)
-            if field:
-                out[field] = 1
-            else:
-                self.notes.append(f"buff duration '{duration}' is not known - left permanent")
+        durations = b.get("duration")
+        # one duration, or several at once (official cards: "this turn" and "until its next attack";
+        # both "while in play" flags)
+        for duration in (durations if isinstance(durations, list) else [durations]):
+            if duration == "aura":
+                # how official cards mark "only while the source is in play": the plain flag for
+                # "while in play", the counted one where the size follows a count
+                out["extrinsicVariable" if trigger == "WhileInPlayVariable" else "extrinsic"] = 1
+            elif duration:
+                field = self.BUFF_DURATIONS.get(duration)
+                if field:
+                    out[field] = 1
+                else:
+                    self.notes.append(f"buff duration '{duration}' is not known - left permanent")
         for k, field in self.BUFF_FLAGS.items():
             if b.get(k):
                 out[field] = 1
