@@ -416,6 +416,11 @@ class CardCompiler:
     SUMMON_FLAGS = {"forEnemy": "isForEnemy", "allTargets": "summonAllTargets", "chooseInPlay": "chooseCardInPlay",
                     "keepEffects": "keepEffects", "removeFromCemetery": "shouldRemoveFromCemetery"}
     PLAYERS = {"both": 0, "self": 10, "enemy": 20}
+    # the Pray ability every official Pray card carries (same on all 23): the praying state
+    PRAY_ABILITY = {"trigger": "Pray", "context": "Play", "priority": "Instant", "playIcon": True,
+                    "effects": [{"effect": "buffSelf", "targets": {"pool": "self"},
+                                 "buff": {"type": "singleUseEnchantment", "trait": "pray",
+                                          "enchantment": "9218576fd3e26554db5b4c239a36dbc7"}}]}
 
     def __init__(self, native):
         self.n = native
@@ -822,10 +827,28 @@ class CardCompiler:
                 self.notes.append("stratagems cannot have an action - it was left out")
             else:
                 self.explicit_choice = "choose" in action
-                logics, wants = self.effects(action.get("effects"), "the action")
+                kw = action.get("keyword") or ""
+                effects = list(action.get("effects") or [])
+                if kw == "pray" and not any(fx.get("effect") == "triggerPray" for fx in effects):
+                    # every official Pray action ends by setting off Pray (what cards that react to a prayer listen for)
+                    effects.append({"effect": "triggerPray", "targets": {"pool": "self"}})
+                logics, wants = self.effects(effects, "the action")
                 d["hasActiveAbility"] = 1
                 d["activeAbility"]["activeAbilityLogic"] = logics
                 d["activeAbility"]["manaCost"] = int(action.get("cost") or 0)
+                if kw == "oath":
+                    # "Oath N": official cards keep N on the keyword and leave the action's own cost at 0
+                    d["activeAbility"]["manaCost"] = 0
+                    oath = next((t for t in d["CardTraits"] if t.get("name") == "oath"), None)
+                    if oath is None:
+                        oath = dict(self.n["trait"], name="oath", _trait=self._enum("DefinedTrait", "oath", "keyword"))
+                        d["CardTraits"].append(oath)
+                        own.add("oath")
+                    oath["_traitValue"] = int(action.get("cost") or 0)
+                if kw == "pray" and not any(a.get("trigger") == self._enum("AbilityTrigger", "Pray", "trigger") for a in d["cardAbilities"]):
+                    # ...and comes with the same Pray ability on every official card: the unit takes the praying state
+                    a, _, _ = self.ability(self.PRAY_ABILITY, len(d["cardAbilities"]) + 1)
+                    d["cardAbilities"].insert(0, a)
                 if self.explicit_choice:
                     wants = action["choose"] or None
                 if wants is not None:

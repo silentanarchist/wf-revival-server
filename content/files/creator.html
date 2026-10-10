@@ -648,7 +648,7 @@ function linkKeywords() {                       // designs made before this layo
     const id = ab.keyword || (same ? same.id : "");
     if (id) addKeyword(id);
   }
-  // Duty and Ferocity are actions: they are chosen in the Action section, not listed as keywords
+  // Duty, Ferocity, Pray, Agenda and Oath are actions: they are chosen in the Action section, not listed as keywords
   // (the game's keyword mark is added for them when the card is built). Designs saved with one
   // in the keyword list are tidied here, and one listed without an action gets its action.
   for (const t of state.traits.filter(t => traitDef(t.name).action)) {
@@ -683,10 +683,10 @@ function drawKeywordAbility(t, def) {           // the box under a keyword that 
     const b = el("div", { class: "kwbox" },
       el("div", { class: "head" }, el("strong", { text: `${def.label}: what the player can do` })),
       el("div", { class: "row" },
-        field("Energy cost to use", num(a.cost, v => { a.cost = v; }, 0, 12)),
+        field(actionCostLabel(a), num(a.cost, v => { a.cost = v; }, 0, 12)),
         field("Limits or conditions (optional)", el("input", { value: a.note || "", maxLength: 200, placeholder: "e.g. once per turn",
           oninput: e => { a.note = e.target.value; redraw(true); } }), true)));
-    if (a.keyword === "ferocity") b.append(el("p", { class: "hint", text: "Ferocity: the troop does this and then returns to your deck – the game handles the return, so only add the effect itself." }));
+    if (actionHint(a)) b.append(el("p", { class: "hint", text: actionHint(a) }));
     a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
     b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
     return b;
@@ -711,7 +711,7 @@ function drawTraits() {
     const def = schema.traits.find(x => x.id === t.name) || {};
     const owns = def.action || def.needsAbility;
     const row = el("div", { class: "row" },
-      field("Keyword", sel(schema.traits.filter(x => !x.action), t.name, v => changeKeyword(t, v), true)),
+      field("Keyword", sel(schema.traits.filter(x => !traitDef(x.id).action), t.name, v => changeKeyword(t, v), true)),
       def.takesValue ? field("Value", num(t.value, v => { t.value = v; }, 0, 20)) : null,
       el("button", { class: "small danger", text: owns ? "Remove keyword and its ability" : "Remove", onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }),
       def.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(t.name); window.scrollTo(0, 0); } }) : null,
@@ -775,7 +775,21 @@ function drawEffect(ab, fx, i) {
 // from the official cards): a keyword that works alone (Flying); a keyword that is its own trigger
 // (Artifice, Strike); and a keyword that labels an ordinary ability (Rally labels a "when played"
 // ability). The two helpers keep both halves in step whichever side the author starts from.
-function traitDef(id) { return schema.traits.find(x => x.id === id) || {}; }
+function traitDef(id) {
+  const d = schema.traits.find(x => x.id === id) || {};
+  // Oath is an action on troops and warlords, but on a stratagem it is a keyword with a number
+  // (an extra cost paid when the card is played), as on the official Ultramarines stratagems.
+  return d.action && d.stratagemKeyword && val("f_kind") === "tactic" ? Object.assign({}, d, { action: false }) : d;
+}
+// What the action's number means and what the game adds by itself, per kind of action.
+function actionCostLabel(a) { return a.keyword === "oath" ? "Oath number (energy to use)" : "Energy cost to use"; }
+function actionHint(a) {
+  if (a.keyword === "ferocity") return "Ferocity: the troop does this and then returns to your deck – the game handles the return, so only add the effect itself.";
+  if (a.keyword === "pray") return "Pray: add only what the prayer does. The step that sets off Pray (for cards that react to a friendly prayer) and the praying state are added automatically, as on the official Sororitas cards.";
+  if (a.keyword === "oath") return "Oath: the number is written on the Oath keyword, as on the official Ultramarines cards (shown as \"Oath 2: ...\").";
+  if (a.keyword === "agenda") return "Agenda: a plain action like Duty. Official Dark Angels cards usually also gain quest points in it (Gain or lose energy, resource quest points).";
+  return "";
+}
 function addKeyword(id) {
   if (id && traitDef(id).action) return false;      // actions are not listed as keywords
   if (id && !state.traits.some(x => x.name === id)) { state.traits.push({ name: id, value: 0 }); return true; }
@@ -810,10 +824,10 @@ function drawAction() {
       el("button", { class: "small danger", text: "Remove action", onclick: () => { state.action = null; redraw(); } })),
     el("div", { class: "row" },
       field("Kind of action", sel(kinds, a.keyword, v => { a.keyword = v; }, false, "Plain action")),
-      field("Energy cost to use", num(a.cost, v => { a.cost = v; }, 0, 12)),
+      field(actionCostLabel(a), num(a.cost, v => { a.cost = v; }, 0, 12)),
       field("Limits or conditions (optional)", el("input", { value: a.note || "", maxLength: 200, placeholder: "e.g. once per turn",
         oninput: e => { a.note = e.target.value; redraw(true); } }), true)));
-  if (a.keyword === "ferocity") b.append(el("p", { class: "hint", text: "Ferocity: the troop does this and then returns to your deck – the game handles the return, so only add the effect itself. Note: Ferocity could not be activated on the rebuilt Space Wolves cards yet, so treat these as untested." }));
+  if (actionHint(a)) b.append(el("p", { class: "hint", text: actionHint(a) + (a.keyword === "ferocity" ? " Note: Ferocity could not be activated on the rebuilt Space Wolves cards yet, so treat these as untested." : "") }));
   const kind = a.keyword && traitDef(a.keyword);
   if (kind && kind.id) b.append(el("p", { class: "hint" }, `The card is marked ${kind.label} automatically. `,
     kind.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(a.keyword); window.scrollTo(0, 0); } }) : null));
