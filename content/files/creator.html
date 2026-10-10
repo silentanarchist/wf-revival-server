@@ -105,6 +105,36 @@
   #artCanvas { width: 360px; height: 360px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; cursor: grab; touch-action: none;
                background: repeating-conic-gradient(#2a2e36 0% 25%, #1f2228 0% 50%) 0 0 / 24px 24px; }
   .card .art.has { background-repeat: no-repeat; color: transparent; }
+  /* a card drawn like the game: the frame and art are 1024 x 1024 textures; the card is the 684 x 960 middle */
+  .faceBox { --w: 300px; width: var(--w); height: calc(var(--w) * 960 / 684); position: relative; overflow: hidden; margin: 0 auto 12px; flex: none; }
+  .face { position: absolute; left: 0; top: 0; width: 684px; height: 960px; transform-origin: 0 0; }
+  .face > * { position: absolute; }
+  .face .fBack { left: 105px; top: 70px; width: 474px; height: 860px; background: #0b0c0f; }
+  .face .fArt { left: -170px; top: -36px; width: 1024px; height: 1024px; background: center / cover no-repeat; clip-path: inset(72px 262px 34px 262px); }   /* only inside the frame's border */
+  .face .fShade { left: 105px; width: 474px; top: 470px; height: 420px; background: linear-gradient(transparent, #000d 38%, #000f); }
+  .face .fFrame { left: 0; top: 0; width: 684px; height: 960px; }
+  .face .fName { left: 120px; width: 444px; text-align: center; color: #f3ead7; font: 700 34px/1.1 Georgia, serif; text-shadow: 0 2px 6px #000, 0 0 2px #000; }
+  .face .fType { left: 120px; width: 444px; text-align: center; color: #c9b98f; font: 600 17px/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; text-shadow: 0 1px 3px #000; }
+  .face .fText { left: 128px; width: 428px; color: #ece6da; font: 24px/1.28 system-ui, sans-serif; text-align: center; white-space: pre-wrap; text-shadow: 0 1px 3px #000; }
+  .face .fText b { color: #f2c35c; }
+  .face .fCost { left: 44px; top: 34px; width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+                 font: 800 54px/1 Georgia, serif; text-shadow: 0 2px 4px #000; border: 5px solid #c9b37a;
+                 background: radial-gradient(circle at 35% 30%, #7fc4ff, #1b5fa8 55%, #0b2c55); box-shadow: 0 3px 10px #000a; }
+  .face .fStat { width: 96px; height: 96px; margin: -48px 0 0 -48px; display: grid; place-items: center; color: #fff;
+                 font: 800 46px/1 Georgia, serif; text-shadow: 0 0 4px #000, 0 2px 3px #000; -webkit-text-stroke: 1.5px #000; }
+  .face .fArmour { width: 76px; height: 84px; margin: -42px 0 0 -38px; display: grid; place-items: center; color: #fff; font: 800 38px/1 Georgia, serif;
+                   background: linear-gradient(#9aa3ad, #4c545e); clip-path: polygon(50% 0, 100% 14%, 92% 62%, 50% 100%, 8% 62%, 0 14%); text-shadow: 0 1px 3px #000; }
+  .cv { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .cvList { max-height: 75vh; overflow: auto; border: 1px solid var(--line); border-radius: 6px; background: #13151a; }
+  .cvList .it { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 8px; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #22252c; }
+  .cvList .it:hover { background: #1c2028; } .cvList .it.on { background: #23324a; }
+  .cvList .it .c { grid-row: span 2; align-self: center; text-align: center; font-weight: 700; color: var(--accent2); }
+  .cvList .it .n { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .cvList .it .m { font-size: 12px; color: var(--dim); }
+  .cvDetail .top { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .cvDetail .facts { flex: 1; min-width: 220px; }
+  .cvDetail .facts table { border-collapse: collapse; font-size: 14px; } .cvDetail .facts td { padding: 2px 10px 2px 0; vertical-align: top; } .cvDetail .facts td:first-child { color: var(--dim); }
+  .cvDetail pre { max-height: 520px; }
+  @media (max-width: 760px) { .cv { grid-template-columns: 1fr; } .cvList { max-height: 40vh; } }
   .agree { display: flex; gap: 8px; align-items: flex-start; color: var(--text); font-size: 14px; margin: 4px 0 12px; }
   .agree a, .rules a { color: var(--accent2); }
   .rules { max-width: 820px; } .rules h1 { font: 600 22px Georgia, serif; color: var(--accent); margin: 0 0 12px; }
@@ -181,6 +211,7 @@
   <a id="tabList" href="/review" class="hidden">Review queue</a>
   <a id="tabPeople" href="/people" class="hidden">People</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
+  <a id="tabCards" href="/cards">Card viewer</a>
   <a id="tabExamples" href="/examples">Examples</a>
   <a id="tabKeywords" href="/keywords">Keywords</a>
   <a id="tabArtwork" href="/artwork">Artwork</a>
@@ -281,13 +312,14 @@
     <div class="sticky">
       <section>
         <h2>Preview</h2>
-        <div class="card" id="pvCard">
+        <div id="pvFace"></div>
+        <div class="card hidden" id="pvCard">
           <div class="top"><div class="cost" id="pvCost">1</div><div><div class="name" id="pvName">New card</div><div class="type" id="pvType"></div></div></div>
           <div class="art" id="pvArt">no artwork chosen</div>
           <div class="text" id="pvText"></div>
           <div class="stats" id="pvStats"></div>
         </div>
-        <p class="hint">A layout sketch, not the in-game frame.</p>
+        <p class="hint">Drawn with the game's own frame and art; the in-game text layout can differ a little.</p>
         <label class="agree"><input type="checkbox" id="agree">
           <span>This card follows all of the <a href="/rules" target="_blank" rel="noopener">card creator rules</a>.</span></label>
         <div class="row">
@@ -429,6 +461,25 @@
       <h2>Uploaded artwork</h2>
       <p class="hint">Every picture stored on the server, drafts included, newest first. <strong>Delete</strong> removes the picture and its mask from the server for good; a card that was waiting for review or approved goes back to its author as rejected.</p>
       <div class="uploads" id="uploads"></div>
+    </section>
+  </div>
+
+  <div id="viewCards" class="hidden">
+    <section>
+      <h2>Card viewer</h2>
+      <p class="hint">Every official card, drawn with the game's own frame and art, with the data the game uses for it. <strong>Load in editor</strong> copies the card into the card creator as a new card, built the same way the game builds it, so you can see how it is made or start from it.</p>
+      <div class="row">
+        <div class="field grow"><label>Search (name, rules text or id)</label><input id="cvSearch" placeholder="e.g. Fenrisian Wolf, Rally, SW9" autocomplete="off"></div>
+        <div class="field"><label>Faction</label><select id="cvArmy"></select></div>
+        <div class="field"><label>Kind</label><select id="cvKind"></select></div>
+        <div class="field"><label>Show</label><select id="cvShow">
+          <option value="">All cards</option><option value="collectible">Collectible</option><option value="created">Created by other cards</option><option value="defence">Defence cards</option></select></div>
+      </div>
+      <p class="hint" id="cvCount"></p>
+      <div class="cv">
+        <div class="cvList" id="cvList" role="listbox" tabindex="0"></div>
+        <div class="cvDetail" id="cvDetail"><p class="hint">Pick a card from the list.</p></div>
+      </div>
     </section>
   </div>
 
@@ -1216,7 +1267,7 @@ function suggestText() {
 function preview() {
   const c = collect();
   $("pvName").textContent = c.name || "New card"; $("pvCost").textContent = c.cost;
-  $("pvCard").className = "card rar-" + c.rarity;
+  $("pvCard").className = "card hidden rar-" + c.rarity;      // the old sketch; the card is drawn in pvFace now
   $("pvType").textContent = [lab(schema.armies, c.army), lab(schema.kinds, c.kind), c.keyword, c.token && "created by a card"].filter(Boolean).join(" · ");
   $("pvText").textContent = c.text;
   $("pvArt").textContent = c.art ? "art of: " + (cardNames[c.art] || c.art) : (editingCard && editingCard.artUpload ? "uploaded artwork" : "no artwork chosen");
@@ -1227,6 +1278,8 @@ function preview() {
   $("editing").textContent = editingId ? `Editing ${editingId} (${cs}).` : "";
   const n = $("reviewNote"), showNote = editingCard && editingCard.reviewNote && (cs === "rejected" || editingCard.returned);
   n.classList.toggle("hidden", !showNote); n.textContent = showNote ? "Reviewer's note: " + editingCard.reviewNote : "";
+  const face = $("pvFace"); face.textContent = "";
+  face.append(cardFace(Object.assign({}, c, { health: c.health, frame: "" }), "", 300));
   drawNative(); drawFaction(); drawArtPreview();
   $("save").textContent = cs === "rejected" || (editingCard && editingCard.returned) ? "Resubmit for review" : "Submit for review";
 }
@@ -1349,6 +1402,7 @@ function drawArtPreview() {
   $("maskState").textContent = c && c.artMask ? "This card has a pop-out mask." : "Without a mask the whole picture stays inside the frame.";
   box.classList.remove("has"); box.style.backgroundImage = "";
   const place = (url, unit) => {
+    const fa = document.querySelector("#pvFace .fArt"); if (fa) fa.style.backgroundImage = `url("${url}")`;   // the card drawn like the game
     box.classList.add("has");
     box.style.backgroundImage = `url(${url})`;
     box.style.backgroundSize = unit ? `${ART / (COL_R - COL_L + 1) * 100}% auto` : "cover";
@@ -1356,10 +1410,10 @@ function drawArtPreview() {
   };
   if (art.img && art.live) { box.textContent = "new artwork (not saved yet)"; return place(art.live, unitArt()); }
   const borrowed = val("f_art") && collect().art;
-  if (!up && borrowed && cardInfo[borrowed]) {
+  if (!up && borrowed && (cardInfo[borrowed] || /^[0-9a-f]{32}$/.test(borrowed))) {      // hidden official cards (tokens) have art too
     // an official card's picture, from the server's copy of the game's card art (if it has one)
     const url = FILES + "card-art/" + encodeURIComponent(borrowed) + ".jpg", probe = new Image();
-    probe.onload = () => { if (collect().art === borrowed && !(art.img && art.live)) place(url, cardInfo[borrowed].kind !== "tactic"); };
+    probe.onload = () => { if (collect().art === borrowed && !(art.img && art.live)) place(url, (cardInfo[borrowed] || { kind: val("f_kind") }).kind !== "tactic"); };
     probe.src = url;
     return;
   }
@@ -1514,7 +1568,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, ""); return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -1557,6 +1611,109 @@ async function showExamples(keyword) {
       el("div", { class: "hint", text: "Keywords: " + c.keywords.map(k => lab(schema.traits, k)).join(", ") }),
       el("pre", { style: "max-height:none", text: JSON.stringify(c.data, null, 1) })));
   }
+}
+/* ---------- a card drawn like the game ----------
+   The faction frames (content/files/card-frames/<faction>_<troop|stratagem>_<rarity tier>.webp) and the card
+   art are the game's 1024 x 1024 textures; the card itself is the 684 x 960 middle, which is the box drawn
+   here. Positions are in those texture pixels. */
+const TIERS = { Common: 1, Rare: 2, Epic: 3, Legendary: 4 };
+function richText(box, text) {                  // **Keyword** -> bold, as the game shows keywords
+  String(text || "").split(/(\*\*[^*]+\*\*)/).forEach(part => {
+    if (/^\*\*[^*]+\*\*$/.test(part)) box.append(el("b", { text: part.slice(2, -2) })); else if (part) box.append(document.createTextNode(part));
+  });
+}
+function cardFace(c, artUrl, width) {
+  const strat = c.kind === "tactic";
+  const frame = c.frame || `${c.army}_${strat ? "stratagem" : "troop"}_${TIERS[c.rarity] || 1}`;
+  width = width || 300;
+  const box = el("div", { class: "faceBox" }); box.style.setProperty("--w", width + "px");
+  const f = el("div", { class: "face", style: `transform:scale(${width / 684})` });
+  const y = strat ? { name: 574, type: 618, text: 652, textMax: 250 } : { name: 548, type: 592, text: 626, textMax: 150 };
+  const art = el("div", { class: "fArt" }); if (artUrl) art.style.backgroundImage = `url("${artUrl}")`;
+  const img = el("img", { class: "fFrame", alt: "", src: FILES + "card-frames/" + encodeURIComponent(frame) + ".webp" });
+  img.onerror = () => { img.remove(); f.style.outline = "3px solid #555"; };
+  const text = el("div", { class: "fText" }); richText(text, c.text);
+  const len = String(c.text || "").length;
+  text.style.fontSize = (len > 220 ? 18 : len > 150 ? 20 : len > 90 ? 22 : 24) + "px";
+  text.style.top = y.text + "px"; text.style.maxHeight = y.textMax + "px"; text.style.overflow = "hidden";
+  const kindName = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" }[c.kind] || "";
+  f.append(el("div", { class: "fBack" }), art);
+  if (!strat) f.append(el("div", { class: "fShade" }));
+  f.append(img, el("div", { class: "fName", style: `top:${y.name}px`, text: c.name || "" }),
+    el("div", { class: "fType", style: `top:${y.type}px`, text: [kindName, c.keyword && lab(schema.keywords, c.keyword)].filter(Boolean).join(" · ") }), text);
+  if (c.kind !== "hero" && c.cost != null && c.cost >= 0) f.append(el("div", { class: "fCost", text: String(c.cost) }));
+  if (!strat) {
+    const stat = (x, yy, v) => el("div", { class: "fStat", style: `left:${x}px;top:${yy}px`, text: String(v ?? 0) });
+    f.append(stat(88, 826, c.melee), stat(161, 894, c.ranged), stat(564, 880, c.health));
+    if (c.armour) f.append(el("div", { class: "fArmour", style: "left:488px;top:880px", text: String(c.armour) }));
+  }
+  box.append(f);
+  return box;
+}
+function artUrlOf(id) { return id ? FILES + "card-art/" + encodeURIComponent(id) + ".jpg" : ""; }
+
+/* ---------- card viewer ---------- */
+let cvCards = null, cvPick = "", cvAsk = 0;
+async function showViewer() {
+  if (!cvCards) {
+    try { cvCards = (await call("CreatorOfficial")).cards; } catch (e) { return say("Could not load the card list: " + e.message, "bad"); }
+    const armies = [...new Set(cvCards.map(c => c.army))].sort((a, b) => lab(schema.armies, a).localeCompare(lab(schema.armies, b)));
+    options($("cvArmy"), armies.map(a => ({ id: a, label: lab(schema.armies, a) })), false, "All factions");
+    options($("cvKind"), [{ id: "troop", label: "Troops" }, { id: "hero", label: "Warlords" }, { id: "tactic", label: "Stratagems" }], false, "All kinds");
+  }
+  drawViewerList();
+}
+function viewerMatches() {
+  const q = val("cvSearch").trim().toLowerCase(), army = val("cvArmy"), kind = val("cvKind"), show = val("cvShow");
+  return cvCards.filter(c => (!army || c.army === army) && (!kind || c.kind === kind) && (!show || c.status === show) &&
+    (!q || c.name.toLowerCase().includes(q) || c.id.toLowerCase() === q || (q.length > 2 && c.text.toLowerCase().includes(q))));
+}
+function drawViewerList() {
+  if (!cvCards) return;
+  const list = $("cvList"), hits = viewerMatches(); list.textContent = "";
+  $("cvCount").textContent = `${hits.length} of ${cvCards.length} cards`;
+  const kinds = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" };
+  for (const c of hits) {
+    const it = el("div", { class: "it" + (c.id === cvPick ? " on" : ""), role: "option", onclick: () => viewCard(c.id) },
+      el("span", { class: "c", text: c.cost >= 0 ? String(c.cost) : "–" }), el("span", { class: "n", text: c.name }),
+      el("span", { class: "m", text: `${lab(schema.armies, c.army)} · ${kinds[c.kind]}${c.status === "created" ? " · created by a card" : c.status === "defence" ? " · defence" : ""}` }));
+    it.dataset.id = c.id; list.append(it);
+  }
+}
+async function viewCard(id) {
+  cvPick = id; const mine = ++cvAsk;
+  for (const it of $("cvList").children) it.classList.toggle("on", it.dataset.id === id);
+  const c = cvCards.find(x => x.id === id), box = $("cvDetail");
+  box.textContent = ""; box.append(el("p", { class: "hint", text: "Loading " + c.name + "…" }));
+  let d;
+  try { d = await call("CreatorOfficial", { id }); } catch (e) { return say("Could not load the card: " + e.message, "bad"); }
+  if (mine !== cvAsk) return;
+  box.textContent = "";
+  const kinds = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" };
+  const facts = [["Id", c.id], ["Faction", lab(schema.armies, c.army)], ["Kind", kinds[c.kind]], ["Rarity", c.rarity], ["Cost", c.cost],
+    c.kind !== "tactic" ? ["Melee / Ranged / Health", `${c.melee} / ${c.ranged} / ${c.health}`] : null, c.armour ? ["Armour", c.armour] : null,
+    d.design.stratagemType && d.design.stratagemType !== "Normal" ? ["Stratagem type", d.design.stratagemType] : null,
+    ["In the game", { collectible: "Collectible", created: "Created by other cards (not in the collection)", defence: "Defence card" }[c.status]],
+    d.design.traits && d.design.traits.length ? ["Keywords", d.design.traits.map(t => lab(schema.traits, t.name) + (t.value ? " " + t.value : "")).join(", ")] : null].filter(Boolean);
+  const text = el("p", {}); richText(text, c.text);
+  box.append(el("div", { class: "top" }, cardFace(c, artUrlOf(c.id), 320),
+    el("div", { class: "facts" }, el("h2", { text: c.name, style: "margin-top:0" }), text,
+      el("table", {}, ...facts.map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { text: String(v) })))),
+      d.lore ? el("p", { class: "hint", style: "font-style:italic", text: d.lore }) : null,
+      el("div", { class: "row", style: "margin-top:12px" },
+        el("button", { class: "primary", text: "Load in editor", onclick: () => loadOfficial(c, d.design) })))),
+    el("details", { open: true }, el("summary", { text: "The data the game uses (from the game's card file; empty fields left out, numbers with their names)" }),
+      el("pre", { text: JSON.stringify(d.data, null, 1) })),
+    el("details", {}, el("summary", { text: "The card as a creator design (what Load in editor fills in)" }), el("pre", { text: JSON.stringify(d.design, null, 1) })));
+}
+function loadOfficial(c, design) {
+  const d = JSON.parse(JSON.stringify(design));
+  delete d.id;
+  const rarityOk = schema.rarities.some(r => (r.id || r) === d.rarity);
+  if (!rarityOk) d.rarity = "Legendary";
+  fill(d); editingCard = null;
+  show("Create"); window.scrollTo(0, 0);
+  say(`A copy of ${c.name} is in the editor as a new card (nothing is saved until you save it).` + (rarityOk ? "" : ` Its rarity (${design.rarity}) is not one custom cards can have, so it shows as Legendary.`), "info");
 }
 // Profile: username, passphrase, and the game login file for a linked game account.
 let account = null;
@@ -2102,16 +2259,17 @@ async function loadList() {
     drawList();
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
-const TITLES = { Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 function show(which, replace) {                // a page name from PAGES
   if (me) goto(PAGES[which], replace);
   if (me) document.title = TITLES[which] + " – Card Creator";
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["People", "Server", "Rules", "Profile", "Examples", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   if (which === "Examples") showExamples();
+  if (which === "Cards") showViewer();
   if (which === "Keywords") showKeywords();
   if (which === "Profile") { say(""); loadList(); }
   if (list) loadList();
@@ -2184,6 +2342,8 @@ async function start() {
     if (t) t.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(name); } };
   }
   $("exKeyword").onchange = () => showExamples();
+  $("cvSearch").addEventListener("input", drawViewerList);
+  for (const id of ["cvArmy", "cvKind", "cvShow"]) $(id).onchange = drawViewerList;
   window.addEventListener("popstate", () => { const page = pageOf(location.pathname); if (me && page) show(page, true); else gate(); });
   $("filter").onchange = drawList; $("refresh").onclick = loadList;
   fill(null);

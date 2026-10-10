@@ -20,6 +20,8 @@ content/files/card-text.json
 content/draft/
 content/files/card-art/
 content/files/card-art.zip
+content/files/card-frames/
+content/creator-official.json
 # python
 __pycache__/
 *.pyc

@@ -2579,6 +2579,27 @@ class PlayFabEmulator:
             return ok({"keyword": keyword, "examples": self._examples.get("keywords", {}).get(keyword) or {"count": 0, "cards": []}})
         return ok({"keywords": {k: v["count"] for k, v in self._examples.get("keywords", {}).items()}})
 
+    def api_Revival_CreatorOfficial(self, req, headers):
+        """The card viewer: every official card (the list), or one card's creator design and game data (signed-in accounts only)."""
+        if not self._creator_user(req):
+            return err("NotAuthorized", "sign in first")
+        path = os.path.join(self.content_root, "creator-official.json")
+        try:
+            stamp = os.path.getmtime(path)
+            if getattr(self, "_official_stamp", None) != stamp:
+                with open(path, encoding="utf-8") as f:
+                    self._official = json.load(f)
+                self._official_stamp = stamp
+        except (OSError, ValueError):
+            return err("NotFound", "the card viewer's data is not on this server")
+        card_id = req.get("id")
+        if card_id:
+            one = (self._official.get("detail") or {}).get(str(card_id))
+            if not one:
+                return err("NotFound", "no official card has that id")
+            return ok(dict(one, id=str(card_id)))
+        return ok({"cards": self._official.get("cards") or []})
+
     def api_Revival_CreatorPeople(self, req, headers):
         """Every account with its permissions and number of cards (admins only)."""
         if self._creator_role(req) < 2:
