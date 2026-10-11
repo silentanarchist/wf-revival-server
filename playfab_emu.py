@@ -900,6 +900,51 @@ SITE_PAGES = {
 SITE_PRIVATE_FILES = {"guides.html"}
 
 
+def _site_patch_running_server():
+    """Brings the website's page list to a server process started from an older warpforge_server.py,
+    so new pages work without a restart (a restart drops matches in progress). This file is reloaded
+    inside the running server whenever it changes; on load it wraps the server's page handler once:
+    addresses in SITE_PAGES and files in SITE_PRIVATE_FILES are answered from this file's current
+    lists, everything else (the game's downloads, the mod, the card pack) goes to the server's own code
+    unchanged. A warpforge_server.py that already reads SITE_PAGES itself (it has _site_page) is left alone."""
+    import sys
+    from urllib.parse import urlparse, unquote
+    handler = getattr(sys.modules.get("__main__"), "Handler", None)
+    if handler is None or hasattr(handler, "_site_page") or not hasattr(handler, "_serve_file"):
+        return
+    if getattr(handler, "_site_original_do_GET", None) is None:
+        handler._site_original_do_GET = handler.do_GET
+        original = handler.do_GET
+
+        def do_GET(self):
+            page, private = None, False
+            try:
+                lists = sys.modules.get(__name__)                     # the newest copy of this file
+                path = urlparse(self.path).path.rstrip("/") or "/"
+                page = getattr(lists, "SITE_PAGES", {}).get(path)
+                if path.startswith("/api/v1/content/files/"):
+                    name = os.path.basename(unquote(path[len("/api/v1/content/files/"):]).replace("\\", "/")).lower().rstrip(". ")
+                    private = name in getattr(lists, "SITE_PRIVATE_FILES", ())
+            except Exception:
+                log.exception("site pages: could not read the address")
+                page, private = None, False
+            if not (page or private):
+                return original(self)
+            if hasattr(self, "_plain_refused") and self._plain_refused(path):
+                return self._refuse_plain()
+            if hasattr(self, "_too_many") and self._too_many(self._client()):
+                return self._json(429, {"error": "too many requests - wait a minute and try again"})
+            if private:
+                return self._json(404, {"error": "not found"})
+            return self._serve_file(page)
+
+        handler.do_GET = do_GET
+        log.info("site pages: the running server now takes its page list from playfab_emu.py (no restart needed)")
+
+
+_site_patch_running_server()
+
+
 class PlayFabEmulator:
     def __init__(self, data_root, content_root, log_dir):
         self.content_root = content_root
