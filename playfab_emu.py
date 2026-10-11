@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import random
+import shutil
 import threading
 import time
 import unicodedata
@@ -1540,6 +1541,8 @@ class PlayFabEmulator:
                 return err("InvalidParams", "the password must be at least 6 characters")
             if any(ch.isspace() for ch in passphrase):
                 return err("InvalidParams", "the password cannot contain spaces")
+            if self._terms_version() and req.get("agreeTerms") is not True:
+                return err("TermsNotAgreed", "tick the box to agree to the Terms and Privacy notice first", 1002, 403)
         elif not name or not passphrase:
             return err("InvalidParams", "enter a name and a password")
         where = self._address(headers)
@@ -1561,6 +1564,7 @@ class PlayFabEmulator:
                 user = users[name.lower()] = {"name": name, "salt": salt, "hash": self._creator_hash(passphrase, salt),
                                               "sessions": [], "created": now_iso(),
                                               "access": "approved" if self._creator_auto_approve() else "requested"}
+                self._terms_agree(user)
             elif req.get("create"):
                 return err("NameNotAvailable", "that name is taken - sign in instead, or pick another name")
             elif not hmac.compare_digest(user["hash"], self._creator_hash(passphrase, user["salt"])):
@@ -1568,6 +1572,13 @@ class PlayFabEmulator:
                 return err("InvalidPassword", "wrong password")
             if self._creator_perms(user)["access"] == "banned":
                 return err("AccountBanned", "this account has been banned")
+            if self._terms_missing(user):
+                if req.get("agreeTerms") is not True:
+                    return err("TermsNotAgreed", "the Terms and Privacy notice have changed - read them and agree to carry on", 1002, 403)
+                self._terms_agree(user)
+            cancelled = self._account_delete_cancel(user)
+            if cancelled:
+                log.info("account %s signed in again: its deletion is cancelled", user["name"])
             self._remember_address(user, where)
             if self._creator_perms(user)["access"] == "requested":
                 # A new account that an admin has not approved yet: nothing on the site or in the
@@ -1578,7 +1589,7 @@ class PlayFabEmulator:
             user["sessions"] = (user.get("sessions", []) + [hashlib.sha256(token.encode()).hexdigest()])[-5:]
             self._creator_users_save(users)
         self._site_session_fresh(hashlib.sha256(token.encode()).hexdigest(), new=True)
-        return ok({"name": user["name"], "session": token, "account": self._creator_perms(user)})
+        return ok({"name": user["name"], "session": token, "account": self._creator_perms(user), "deletionCancelled": cancelled})
 
     def api_Revival_CreatorSignOut(self, req, headers):
         token = str(req.get("session") or "")
@@ -1590,6 +1601,209 @@ class PlayFabEmulator:
                     user["sessions"].remove(digest)
                     self._creator_users_save(users)
         return ok({})
+
+    # ---- terms and privacy notice; deleting an account
+    # content/files/terms.html (served at /terms, no account needed) carries its version in
+    # <meta name="terms-version" content="...">. An account records the version it agreed to
+    # ("termsAgreed", "termsAgreedAt"). New accounts must agree ("agreeTerms": true). An existing
+    # account that has not agreed to the current version is asked at its next password sign-in on the
+    # site or in the game (answer "TermsNotAgreed"; the same request again with agreeTerms goes
+    # through). Sessions and saved game logins made before keep working.
+    #
+    # Deleting: the account owner (Profile, password and name typed again) or someone ranked above
+    # it (People) sets "deleteAt" 7 days ahead. The account is signed out of the site and the game at
+    # once; signing in with the password before then cancels it. After that the sweep (run at most
+    # hourly, on any request) erases it - see _account_erase for exactly what goes and what stays.
+    DELETE_DAYS = 7
+    DELETED_NAME = "deleted account"
+    TERMS_META = re.compile(r'<meta\s+name="terms-version"\s+content="([^"]{1,40})"', re.I)
+
+    def _terms_version(self):
+        """The version of terms.html, or "" when the server has no terms page (nothing is asked then)."""
+        path = os.path.join(self.content_root, "files", "terms.html")
+        try:
+            stamp = os.path.getmtime(path)
+            if getattr(self, "_terms_stamp", None) != stamp:
+                with open(path, encoding="utf-8") as f:
+                    m = self.TERMS_META.search(f.read(8192))
+                self._terms_cached, self._terms_stamp = (m.group(1) if m else ""), stamp
+            return self._terms_cached
+        except OSError:
+            return ""
+
+    def _terms_missing(self, user):
+        """True when this account has not agreed to the current terms."""
+        version = self._terms_version()
+        return bool(version) and user.get("termsAgreed") != version
+
+    def _terms_agree(self, user):
+        user["termsAgreed"], user["termsAgreedAt"] = self._terms_version(), now_iso()
+
+    @staticmethod
+    def _iso_in(seconds):
+        return datetime.fromtimestamp(time.time() + seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")[:-4] + "Z"
+
+    def _account_delete_start(self, user, by):
+        """Marks the account for deletion and signs it out everywhere (the caller saves)."""
+        user["deleteAt"] = self._iso_in(self.DELETE_DAYS * 86400)
+        user["deleteAsked"], user["deleteBy"] = now_iso(), by
+        user["sessions"] = []
+        for k in ("gameLoginHash", "gameLoginAt", "gameLogins"):
+            user.pop(k, None)
+        for pfid in self._account_players(user):
+            self.store.sign_out(pfid, "This account is being deleted. Sign in again with your password within %d days to keep it." % self.DELETE_DAYS)
+
+    @staticmethod
+    def _account_delete_cancel(user):
+        """True when a deletion was waiting and is now cancelled."""
+        if not user.get("deleteAt"):
+            return False
+        for k in ("deleteAt", "deleteAsked", "deleteBy"):
+            user.pop(k, None)
+        return True
+
+    def _account_players(self, user):
+        """Ids of the game players that belong to an account: the linked one, and any made for it by name."""
+        out = [user["player"]] if user.get("player") else []
+        names = {str(user.get("name") or "").lower(), str(user.get("renamedFrom") or "").lower()} - {""}
+        try:
+            files = os.listdir(self.store.players_dir)
+        except OSError:
+            files = []
+        for f in files:
+            if f.endswith(".json") and f[:-5] not in out:
+                p = self.store.load(f[:-5])
+                login = (p or {}).get("Login")
+                if isinstance(login, dict) and str(login.get("account") or "").lower() in names:
+                    out.append(f[:-5])
+        return out
+
+    def api_Revival_CreatorDeleteAccount(self, req, headers):
+        """The signed-in account asks to be deleted: {"passphrase", "confirm": its own name}."""
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me or self._creator_perms(me)["access"] == "banned":
+                return err("NotAuthorized", "sign in first")
+            if not self._creator_check_passphrase(me, req.get("passphrase")):
+                return err("InvalidPassword", "wrong password")
+            if " ".join(str(req.get("confirm") or "").split()).lower() != me["name"].lower():
+                return err("InvalidParams", "type your account name exactly to confirm")
+            if me["name"].lower() in self._creator_founders():
+                return err("NotAuthorized", "the founding owner's account cannot be deleted from the site")
+            users = self._creator_users()
+            user = users[me["name"].lower()]
+            self._account_delete_start(user, user["name"])
+            self._creator_users_save(users)
+        log.info("account %s asked to be deleted (on %s)", user["name"], user["deleteAt"])
+        return ok({"deleteAt": user["deleteAt"], "days": self.DELETE_DAYS})
+
+    def _account_sweep(self, force=False):
+        """Erases the accounts whose deletion time has passed (at most hourly unless forced)."""
+        now = time.time()
+        if not force and now - getattr(self, "_sweep_at", 0) < 3600:
+            return []
+        self._sweep_at = now
+        done = []
+        with self.store.lock:
+            users = self._creator_users()
+            due = [k for k, u in users.items() if isinstance(u, dict) and u.get("deleteAt") and str(u["deleteAt"]) <= now_iso()
+                   and k not in self._creator_founders()]
+            for key in due:
+                try:
+                    self._account_erase(users, key)
+                    done.append(key)
+                except Exception:
+                    log.exception("could not finish deleting the account %s", key)
+            if done:
+                self._creator_users_save(users)
+        return done
+
+    def _account_erase(self, users, key):
+        """Deletes one account for good (the caller holds the store lock and saves `users`):
+          gone     the account, its game player(s) with decks, progress, friends list and recordings,
+                   the player on other players' friend lists, its drafts / pending / rejected /
+                   discarded cards and their artwork;
+          changed  its approved cards stay, credited to "deleted account"; its chat messages still
+                   kept are emptied and shown as from "deleted account";
+          kept     other players' match history, chat reports and bans (moderation records)."""
+        user = users[key]
+        name = str(user.get("name") or key)
+        names = {key, name.lower(), str(user.get("renamedFrom") or "").lower()} - {""}
+        players = self._account_players(user)
+        for pfid in players:
+            self.store.sign_out(pfid, "This account has been deleted.")
+            try:
+                os.remove(self.store._path(pfid))
+            except (OSError, ValueError):
+                pass
+            shutil.rmtree(self._replay_dir(pfid), ignore_errors=True)
+        if players:
+            gone = set(players)
+            for other in list(self._all_players()):
+                friends = self._friends(other)
+                kept = [f for f in friends if not (isinstance(f, dict) and f.get("id") in gone)]
+                if len(kept) != len(friends):
+                    self._save_friends(other, kept)
+            self._chat_forget(gone)
+        d = self._creator_dir()
+        cards = changed = 0
+        for f in sorted(os.listdir(d)):
+            if not re.fullmatch(r"CUSTOM-\d{4}\.(json|discarded)", f):
+                continue
+            path = os.path.join(d, f)
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    card = json.load(fh)
+            except (OSError, ValueError):
+                continue
+            if str(card.get("author") or "").lower() not in names:
+                continue
+            if f.endswith(".json") and card.get("status") == "approved":
+                card["author"] = self.DELETED_NAME
+                if isinstance(card.get("rulesAccepted"), dict):
+                    card["rulesAccepted"]["by"] = self.DELETED_NAME
+                with open(path + ".tmp", "w", encoding="utf-8") as fh:
+                    json.dump(card, fh, ensure_ascii=False, indent=1)
+                os.replace(path + ".tmp", path)
+                changed += 1
+            else:
+                base = self._creator_art_path(f[:-5] if f.endswith(".json") else f[:-10])[:-4]
+                for tail in (".png", ".mask.png", ".removed.png", ".mask.removed.png"):
+                    try:
+                        os.remove(base + tail)
+                    except OSError:
+                        pass
+                os.remove(path)
+                cards += 1
+        del users[key]
+        log.info("account %s deleted: %d game player(s), %d card(s) removed, %d approved card(s) now by '%s'",
+                 name, len(players), cards, changed, self.DELETED_NAME)
+
+    def _chat_forget(self, pfids):
+        """Empties the kept chat messages of these players and shows them as from "deleted account"."""
+        with self._chat_lock:
+            hit = False
+            for e in self._chat:
+                if e.get("sender") not in pfids:
+                    continue
+                hit = True
+                e["sender"] = ""
+                try:
+                    data = json.loads(e["message"])
+                except ValueError:
+                    data = None
+                if isinstance(data, dict):
+                    for k in ("msg", "playerName", "playerId", "playFabId"):
+                        if k in data:
+                            data[k] = "" if k != "playerName" else self.DELETED_NAME
+                    e["message"] = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+                else:
+                    e["message"] = ""
+            if hit:
+                with open(self._chat_file + ".tmp", "w", encoding="utf-8") as f:
+                    for e in self._chat:
+                        f.write(json.dumps(e, ensure_ascii=False) + "\n")
+                os.replace(self._chat_file + ".tmp", self._chat_file)
 
     # Permissions belong to accounts and only admins can change them:
     #   access    "requested" (asked to join), "approved" or "banned". New accounts are approved
@@ -2430,6 +2644,7 @@ class PlayFabEmulator:
             user["salt"] = os.urandom(16).hex()
             user["hash"] = self._creator_hash(new, user["salt"])
             user["sessions"] = [hashlib.sha256(token.encode("utf-8")).hexdigest()]
+            cancelled = self._account_delete_cancel(user)     # a reset is a sign-in too: a waiting deletion stops
             user["passphraseChangedAt"] = user["recoveredAt"] = now_iso()
             user.pop("recoveryHash", None)                  # used up
             user.pop("recoveryAt", None)
@@ -2438,7 +2653,7 @@ class PlayFabEmulator:
             self._end_play(user.get("player"), "The password of this account was reset. Start the game again and sign in.")
             self._creator_users_save(users)
         log.info("account %s: password reset with its recovery code", user["name"])
-        return ok({"name": user["name"], "session": token, "account": self._creator_perms(user)})
+        return ok({"name": user["name"], "session": token, "account": self._creator_perms(user), "deletionCancelled": cancelled})
 
     # A game login lets the game sign in as the account's game player, with or without Steam. It
     # is a long secret kept by the mod in UserData/WarpforgeRevival/game-login.txt: written there
@@ -2536,6 +2751,11 @@ class PlayFabEmulator:
         "create"). Answers a game login for the mod to keep; no game session is needed."""
         status, resp = self.api_Revival_CreatorSignIn(req, headers)
         if status != 200:
+            if resp.get("error") == "TermsNotAgreed" and req.get("termsBox") is not True:
+                # a mod from before the sign-in window had the tick box: agreeing happens on the website
+                site = str(self._settings().get("creatorUrl") or "").rstrip("/")
+                return err("TermsNotAgreed", "please agree to the Terms and Privacy notice first: sign in once on the website"
+                           + (" (" + site + ")" if site else "") + ", or update the mod", 1002, 403)
             return status, resp
         site_session = resp["data"]["session"]
         with self.store.lock:
@@ -2550,7 +2770,7 @@ class PlayFabEmulator:
                 return err("AccountNotApproved", "your account is waiting for an admin to approve it", 1002, 403)
             token = self._new_game_login(user, "game")
             self._creator_users_save(users)
-        return ok({"name": user["name"], "token": token})
+        return ok({"name": user["name"], "token": token, "deletionCancelled": resp["data"].get("deletionCancelled", False)})
 
     # ---- decks of the linked game account: view, export (done in the page) and import ----
     DECK_KEYS = ("PlayerDecks", "PlayerDecksFast")      # the game keeps Skirmish decks (gameMode 13) in the second list
@@ -2711,7 +2931,8 @@ class PlayFabEmulator:
             p = self.store.load(pfid) if pfid else None
             return (p.get("DisplayName") or pfid) if p else ""
         people = [dict(self._creator_perms(u), name=u["name"], created=u.get("created", ""), cards=counts.get(key, 0),
-                       playerName=game_name(u.get("player"))) for key, u in users.items()]
+                       playerName=game_name(u.get("player")), deleteAt=u.get("deleteAt") or "",
+                       terms=u.get("termsAgreed") or "") for key, u in users.items()]
         people.sort(key=lambda p: (p["access"] != "requested", not p["fixed"], not p["owner"], not p["admin"], p["name"].lower()))
         me = self._creator_account(req)
         mine = self._creator_perms(me) if me else {"owner": False, "fixed": False}
@@ -2725,6 +2946,9 @@ class PlayFabEmulator:
         if access is not None and access not in self.ACCESS:
             return err("InvalidParams", "unknown access value")
         unlink = req.get("unlink") is True
+        delete = req.get("delete")
+        if delete is not None and not isinstance(delete, bool):
+            return err("InvalidParams", "delete is an on/off value")
         flags = {k: req[k] for k in ("reviewer", "tester", "admin", "owner") if k in req}
         if not all(isinstance(v, bool) for v in flags.values()):
             return err("InvalidParams", "reviewer, tester, admin and owner are on/off values")
@@ -2749,6 +2973,8 @@ class PlayFabEmulator:
                 return err("NotAuthorized", f"{user['name']} is {who} - only someone ranked above can change that account")
             if name == me["name"].lower() and (flags.get("admin") is False or flags.get("owner") is False or access in ("banned", "requested")):
                 return err("InvalidParams", "you cannot remove your own rights - ask someone ranked above you")
+            if delete is not None and name == me["name"].lower():
+                return err("InvalidParams", "delete your own account from your Profile")
             if "role" in user:                      # move the older single role to the separate switches
                 old = user.pop("role")
                 user.setdefault("admin", old == "admin")
@@ -2768,10 +2994,15 @@ class PlayFabEmulator:
                 if access == "banned":
                     user["sessions"] = []           # signed out everywhere
                     self._creator_strip_roles(user)
+            if delete is True and not user.get("deleteAt"):
+                self._account_delete_start(user, me["name"])
+                log.info("account %s will be deleted on %s (asked by %s)", user["name"], user["deleteAt"], me["name"])
+            elif delete is False and self._account_delete_cancel(user):
+                log.info("deletion of the account %s cancelled by %s", user["name"], me["name"])
             user["changedBy"], user["changedAt"] = me["name"], now_iso()
             self._creator_users_save(users)
             perms = self._creator_perms(user)
-        return ok(dict(perms, name=user["name"]))
+        return ok(dict(perms, name=user["name"], deleteAt=user.get("deleteAt") or ""))
 
     def api_Revival_CreatorDiscard(self, req, headers):
         """An author throws away one of their own drafts (kept on disk as <id>.discarded)."""
@@ -3088,6 +3319,11 @@ class PlayFabEmulator:
         log.info("request log tidied: %d entr(ies) dropped, %d cleaned of sign-in details, %d kept", dropped, cleaned, len(kept))
 
     def _log(self, api, req, status, resp, note):
+        if time.time() - getattr(self, "_sweep_at", 0) >= 3600:
+            try:
+                self._account_sweep()
+            except Exception:
+                log.exception("could not finish deleting accounts")
         if getattr(self, '_log_tidied', '') != now_iso()[:10]:          # once a day
             try:
                 self._log_tidy()

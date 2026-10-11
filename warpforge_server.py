@@ -718,6 +718,8 @@ class Handler(BaseHTTPRequestHandler):
         pack.refresh()
         if path == "/":                            # the site's front door: the Home page (signed-out visitors are sent to /login by the page)
             return self._serve_file("creator.html")
+        if path == "/terms":                       # the Terms and Privacy notice: open to everyone, no account needed
+            return self._serve_file("terms.html")
         if path == "/api/v1/status":
             return self._json(200, {"name": SERVER_NAME, "apiVersion": API_VERSION,
                                     "packVersion": pack.version, "cards": pack.card_count,

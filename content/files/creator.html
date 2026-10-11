@@ -161,6 +161,9 @@
   .login h2 { margin: 0; font: 600 22px/1.1 Georgia, serif; letter-spacing: .05em; color: var(--accent); }
   .login input { width: 100%; padding: 9px 10px; font-size: 16px; }
   .login .primary { padding: 10px; font-size: 16px; }
+  .login .terms { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 14px; color: var(--text); font-size: 14px; }
+  .login .terms input { margin-top: 3px; width: auto; flex: 0 0 auto; } .login .terms span { flex: 1; }
+  .profile .dangerBox { border-color: var(--bad); }
   .login .switch { margin: 0; text-align: center; color: var(--dim); font-size: 14px; } .login a { color: var(--accent2); }
   .login .note { margin: 0; }
   #meName { color: var(--text); font-weight: 600; text-decoration: underline dotted; text-underline-offset: 3px; }
@@ -200,9 +203,11 @@
     <div class="field hidden" id="pass2Field"><label for="pass2">Password again</label>
       <input id="pass2" type="password" maxlength="200" autocomplete="new-password"></div>
     <p class="hint hidden" id="loginRules">Username: 5 to 30 letters, digits, . ' - or _, no spaces. Password: at least 6 characters, no spaces. Do not reuse a password from another site. This is the same account you can link in the game under Settings &gt; Account.</p>
+    <label class="terms hidden" id="termsField"><input type="checkbox" id="termsBox"> <span>I am 16 or older and I agree to the <a href="/terms" target="_blank" rel="noopener">Terms and Privacy notice</a>.</span></label>
     <button class="primary" id="loginGo" type="submit">Sign in</button>
     <p class="switch"><span id="loginAsk">New here?</span> <a href="#" id="loginSwitch">Create an account</a></p>
     <p class="switch" id="forgotLine"><a href="#" id="forgotLink">Forgot your password?</a></p>
+    <p class="switch"><a href="/terms" target="_blank" rel="noopener">Terms and Privacy</a></p>
   </form>
   <form class="login hidden" id="recoverForm" autocomplete="off">
     <h2>Reset your password</h2>
@@ -423,6 +428,19 @@
         </form>
       </div>
     </section>
+    <section class="dangerBox">
+      <h2>Delete my account</h2>
+      <p class="hint">Signs you out of the website and the game everywhere at once, and deletes the account after 7 days. Signing in again with your password before then cancels it.
+        Your game player (decks, progress, friends, recordings), drafts and rejected cards are deleted. Approved cards stay in the game, credited to “deleted account”, and your chat messages still kept are emptied.
+        See the <a href="/terms" target="_blank" rel="noopener">Terms and Privacy notice</a>.</p>
+      <form id="deleteForm" autocomplete="off">
+        <div class="row">
+          <div class="field"><label for="p_delPass">Your password</label><input id="p_delPass" type="password" maxlength="200" autocomplete="current-password"></div>
+          <div class="field"><label for="p_delName">Type your username to confirm</label><input id="p_delName" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+        </div>
+        <button type="submit" class="danger">Delete my account</button>
+      </form>
+    </section>
   </div>
 
   <div id="viewServer" class="hidden">
@@ -635,6 +653,7 @@
       <h2>Community</h2>
       <ul class="homeLinks">
         <li><a href="https://discord.gg/f4N6RU2sYy" target="_blank" rel="noopener">Join the Discord</a> <span class="hint">- news, install help, finding matches and talking cards</span></li>
+        <li><a href="/terms" target="_blank" rel="noopener">Terms and Privacy notice</a> <span class="hint">- the rules, what the server keeps, and deleting your account</span></li>
       </ul>
     </section>
     <section>
@@ -1591,7 +1610,7 @@ async function save(submit) {
   } catch (e) { say("Not saved: " + e.message, "bad"); }
 }
 // The sign-in page. Nothing else is shown until someone is signed in.
-let creating = false;
+let creating = false, termsAsked = false;          // termsAsked: an existing account must agree to new terms
 function loginMode(create) {
   creating = create;
   $("loginTitle").textContent = create ? "Create an account" : "Sign in";
@@ -1600,6 +1619,7 @@ function loginMode(create) {
   $("loginAsk").textContent = create ? "Already have an account?" : "New here?";
   $("loginSwitch").textContent = create ? "Sign in" : "Create an account";
   $("pass2Field").classList.toggle("hidden", !create); $("forgotLine").classList.toggle("hidden", create); $("loginRules").classList.toggle("hidden", !create);
+  termsAsked = false; $("termsBox").checked = false; $("termsField").classList.toggle("hidden", !create);
   $("pass").autocomplete = create ? "new-password" : "current-password";
   loginSay("");
 }
@@ -1608,13 +1628,21 @@ async function sign() {
   const name = val("author").trim(), passphrase = val("pass");
   if (!name || !passphrase) return loginSay("Enter your username and password.");
   if (creating && passphrase !== val("pass2")) return loginSay("The two passwords do not match.");
+  const agree = $("termsBox").checked;
+  if ((creating || termsAsked) && !agree) return loginSay("Tick the box to agree to the Terms and Privacy notice.");
   $("loginGo").disabled = true;
   try {
-    const d = await call("CreatorSignIn", { name, passphrase, create: creating });
+    const d = await call("CreatorSignIn", Object.assign({ name, passphrase, create: creating }, agree ? { agreeTerms: true } : {}));
     setSession(d.session); $("pass").value = ""; $("pass2").value = ""; loginSay("");
-    say(creating ? `Account created. Welcome, ${d.name}.` : "", creating ? "ok" : "");
+    say(creating ? `Account created. Welcome, ${d.name}.` : d.deletionCancelled ? "Welcome back. Your account will not be deleted after all." : "",
+        creating || d.deletionCancelled ? "ok" : "");
     loginMode(false); await loadList();
   } catch (e) {
+    if (e.code === "TermsNotAgreed" && !creating) {
+      termsAsked = true; $("termsField").classList.remove("hidden");
+      loginSay("The Terms and Privacy notice have changed since you last signed in. Read them, tick the box and sign in again.");
+      $("loginGo").disabled = false; return;
+    }
     if (e.code === "AccountNotApproved") {
       // the account exists now (or already did) and waits for an admin: next time is a plain sign-in
       const made = creating;
@@ -1822,6 +1850,16 @@ async function changePassphrase() {
     say("Password changed. Other browsers signed in to this account have been signed out.", "ok");
   } catch (e) { say(sentence(e), "bad"); }
 }
+async function deleteAccount() {
+  if (!val("p_delPass") || !val("p_delName").trim()) return say("Enter your password and type your username.", "bad");
+  if (val("p_delName").trim().toLowerCase() !== (me || "").toLowerCase()) return say("Type your username exactly as it is to confirm.", "bad");
+  try {
+    const d = await call("CreatorDeleteAccount", { passphrase: val("p_delPass"), confirm: val("p_delName").trim() });
+    $("p_delPass").value = ""; $("p_delName").value = "";
+    setSession(""); fill(null); await loadList();
+    loginSay(`Your account will be deleted on ${new Date(d.deleteAt).toLocaleDateString()}. You have been signed out everywhere. To keep the account, sign in again before then.`);
+  } catch (e) { say(sentence(e), "bad"); }
+}
 async function gameLogin() {
   if (!val("p_glPass")) return say("Enter your password to make the file.", "bad");
   try {
@@ -1994,13 +2032,18 @@ async function loadPeople() {
     box.append(el("div", { class: "item" },
       el("div", {}, el("span", { class: "title", text: p.name + " " }), p.fixed ? el("span", { class: "badge approved", text: "Founding Owner" }) : p.owner ? el("span", { class: "badge approved", text: "Owner" }) : p.admin ? el("span", { class: "badge draft", text: "Admin" }) : null,
         p.access !== "approved" ? el("span", { class: "badge " + (p.access === "banned" ? "rejected" : "pending"), text: p.access }) : null,
+        p.deleteAt ? el("span", { class: "badge rejected", text: "deleted on " + new Date(p.deleteAt).toLocaleDateString() }) : null,
         el("div", { class: "hint", text: `${p.cards} card(s)${p.created ? " · joined " + p.created.slice(0, 10) : ""}` }),
         el("div", { class: "hint" }, p.player ? `Linked to game player ${p.playerName} ` : "Not linked to a game player",
           p.player && !locked ? (oneAccount
             ? el("button", { class: "small", text: "Sign out of game", title: "Signs this account out of the game on every computer and phone. It keeps its game player.", onclick: () => setAccount(p.name, { unlink: true }, "signed out of the game everywhere") })
             : el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") })) : null)),
       el("div", { class: "actions", style: "align-items:center; gap:14px" }, field("Site access", access),
-        el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin"), toggle("owner", "Owner")))));
+        el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin"), toggle("owner", "Owner")),
+        locked || p.name.toLowerCase() === (me || "").toLowerCase() ? null : p.deleteAt
+          ? el("button", { class: "small", text: "Keep account", title: "Cancels the deletion", onclick: () => setAccount(p.name, { delete: false }, "deletion cancelled") })
+          : el("button", { class: "small danger", text: "Delete", title: "Signs the account out everywhere and deletes it after 7 days (signing in again cancels it)",
+              onclick: () => { if (confirm(`Delete the account ${p.name}? It is signed out everywhere now and deleted in 7 days unless someone signs in to it.`)) setAccount(p.name, { delete: true }, "will be deleted in 7 days"); } }))));
   }
 }
 // Keyword cheat sheet: short descriptions from the fan rulebook, joined with how the official cards use each keyword.
@@ -2390,6 +2433,7 @@ async function start() {
   $("signOut").onclick = signOut;
   $("meName").onclick = e => { if (plainClick(e)) { e.preventDefault(); show("Profile"); } };
   $("renameForm").addEventListener("submit", e => { e.preventDefault(); rename(); });
+  $("deleteForm").addEventListener("submit", e => { e.preventDefault(); deleteAccount(); });
   $("passForm").addEventListener("submit", e => { e.preventDefault(); changePassphrase(); });
   $("deckImport").addEventListener("click", importDeck);
   $("deckFileBtn").addEventListener("click", () => $("deckFile").click());
