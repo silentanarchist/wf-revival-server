@@ -2177,10 +2177,12 @@ async function loadPeople() {
             : el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") })) : null)),
       el("div", { class: "actions", style: "align-items:center; gap:14px" }, field("Site access", access),
         el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin"), toggle("owner", "Owner")),
+        // the button sits in a slot of fixed width, kept even when there is no button, so every row's boxes line up
+        el("div", { class: "rowButton", style: "width:104px; display:flex; justify-content:flex-end" },
         locked || p.name.toLowerCase() === (me || "").toLowerCase() ? null : p.deleteAt
           ? el("button", { class: "small", text: "Keep account", title: "Cancels the deletion", onclick: () => setAccount(p.name, { delete: false }, "deletion cancelled") })
           : el("button", { class: "small danger", text: "Delete", title: "Signs the account out everywhere and deletes it after 7 days (signing in again cancels it)",
-              onclick: () => { if (confirm(`Delete the account ${p.name}? It is signed out everywhere now and deleted in 7 days unless someone signs in to it.`)) setAccount(p.name, { delete: true }, "will be deleted in 7 days"); } }))));
+              onclick: () => { if (confirm(`Delete the account ${p.name}? It is signed out everywhere now and deleted in 7 days unless someone signs in to it.`)) setAccount(p.name, { delete: true }, "will be deleted in 7 days"); } })))));
   }
 }
 // Keyword cheat sheet: short descriptions from the fan rulebook, joined with how the official cards use each keyword.
