@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Warpforge Revival – Card Creator</title>
+<title>Warpforge Revival</title>
 <style>
   :root {
     --bg: #14161a; --panel: #1d2026; --panel2: #252931; --line: #343a45; --text: #e6e3da; --dim: #9aa0aa;
@@ -32,6 +32,8 @@
   nav a:hover { color: var(--text); }
   nav a.on { color: var(--text); border-bottom-color: var(--accent); }
   nav { flex-wrap: wrap; }
+  nav.sub { background: #15181d; border-bottom: 1px solid #23272e; padding-left: 28px; }
+  nav.sub a { padding: 7px 14px; font-size: 14px; }
   .uploads { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
   .uploads .up { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #1a1d23; }
   .uploads img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: #0e1013; display: block; margin-bottom: 6px; }
@@ -178,8 +180,7 @@
 </head>
 <body>
 <header>
-  <h1>Card Creator</h1>
-  <span class="hint" id="release"></span>
+  <h1>Warpforge Revival</h1>
   <div class="who">
     <span id="signedIn" class="hidden">Signed in as <a href="/profile" id="meName" title="Open your profile"></a> <span class="badge approved hidden" id="roleBadge"></span> <span class="badge pending hidden" id="testerBadge">Tester</span> <button class="small" id="signOut">Sign out</button></span>
   </div>
@@ -217,18 +218,23 @@
     <p class="switch"><a href="#" id="recoverBack">Back to sign in</a></p>
   </form>
 </div>
-<nav id="tabs" class="hidden">
+<div id="tabs" class="hidden">
+<nav id="mainTabs">
+  <a id="tabCreator" href="/creator" class="on">Card Creator</a>
+  <a id="tabPeople" href="/people" class="hidden">People</a>
+  <a id="tabServer" href="/server" class="hidden">Server</a>
+</nav>
+<nav id="creatorTabs" class="sub">
   <a id="tabCreate" href="/creator" class="on">Create a card</a>
   <a id="tabMine" href="/my-cards">My cards</a>
   <a id="tabList" href="/review" class="hidden">Review queue</a>
-  <a id="tabPeople" href="/people" class="hidden">People</a>
-  <a id="tabServer" href="/server" class="hidden">Server</a>
-  <a id="tabCards" href="/cards">Card viewer</a>
   <a id="tabExamples" href="/examples">Examples</a>
   <a id="tabKeywords" href="/keywords">Keywords</a>
   <a id="tabArtwork" href="/artwork">Artwork</a>
+  <a id="tabCards" href="/cards" class="hidden">Card viewer</a>
   <a id="tabRules" href="/rules">Rules</a>
 </nav>
+</div>
 <main id="app" class="hidden">
   <p id="msg"></p>
 
@@ -1602,9 +1608,9 @@ function pageOf(path) { path = path.replace(/\/+$/, ""); return Object.keys(PAGE
 function goto(path, replace) { if (location.pathname !== path) history[replace ? "replaceState" : "pushState"](null, "", path); }
 function gate() {                                // signed out: only the sign-in page
   const out = !me;
-  if (out) { if (location.pathname !== LOGIN) { wanted = pageOf(location.pathname); goto(LOGIN, true); } document.title = "Sign in – Card Creator"; }
+  if (out) { if (location.pathname !== LOGIN) { wanted = pageOf(location.pathname); goto(LOGIN, true); } document.title = "Sign in – Warpforge Revival"; }
   else if (!pageOf(location.pathname)) { show(wanted || "Create", true); wanted = ""; }
-  else document.title = TITLES[pageOf(location.pathname)] + " – Card Creator";
+  else document.title = TITLES[pageOf(location.pathname)] + " – Warpforge Revival";
   $("viewLogin").classList.toggle("hidden", !out); $("tabs").classList.toggle("hidden", out); $("app").classList.toggle("hidden", out);
   if (out && document.activeElement === document.body) $("author").focus();
 }
@@ -2299,24 +2305,31 @@ async function loadList() {
     if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
     if (role < 2 && !$("viewPeople").classList.contains("hidden")) show("Mine");
     $("tabList").classList.toggle("hidden", !role);
+    $("tabCards").classList.toggle("hidden", !role);                 // card viewer: reviewers and admins for now
+    if (!role && !$("viewCards").classList.contains("hidden")) show("Create");
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
     gate();
     if (editingId) { const fresh = allCards.find(c => c.id === editingId); if (fresh) editingCard = fresh; }
     preview();
-    $("release").textContent = d.released ? "Custom cards are live in the game." : "Custom cards are not in the game yet – approved designs wait for the first test build.";
     drawList();
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
+// The Card Creator tab on the top ribbon opens the second ribbon with these pages; it remembers the last one.
+const CREATOR_GROUP = ["Create", "Mine", "List", "Examples", "Keywords", "Artwork", "Cards", "Rules"];
+let lastCreatorPage = "Create";
 const TITLES = { Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 function show(which, replace) {                // a page name from PAGES
   if (me) goto(PAGES[which], replace);
-  if (me) document.title = TITLES[which] + " – Card Creator";
+  if (me) document.title = TITLES[which] + " – Warpforge Revival";
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
   for (const v of ["People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
   for (const t of ["Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  const inCreator = CREATOR_GROUP.includes(which);
+  if (inCreator) lastCreatorPage = which;
+  $("tabCreator").classList.toggle("on", inCreator); $("creatorTabs").classList.toggle("hidden", !inCreator);
   if (which === "Examples") showExamples();
   if (which === "Cards") showViewer();
   if (which === "Keywords") showKeywords();
@@ -2386,6 +2399,7 @@ async function start() {
   $("suggest").onclick = () => { $("f_text").value = suggestText().slice(0, 300); redraw(true); };
   $("save").onclick = () => save(true); $("saveDraft").onclick = () => save(false);
   $("reset").onclick = () => { fill(null); $("agree").checked = false; say(""); };
+  $("tabCreator").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastCreatorPage); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's
     if (t) t.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(name); } };
