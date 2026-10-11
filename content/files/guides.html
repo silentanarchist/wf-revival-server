@@ -48,7 +48,7 @@ Stuck? Ask on our <a href="https://discord.gg/f4N6RU2sYy" rel="noopener">Discord
 <ul>
 <li>Playing on a Windows PC: <a href="#pc">PC (Windows)</a>.</li>
 <li>Playing on an Android phone: <a href="#phone-app">the patcher app</a> is the easiest; <a href="#android">with a PC</a> is the older way and still works.</li>
-<li>Playing the Android version on a PC through an emulator: <a href="#mumu">MuMu Player</a>.</li>
+<li>Playing the Android version on a PC through an emulator: <a href="#mumu">MuMu Player</a> (uses the Patcher app too).</li>
 </ul>
 The same account works everywhere and keeps your decks and progress.
 </div>
@@ -171,7 +171,7 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <li><strong>Black screen after the opening video:</strong> tick <strong>Fix black menu after loading</strong> and press <strong>Update the mod only</strong>.</li>
 <li><strong>Black screen during a match:</strong> turn on the game's <strong>Settings &gt; Graphics &gt; Extended compatibility</strong>, then restart.</li>
 </ul>
-<p>Prefer the PC route? The <strong>How to install: Android phone</strong> post still works the same way.</p>
+<p>Prefer the PC route? The <a href="#android">Android phone: with a PC</a> guide still works the same way.</p>
 </section>
 
 <section id="android">
@@ -249,74 +249,48 @@ Mods\WarpforgeRevival\manifest.json</pre>
 
 <section id="mumu">
 <h2>Android on PC (MuMu Player)</h2>
-<p>Runs the Android version of the game, with the mod, inside the MuMu Player emulator on a Windows PC. Works from mod release <strong>0.12.20-a</strong>. MuMu is the only emulator tested so far.</p>
+<p>Runs the Android version of the game, with the mod, inside the MuMu Player emulator on a Windows PC. No scripts, no adb: the <strong>Warpforge Patcher</strong> app does the patching inside MuMu. MuMu is the only emulator tested so far.</p>
+<p><strong>You need</strong></p>
 <ul>
-<li><strong>The patcher version matters.</strong> The game must be patched with the patcher from 0.12.20-a or newer. Patched with an older one, it starts on an emulator but runs without the mod.</li>
-<li><strong>The scripts say "phone" throughout.</strong> Here that means the emulator.</li>
+<li><strong>MuMu Player</strong> on your PC</li>
+<li>Your own copy of the Android game, version <strong>1.35.0</strong>, as one <code>.xapk</code> (or <code>.apks</code>) file of about 780 MB. Other versions will not work.</li>
+<li>The app: <code>WarpforgePatcher-....apk</code> from the <strong>Warpforge Patcher</strong> release on the <a href="https://github.com/silentanarchist/warpforge-revival-mod-android/releases" rel="noopener">Android mod's releases page</a></li>
 </ul>
-<p><strong>Start with the Android phone guide</strong> and follow it through the <strong>Patch</strong> step. That leaves you with a <code>patcher</code> folder whose <code>patched</code> subfolder holds three <code>.apk</code> files. Then come back here.</p>
-<p><strong>You also need</strong></p>
-<ul>
-<li><strong>MuMu Player</strong> installed on the same PC. Testing used a MuMu device on Android 15.</li>
-<li>Google's <a href="https://developer.android.com/tools/releases/platform-tools" rel="noopener">SDK Platform-Tools</a>, unzipped so that <code>patcher\tool\platform-tools\adb.exe</code> exists</li>
-<li>The mod file <code>WarpforgeRevival.Android.dll</code> from the <a href="https://github.com/silentanarchist/warpforge-revival-mod-android/releases/latest" rel="noopener">latest release</a>, copied into <code>patcher\mods</code></li>
-<li><strong>No phone plugged in.</strong> The scripts take the first ready device and cannot tell MuMu from a phone.</li>
-</ul>
-<p>You still need your own copy of game version 1.35.0.</p>
-<h3>1. Start MuMu</h3>
+<h3>1. Put both files into MuMu</h3>
 <ol>
-<li>Start MuMu and wait for the Android home screen.</li>
-<li>Run one MuMu device only.</li>
-<li>Do not use MuMu's own "APK Installation" entry. The game is three files that have to go in together.</li>
+<li>Start MuMu and wait for the Android home screen. Run one MuMu device only.</li>
+<li>Drag the game's <code>.xapk</code> file onto the MuMu window. MuMu installs the game. Wait until its icon appears.</li>
+<li>Drag <code>WarpforgePatcher-....apk</code> onto the MuMu window. MuMu installs the app.</li>
 </ol>
-<h3>2. Connect the PC to MuMu</h3>
-<p>Repeat this each time MuMu restarts.</p>
+<h3>2. Patch</h3>
 <ol>
-<li>Open the <code>patcher</code> folder in File Explorer, click the address bar, type <code>cmd</code> and press Enter.</li>
-<li>Run this. It should answer <code>connected to 127.0.0.1:16384</code>.</li>
+<li>Open <strong>Warpforge Patcher</strong> in MuMu.</li>
+<li>Allow the two permissions it asks for: <strong>Allow access to the loader's folder</strong> (All files access) and <strong>Allow this app to install the game</strong>.</li>
+<li>Press <strong>Patch and install</strong>. The app asks before it removes the original game: press <strong>Continue</strong>. Stay in the app while it works; the big data file takes a few minutes.</li>
+<li>Confirm MuMu's two prompts: removing the original game, then installing the patched one.</li>
 </ol>
-<pre>tool\platform-tools\adb.exe connect 127.0.0.1:16384</pre>
+<p>The app also puts the current mod in place. Nothing else to copy.</p>
+<h3>3. Play</h3>
 <ol>
-<li>Run this to check. <code>127.0.0.1:16384   device</code> should be the only entry marked <code>device</code>. Entries marked <code>offline</code> are fine; the scripts skip them.</li>
-</ol>
-<pre>tool\platform-tools\adb.exe devices</pre>
-<p>If step 2 says the connection was refused, try <code>16416</code> and then <code>7555</code> in place of <code>16384</code>.</p>
-<h3>3. Install the patched game</h3>
-<ol>
-<li>Double-click <strong><code>2 - install on phone.bat</code></strong>.</li>
-<li>Check the line <code>Using device: 127.0.0.1:16384</code>. If it names anything else, close the window, unplug the phone and start again.</li>
-<li>Wait a few minutes; the data file is about 740 MB.</li>
-<li>If it asks you to type <code>YES</code> to remove the copy first, type it. On the emulator that only removes the emulator's copy.</li>
-</ol>
-<h3>4. First start, then the mod</h3>
-<p>The game has to start once before the mod can be copied in, because that first start unpacks the loader's folder.</p>
-<ol>
-<li>Start the game in MuMu and allow <strong>"All files access"</strong> when it asks. The first start sits on a black screen for a minute or so.</li>
-<li>The game stops at the title screen with a connection error. That is expected without the mod. Close the game completely (swipe it away).</li>
-<li>Double-click <strong><code>3 - put mod on phone.bat</code></strong>. It ends by listing the Mods folder with <code>WarpforgeRevival.Android.dll</code> in it.</li>
-<li>Start the game again. If the server asks for an account, a sign-in window appears while it loads: sign in, or type a new name and password and press <strong>Create account</strong>.</li>
+<li>Start the game in MuMu and allow <strong>"All files access"</strong> when it asks. The first start sits on a black screen for a minute or so while the loader sets itself up.</li>
+<li>If the server asks for an account, a sign-in window appears while the game loads: sign in, or type a new name (5 to 30 characters) and password (at least 6) and press <strong>Create account</strong>. The same account works on PC and phone.</li>
 <li>Check the mod is running: its version is shown next to the game's in <strong>Settings &gt; General</strong>.</li>
 </ol>
-<p>Instead of typing in step 4, you can download a <strong>game login file</strong> from the website's Profile page and run <strong><code>4 - put game login on phone.bat</code></strong>. It finds the file in your Downloads folder. Treat that file like a password.</p>
-<h3>Collecting logs</h3>
-<p>Double-click <strong><code>0 - get phone logs.bat</code></strong>. Each capture goes in its own folder under <code>patcher\phone-logs</code>.</p>
+<h3>The two main buttons</h3>
 <ul>
-<li>Press <code>1</code> for a fresh start: the game must be closed, and you start it after the script says so.</li>
-<li>Press <code>2</code> when the game is open and something just went wrong. Leave the game on the broken screen.</li>
+<li><strong>Patch and install</strong> (<strong>Patch again and install</strong> once the game is patched): puts the mod loader into the game, installs the patched game and puts the current mod in place. Use it the first time and whenever a new loader comes out.</li>
+<li><strong>Update the mod only</strong>: puts the current mod in place without touching the game. The mod also updates itself when the game starts.</li>
 </ul>
-<p>The saved game login is left out of the capture. The logs can still contain your player id and the server address, so send the folder to whoever is helping you and do not post it publicly.</p>
 <h3>If something goes wrong</h3>
 <ul>
-<li><strong><code>cannot connect to 127.0.0.1:16384</code>:</strong> check MuMu is on its home screen, then try <code>16416</code> and <code>7555</code>.</li>
-<li><strong><code>No phone is ready</code>:</strong> run the connect command again. Restarting MuMu drops the link.</li>
-<li><strong><code>Using device:</code> names something other than <code>127.0.0.1:...</code>:</strong> a phone is plugged in. Close the window, unplug it and rerun.</li>
-<li><strong>The install is refused and the script asks for <code>YES</code>:</strong> type <code>YES</code>. The copy on the emulator was signed with a different key.</li>
-<li><strong><code>Copying failed</code> from script 3 or 4:</strong> the game has not been started once since the install. Start it, close it, rerun the script.</li>
-<li><strong>Connection error at the title screen after the mod was copied in:</strong> the game was patched with a patcher older than 0.12.20-a, or the server cannot be reached. Download the current patcher, patch and install again, then repeat step 4.</li>
-<li><strong>Black screen during a match:</strong> turn on the game's <strong>Settings &gt; Graphics &gt; Extended compatibility</strong> and restart it. If it stays black, collect logs with <code>2</code>.</li>
+<li><strong>MuMu did not install the <code>.xapk</code> when you dropped it:</strong> open Warpforge Patcher, press <strong>Patch from a backup file</strong> and pick the <code>.xapk</code> (MuMu puts dropped files in its shared folder or in Download).</li>
+<li><strong>Connection error at the title screen:</strong> press <strong>Update the mod only</strong> in the app, or check the server is up.</li>
+<li><strong>Black screen during a match:</strong> turn on the game's <strong>Settings &gt; Graphics &gt; Extended compatibility</strong> and restart it.</li>
+<li><strong>Anything else:</strong> press <strong>Share logs</strong> in the app and send the file to whoever is helping you. It never includes your game login, but it can contain your player id, so do not post it publicly.</li>
 </ul>
+<p>Prefer the old way with adb and the PC scripts? The <a href="#android">Android phone: with a PC</a> guide still works for MuMu: connect with <code>adb connect 127.0.0.1:16384</code> and run the scripts as for a phone.</p>
 </section>
-<p class="dim" style="margin-top:40px">Guides as of 11 October 2026 (mod 0.13, Warpforge Patcher 0.2).</p>
+<p class="dim" style="margin-top:40px">Guides as of 11 October 2026 (mod 0.13, Warpforge Patcher 0.2.1).</p>
 </main>
 </body>
 </html>
