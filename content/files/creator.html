@@ -32,11 +32,9 @@
   nav a:hover { color: var(--text); }
   nav a.on { color: var(--text); border-bottom-color: var(--accent); }
   nav { flex-wrap: wrap; }
-  .homeGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: start; }
-  .homeGrid section { margin-bottom: 0; }
+  .home { max-width: 820px; } .home p { line-height: 1.55; }
   .homeLinks { margin: 8px 0; padding-left: 20px; } .homeLinks li { margin: 4px 0; } .homeLinks a { color: var(--accent); }
-  a.button { display: inline-block; text-decoration: none; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); }
-  a.button:hover { border-color: var(--accent); }
+  header h1 a { color: inherit; text-decoration: none; } header h1 a:hover { opacity: .85; }
   nav.sub { background: #15181d; border-bottom: 1px solid #23272e; padding-left: 28px; }
   nav.sub a { padding: 7px 14px; font-size: 14px; }
   .uploads { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
@@ -185,7 +183,7 @@
 </head>
 <body>
 <header>
-  <h1>Warpforge Revival</h1>
+  <h1><a id="tabHome" href="/" title="Home">Warpforge Revival</a></h1>
   <div class="who">
     <span id="signedIn" class="hidden">Signed in as <a href="/profile" id="meName" title="Open your profile"></a> <span class="badge approved hidden" id="roleBadge"></span> <span class="badge pending hidden" id="testerBadge">Tester</span> <button class="small" id="signOut">Sign out</button></span>
   </div>
@@ -225,7 +223,6 @@
 </div>
 <div id="tabs" class="hidden">
 <nav id="mainTabs">
-  <a id="tabHome" href="/" class="on">Home</a>
   <a id="tabCreator" href="/creator">Card Creator</a>
   <a id="tabPeople" href="/people" class="hidden">People</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
@@ -628,37 +625,20 @@
     </section>
   </div>
 
-  <div id="viewHome" class="hidden">
+  <div id="viewHome" class="hidden home">
     <section>
       <h2 id="homeHello">Welcome</h2>
-      <p class="hint">Warpforge Revival keeps Warhammer 40,000: Warpforge playable now that its own servers are closed. An unofficial fan project, not affiliated with Everguild or Games Workshop.</p>
+      <p>Welcome to Warpforge Revival, the community project that keeps <em>Warhammer 40,000: Warpforge</em> playable now that its official servers have closed. Sign in to the game with this same account, design your own cards in the Card Creator, and play against the rest of the community.</p>
+      <p class="hint">An unofficial fan project, not affiliated with Everguild or Games Workshop. You need your own copy of the game.</p>
     </section>
-    <div class="homeGrid">
-      <section>
-        <h2>Play</h2>
-        <p>The game needs your own copy plus the Revival mod, which then keeps itself up to date.</p>
-        <ul class="homeLinks">
-          <li><a href="https://github.com/silentanarchist/warpforge-revival-mod/releases/latest" target="_blank" rel="noopener">PC (Windows) mod</a> <span class="hint">- install steps in the download</span></li>
-          <li><a href="https://github.com/silentanarchist/warpforge-revival-mod-android" target="_blank" rel="noopener">Android</a> <span class="hint">- patcher and step-by-step guide</span></li>
-        </ul>
-        <p class="hint">The same account works in the game on PC and phone. Link it in the game under Settings &gt; Account.</p>
-      </section>
-      <section>
-        <h2>Card Creator</h2>
-        <p id="homeCards"></p>
-        <p id="homeQueue" class="hidden"></p>
-        <div class="actions">
-          <a class="button" href="/creator" data-page="Create">Create a card</a>
-          <a class="button" href="/my-cards" data-page="Mine">My cards</a>
-          <a class="button hidden" id="homeReview" href="/review" data-page="List">Review queue</a>
-        </div>
-      </section>
-      <section>
-        <h2>Your account</h2>
-        <p id="homeAccount"></p>
-        <div class="actions"><a class="button" href="/profile" data-page="Profile">Profile</a></div>
-      </section>
-    </div>
+    <section>
+      <h2>On GitHub</h2>
+      <ul class="homeLinks">
+        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod" target="_blank" rel="noopener">Warpforge Revival mod for PC</a> <span class="hint">- downloads and install steps (Windows)</span></li>
+        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod-android" target="_blank" rel="noopener">Warpforge Revival for Android</a> <span class="hint">- the patcher and a step-by-step guide</span></li>
+        <li><a href="https://github.com/silentanarchist/warpforge-revival-server" target="_blank" rel="noopener">Warpforge Revival server</a> <span class="hint">- run a server of your own</span></li>
+      </ul>
+    </section>
   </div>
 
   <div id="viewRules" class="hidden">
@@ -1814,20 +1794,9 @@ function drawProfile() {
   $("p_recRemove").classList.toggle("hidden", !hasCode);
   $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
 }
-// Home: a short summary of the account and its cards, with links into the rest of the site.
+// Home: the welcome message and the project's links.
 function drawHome() {
-  if (!me) return;
-  $("homeHello").textContent = "Welcome, " + me;
-  const own = allCards.filter(c => (c.author || "").toLowerCase() === me.toLowerCase());
-  const n = s => own.filter(c => c.status === s).length;
-  $("homeCards").textContent = own.length
-    ? `You have ${own.length} card${own.length === 1 ? "" : "s"}: ${n("draft")} draft, ${n("pending")} waiting for review, ${n("approved")} approved, ${n("rejected")} sent back.`
-    : "You have not made a card yet.";
-  const waiting = role ? allCards.filter(c => c.status === "pending").length : 0;
-  $("homeQueue").classList.toggle("hidden", !role); $("homeReview").classList.toggle("hidden", !role);
-  if (role) $("homeQueue").textContent = waiting ? `${waiting} card${waiting === 1 ? "" : "s"} waiting in the review queue.` : "Nothing is waiting in the review queue.";
-  const ranks = account ? [account.fixed ? "Founding Owner" : account.owner ? "Owner" : account.admin ? "Admin" : account.reviewer ? "Reviewer" : "", account.tester && !account.admin ? "In-game tester" : ""].filter(Boolean) : [];
-  $("homeAccount").textContent = (account && account.player ? `Linked to game player ${account.playerName}.` : "Not linked to the game yet.") + (ranks.length ? " Role: " + ranks.join(", ") + "." : "");
+  if (me) $("homeHello").textContent = "Welcome, " + me;
 }
 const sentence = e => e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".";
 async function rename() {
@@ -2455,7 +2424,6 @@ async function start() {
   $("suggest").onclick = () => { $("f_text").value = suggestText().slice(0, 300); redraw(true); };
   $("save").onclick = () => save(true); $("saveDraft").onclick = () => save(false);
   $("reset").onclick = () => { fill(null); $("agree").checked = false; say(""); };
-  for (const a of document.querySelectorAll("#viewHome a[data-page]")) a.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(a.dataset.page); } };
   $("tabCreator").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastCreatorPage); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's
