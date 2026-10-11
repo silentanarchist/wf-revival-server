@@ -1932,6 +1932,8 @@ async function importDeck() {
   } catch (e) { say("Not imported: " + e.message + ".", "bad"); }
 }
 // Admins: every account with its switches. Reviewer and tester are independent; admin turns everything on.
+// Ranks: founding owner > owner > admin > everyone else. An account can only be changed by someone ranked
+// above it; owners give and take admin, only the founding owner gives and takes owner.
 async function setAccount(name, change, done) {
   try { await call("CreatorSetAccount", Object.assign({ name }, change)); say(`${name}: ${done}.`, "ok"); }
   catch (x) { say("Not changed: " + x.message, "bad"); }
@@ -1943,22 +1945,27 @@ async function loadPeople() {
   try { d = await call("CreatorPeople"); } catch (e) { return say("Could not load the accounts: " + e.message, "bad"); }
   const oneAccount = !!d.requireAccount;          // account and game player are one: "unlink" only signs the game out
   $("peopleHint").textContent = d.autoApprove ? "New accounts are approved automatically for now." : "New accounts wait as “requested” until an admin approves them.";
+  const rank = q => q.fixed ? 3 : q.owner ? 2 : q.admin ? 1 : 0;
+  const myRank = d.founder ? 3 : d.owner ? 2 : 1;
   for (const p of d.people) {
-    const access = el("select", { disabled: p.fixed, onchange: e => setAccount(p.name, { access: e.target.value }, "access set to " + e.target.value) });
+    const locked = p.fixed || rank(p) >= myRank;          // only someone ranked above may change it
+    const access = el("select", { disabled: locked, onchange: e => setAccount(p.name, { access: e.target.value }, "access set to " + e.target.value) });
     for (const [v, t] of [["requested", "Requested"], ["approved", "Approved"], ["banned", "Banned"]]) access.append(el("option", { value: v, text: t }));
     access.value = p.access;
-    const toggle = (key, label) => el("label", {}, el("input", { type: "checkbox", checked: p[key], disabled: p.fixed || (p.admin && key !== "admin"),
+    const toggle = (key, label) => el("label", { title: myRank < ({ admin: 2, owner: 3 }[key] || 1) ? (key === "owner" ? "Only the founding owner can give or take owner" : "Only an owner can give or take admin") : "" },
+      el("input", { type: "checkbox", checked: p[key],
+      disabled: locked || myRank < ({ admin: 2, owner: 3 }[key] || 1) || (p.owner && key !== "owner") || (p.admin && !p.owner && key !== "admin"),
       onchange: e => setAccount(p.name, { [key]: e.target.checked }, `${label.toLowerCase()} ${e.target.checked ? "on" : "off"}`) }), label);
     box.append(el("div", { class: "item" },
-      el("div", {}, el("span", { class: "title", text: p.name + " " }), p.fixed ? el("span", { class: "badge approved", text: "founding admin" }) : null,
+      el("div", {}, el("span", { class: "title", text: p.name + " " }), p.fixed ? el("span", { class: "badge approved", text: "founding owner" }) : p.owner ? el("span", { class: "badge approved", text: "owner" }) : p.admin ? el("span", { class: "badge draft", text: "admin" }) : null,
         p.access !== "approved" ? el("span", { class: "badge " + (p.access === "banned" ? "rejected" : "pending"), text: p.access }) : null,
         el("div", { class: "hint", text: `${p.cards} card(s)${p.created ? " · joined " + p.created.slice(0, 10) : ""}` }),
         el("div", { class: "hint" }, p.player ? `Linked to game player ${p.playerName} ` : "Not linked to a game player",
-          p.player && !p.fixed ? (oneAccount
+          p.player && !locked ? (oneAccount
             ? el("button", { class: "small", text: "Sign out of game", title: "Signs this account out of the game on every computer and phone. It keeps its game player.", onclick: () => setAccount(p.name, { unlink: true }, "signed out of the game everywhere") })
             : el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") })) : null)),
       el("div", { class: "actions", style: "align-items:center; gap:14px" }, field("Site access", access),
-        el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin")))));
+        el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin"), toggle("owner", "Owner")))));
   }
 }
 // Keyword cheat sheet: short descriptions from the fan rulebook, joined with how the official cards use each keyword.
@@ -2056,7 +2063,7 @@ async function loadReports() {
 }
 $("reportsClosed").onchange = loadReports;
 // Admins: the word filter.
-// ---------------------------------------------------------------- server settings (founding admins)
+// ---------------------------------------------------------------- server settings (founding owner only)
 let cfg = null;
 const MODE_NAMES = { RevivalClassic: "Classic", RevivalSkirmish: "Skirmish", RevivalDraft: "Draft", RevivalLongGame: "Long Game",
                      PracticeEvent: "Practice", PracticeEventClassic: "Practice Classic" };
@@ -2284,7 +2291,7 @@ async function loadList() {
     allCards = d.cards.sort((a, b) => (b.updated || "").localeCompare(a.updated || "")); role = d.role; me = d.name;
     ownCardsInLists();
     if (!me && session()) setSession("");
-    $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = role === 2 ? "Admin" : "Reviewer";
+    $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
     $("tabPeople").classList.toggle("hidden", role < 2);
     const founder = !!(d.account && d.account.fixed);

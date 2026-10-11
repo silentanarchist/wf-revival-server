@@ -1597,9 +1597,13 @@ class PlayFabEmulator:
     #   reviewer  approves and rejects cards waiting for review.
     #   tester    in-game tester (will see custom cards in the game before they are released).
     #   admin     everything: reviewer and tester rights, changing or un-approving approved cards,
-    #             and editing accounts.
-    # Founding admins are always admins and cannot be changed from the page (so the server can
-    # never be left without one).
+    #             and editing the accounts (access, reviewer, tester) of players who are not admins.
+    #   owner     admin rights, plus giving and taking admin and editing admins' accounts.
+    #   founding owner  the accounts listed in data/creator_admins.json: always owners, cannot be
+    #             changed from the page by anyone (so the server can never be left without one), the
+    #             only ones who give or take owner or edit an owner's account, and the only ones who
+    #             see the Server tab.
+    # Rule of thumb: an account can only be edited by someone ranked above it.
     ACCESS = ("requested", "approved", "banned")
 
     def _creator_founders(self):
@@ -1619,13 +1623,14 @@ class PlayFabEmulator:
     def _creator_perms(self, user):
         """{"access", "reviewer", "tester", "admin", "fixed"} for an account."""
         fixed = user["name"].lower() in self._creator_founders()
-        admin = fixed or bool(user.get("admin")) or user.get("role") == "admin"        # "role" is the older form
+        owner = fixed or bool(user.get("owner"))
+        admin = owner or bool(user.get("admin")) or user.get("role") == "admin"        # "role" is the older form
         access = user.get("access")
         if access not in self.ACCESS:
             access = "approved"                                 # accounts made before access existed
         if fixed:
             access = "approved"
-        return {"access": access, "admin": admin, "fixed": fixed, "player": user.get("player") or "",
+        return {"access": access, "admin": admin, "fixed": fixed, "owner": owner, "player": user.get("player") or "",
                 "reviewer": admin or bool(user.get("reviewer")) or user.get("role") == "reviewer",
                 "tester": admin or bool(user.get("tester"))}
 
@@ -2289,7 +2294,7 @@ class PlayFabEmulator:
                 if p is not None and isinstance(p.get("Login"), dict) and "account" in p["Login"]:
                     p["Login"]["account"] = new
                     self.store.save(p)
-            if was_founder:                                   # a founding admin stays one under the new name
+            if was_founder:                                   # the founding owner stays one under the new name
                 path = os.path.join(self.store.root, "creator_admins.json")
                 try:
                     with open(path, encoding="utf-8") as f:
@@ -2683,20 +2688,22 @@ class PlayFabEmulator:
             return (p.get("DisplayName") or pfid) if p else ""
         people = [dict(self._creator_perms(u), name=u["name"], created=u.get("created", ""), cards=counts.get(key, 0),
                        playerName=game_name(u.get("player"))) for key, u in users.items()]
-        people.sort(key=lambda p: (p["access"] != "requested", not p["admin"], p["name"].lower()))
-        return ok({"people": people, "autoApprove": self._creator_auto_approve(),
+        people.sort(key=lambda p: (p["access"] != "requested", not p["fixed"], not p["owner"], not p["admin"], p["name"].lower()))
+        me = self._creator_account(req)
+        mine = self._creator_perms(me) if me else {"owner": False, "fixed": False}
+        return ok({"people": people, "owner": mine["owner"], "founder": mine["fixed"], "autoApprove": self._creator_auto_approve(),
                    "requireAccount": self._settings().get("requireAccount") is True})
 
     def api_Revival_CreatorSetAccount(self, req, headers):
-        """An admin changes one account: any of access, reviewer, tester, admin."""
+        """An admin changes one account: any of access, reviewer, tester, admin, owner (see the ranks above)."""
         name = str(req.get("name") or "").lower()
         access = req.get("access")
         if access is not None and access not in self.ACCESS:
             return err("InvalidParams", "unknown access value")
         unlink = req.get("unlink") is True
-        flags = {k: req[k] for k in ("reviewer", "tester", "admin") if k in req}
+        flags = {k: req[k] for k in ("reviewer", "tester", "admin", "owner") if k in req}
         if not all(isinstance(v, bool) for v in flags.values()):
-            return err("InvalidParams", "reviewer, tester and admin are on/off values")
+            return err("InvalidParams", "reviewer, tester, admin and owner are on/off values")
         with self.store.lock:
             me = self._creator_account(req)
             if not me or self._creator_role(req) < 2:
@@ -2706,9 +2713,18 @@ class PlayFabEmulator:
             if user is None:
                 return err("InvalidParams", "no account with that name")
             if name in self._creator_founders():
-                return err("NotAuthorized", f"{user['name']} is a founding admin and cannot be changed here")
-            if name == me["name"].lower() and (flags.get("admin") is False or access in ("banned", "requested")):
-                return err("InvalidParams", "you cannot remove your own admin rights - ask another admin")
+                return err("NotAuthorized", f"{user['name']} is the founding owner and cannot be changed here")
+            mine, theirs = self._creator_perms(me), self._creator_perms(user)
+            rank = lambda q: 3 if q["fixed"] else 2 if q["owner"] else 1 if q["admin"] else 0
+            if "owner" in flags and not mine["fixed"]:
+                return err("NotAuthorized", "only the founding owner can give or take owner")
+            if "admin" in flags and rank(mine) < 2:
+                return err("NotAuthorized", "only an owner can give or take admin")
+            if name != me["name"].lower() and rank(theirs) >= rank(mine):
+                who = "an owner" if theirs["owner"] else "an admin"
+                return err("NotAuthorized", f"{user['name']} is {who} - only someone ranked above can change that account")
+            if name == me["name"].lower() and (flags.get("admin") is False or flags.get("owner") is False or access in ("banned", "requested")):
+                return err("InvalidParams", "you cannot remove your own rights - ask someone ranked above you")
             if "role" in user:                      # move the older single role to the separate switches
                 old = user.pop("role")
                 user.setdefault("admin", old == "admin")
