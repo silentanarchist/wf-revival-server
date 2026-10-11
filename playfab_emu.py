@@ -1603,7 +1603,8 @@ class PlayFabEmulator:
     #             changed from the page by anyone (so the server can never be left without one), the
     #             only ones who give or take owner or edit an owner's account, and the only ones who
     #             see the Server tab.
-    # Rule of thumb: an account can only be edited by someone ranked above it.
+    # Rule of thumb: an account can only be edited (or its game player banned) by someone ranked above it.
+    # A ban - of the account, or of its game player - takes every role away for good.
     ACCESS = ("requested", "approved", "banned")
 
     def _creator_founders(self):
@@ -1630,9 +1631,23 @@ class PlayFabEmulator:
             access = "approved"                                 # accounts made before access existed
         if fixed:
             access = "approved"
+        if access == "banned":                                  # a banned account has no roles, whatever the file says
+            return {"access": access, "admin": False, "fixed": False, "owner": False, "player": user.get("player") or "",
+                    "reviewer": False, "tester": False}
         return {"access": access, "admin": admin, "fixed": fixed, "owner": owner, "player": user.get("player") or "",
                 "reviewer": admin or bool(user.get("reviewer")) or user.get("role") == "reviewer",
                 "tester": admin or bool(user.get("tester"))}
+
+    ROLE_KEYS = ("owner", "admin", "reviewer", "tester", "role")
+
+    def _creator_rank(self, perms):
+        """3 founding owner, 2 owner, 1 admin, 0 anyone else."""
+        return 3 if perms["fixed"] else 2 if perms["owner"] else 1 if perms["admin"] else 0
+
+    def _creator_strip_roles(self, user):
+        """A ban takes every role away for good: unbanning later does not bring them back."""
+        for k in self.ROLE_KEYS:
+            user.pop(k, None)
 
     def _creator_account(self, req):
         """The signed-in account, or None."""
@@ -2189,12 +2204,19 @@ class PlayFabEmulator:
                 return err("NotAuthorized", "only admins can ban players")
             if not re.fullmatch(r"[0-9A-F]{16}", pfid) or self.store.load(pfid) is None:
                 return err("InvalidParams", "no player with that id")
-            _, account = self._creator_account_of_player(self._creator_users(), pfid)
+            users = self._creator_users()
+            _, account = self._creator_account_of_player(users, pfid)
             if account and account["name"].lower() == me["name"].lower():
                 return err("InvalidParams", "that is your own game account")
+            if account and self._creator_rank(self._creator_perms(account)) >= self._creator_rank(self._creator_perms(me)):
+                return err("NotAuthorized", f"that player belongs to {account['name']} - only someone ranked above can ban it")
             data = self._bans()
             if ban:
                 data["players"][pfid] = {"reason": str(req.get("reason") or "")[:200], "by": me["name"], "at": now_iso()}
+                if account and any(account.get(k) for k in self.ROLE_KEYS):
+                    self._creator_strip_roles(account)      # a ban takes every role away
+                    account["changedBy"], account["changedAt"] = me["name"], now_iso()
+                    self._creator_users_save(users)
             else:
                 data["players"].pop(pfid, None)
             self._bans_save(data)
@@ -2715,7 +2737,7 @@ class PlayFabEmulator:
             if name in self._creator_founders():
                 return err("NotAuthorized", f"{user['name']} is the founding owner and cannot be changed here")
             mine, theirs = self._creator_perms(me), self._creator_perms(user)
-            rank = lambda q: 3 if q["fixed"] else 2 if q["owner"] else 1 if q["admin"] else 0
+            rank = self._creator_rank
             if "owner" in flags and not mine["fixed"]:
                 return err("NotAuthorized", "only the founding owner can give or take owner")
             if "admin" in flags and rank(mine) < 2:
@@ -2743,6 +2765,7 @@ class PlayFabEmulator:
                 user["access"] = access
                 if access == "banned":
                     user["sessions"] = []           # signed out everywhere
+                    self._creator_strip_roles(user)
             user["changedBy"], user["changedAt"] = me["name"], now_iso()
             self._creator_users_save(users)
             perms = self._creator_perms(user)
