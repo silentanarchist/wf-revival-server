@@ -2070,12 +2070,13 @@ class PlayFabEmulator:
         return ok({"html": m.group(1) if m else ""})
 
     def _bug_reader(self, req):
-        """(account, perms) for a signed-in tester or above on the site, or (None, error)."""
+        """(account, perms) for a signed-in tester or admin on the site, or (None, error)."""
         me = self._creator_account(req)
         if not me:
             return None, err("NotAuthorized", "sign in first")
         perms = self._creator_perms(me)
-        if perms["access"] != "approved" or not (perms["tester"] or perms["reviewer"]):
+        # testers and admins ("tester" is on for every admin); reviewers are for the card creator
+        if perms["access"] != "approved" or not (perms["tester"] or perms["admin"]):
             return None, err("NotAuthorized", "the bug list is for testers")
         return me, perms
 

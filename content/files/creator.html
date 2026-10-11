@@ -2587,7 +2587,7 @@ async function loadList() {
     $("tabAdmin").classList.toggle("hidden", !role);              // reviewers: Admin holds only the review queue
     $("tabAdmin").href = role >= 2 ? "/people" : "/review";
     if (role >= 2) loadRequestCount();
-    const bugsOk = !!(d.account && (d.account.tester || d.account.reviewer));
+    const bugsOk = !!(d.account && (d.account.tester || d.account.admin));   // testers and admins, not reviewers
     $("tabBugs").classList.toggle("hidden", !bugsOk);
     if (!bugsOk && !$("viewBugs").classList.contains("hidden")) show("Home");
     const founder = !!(d.account && d.account.fixed);
