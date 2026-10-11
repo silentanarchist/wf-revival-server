@@ -32,6 +32,11 @@
   nav a:hover { color: var(--text); }
   nav a.on { color: var(--text); border-bottom-color: var(--accent); }
   nav { flex-wrap: wrap; }
+  .homeGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+  .homeGrid section { margin-bottom: 0; }
+  .homeLinks { margin: 8px 0; padding-left: 20px; } .homeLinks li { margin: 4px 0; } .homeLinks a { color: var(--accent); }
+  a.button { display: inline-block; text-decoration: none; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); }
+  a.button:hover { border-color: var(--accent); }
   nav.sub { background: #15181d; border-bottom: 1px solid #23272e; padding-left: 28px; }
   nav.sub a { padding: 7px 14px; font-size: 14px; }
   .uploads { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
@@ -220,12 +225,13 @@
 </div>
 <div id="tabs" class="hidden">
 <nav id="mainTabs">
-  <a id="tabCreator" href="/creator" class="on">Card Creator</a>
+  <a id="tabHome" href="/" class="on">Home</a>
+  <a id="tabCreator" href="/creator">Card Creator</a>
   <a id="tabPeople" href="/people" class="hidden">People</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
 </nav>
 <nav id="creatorTabs" class="sub">
-  <a id="tabCreate" href="/creator" class="on">Create a card</a>
+  <a id="tabCreate" href="/creator">Create a card</a>
   <a id="tabMine" href="/my-cards">My cards</a>
   <a id="tabList" href="/review" class="hidden">Review queue</a>
   <a id="tabExamples" href="/examples">Examples</a>
@@ -620,6 +626,39 @@
     <p><a href="/api/v1/content/files/art-example.jpg"><img src="/api/v1/content/files/art-example.jpg" alt="Art file, pop-out mask and finished card for four official cards"></a></p>
     <p class="dim">Measurements were taken by lining official art up against finished official cards. Example artwork belongs to its owners and is shown for reference only.</p>
     </section>
+  </div>
+
+  <div id="viewHome" class="hidden">
+    <section>
+      <h2 id="homeHello">Welcome</h2>
+      <p class="hint">Warpforge Revival keeps Warhammer 40,000: Warpforge playable now that its own servers are closed. An unofficial fan project, not affiliated with Everguild or Games Workshop.</p>
+    </section>
+    <div class="homeGrid">
+      <section>
+        <h2>Play</h2>
+        <p>The game needs your own copy plus the Revival mod, which then keeps itself up to date.</p>
+        <ul class="homeLinks">
+          <li><a href="https://github.com/silentanarchist/warpforge-revival-mod/releases/latest" target="_blank" rel="noopener">PC (Windows) mod</a> <span class="hint">- install steps in the download</span></li>
+          <li><a href="https://github.com/silentanarchist/warpforge-revival-mod-android" target="_blank" rel="noopener">Android</a> <span class="hint">- patcher and step-by-step guide</span></li>
+        </ul>
+        <p class="hint">The same account works in the game on PC and phone. Link it in the game under Settings &gt; Account.</p>
+      </section>
+      <section>
+        <h2>Card Creator</h2>
+        <p id="homeCards"></p>
+        <p id="homeQueue" class="hidden"></p>
+        <div class="actions">
+          <a class="button" href="/creator" data-page="Create">Create a card</a>
+          <a class="button" href="/my-cards" data-page="Mine">My cards</a>
+          <a class="button hidden" id="homeReview" href="/review" data-page="List">Review queue</a>
+        </div>
+      </section>
+      <section>
+        <h2>Your account</h2>
+        <p id="homeAccount"></p>
+        <div class="actions"><a class="button" href="/profile" data-page="Profile">Profile</a></div>
+      </section>
+    </div>
   </div>
 
   <div id="viewRules" class="hidden">
@@ -1601,15 +1640,15 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
-function pageOf(path) { path = path.replace(/\/+$/, ""); return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
+function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
 function goto(path, replace) { if (location.pathname !== path) history[replace ? "replaceState" : "pushState"](null, "", path); }
 function gate() {                                // signed out: only the sign-in page
   const out = !me;
   if (out) { if (location.pathname !== LOGIN) { wanted = pageOf(location.pathname); goto(LOGIN, true); } document.title = "Sign in – Warpforge Revival"; }
-  else if (!pageOf(location.pathname)) { show(wanted || "Create", true); wanted = ""; }
+  else if (!pageOf(location.pathname)) { show(wanted || "Home", true); wanted = ""; }
   else document.title = TITLES[pageOf(location.pathname)] + " – Warpforge Revival";
   $("viewLogin").classList.toggle("hidden", !out); $("tabs").classList.toggle("hidden", out); $("app").classList.toggle("hidden", out);
   if (out && document.activeElement === document.body) $("author").focus();
@@ -1774,6 +1813,21 @@ function drawProfile() {
   $("p_recMake").textContent = hasCode ? "Make a new code (cancels the old one)" : "Make a recovery code";
   $("p_recRemove").classList.toggle("hidden", !hasCode);
   $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
+}
+// Home: a short summary of the account and its cards, with links into the rest of the site.
+function drawHome() {
+  if (!me) return;
+  $("homeHello").textContent = "Welcome, " + me;
+  const own = allCards.filter(c => (c.author || "").toLowerCase() === me.toLowerCase());
+  const n = s => own.filter(c => c.status === s).length;
+  $("homeCards").textContent = own.length
+    ? `You have ${own.length} card${own.length === 1 ? "" : "s"}: ${n("draft")} draft, ${n("pending")} waiting for review, ${n("approved")} approved, ${n("rejected")} sent back.`
+    : "You have not made a card yet.";
+  const waiting = role ? allCards.filter(c => c.status === "pending").length : 0;
+  $("homeQueue").classList.toggle("hidden", !role); $("homeReview").classList.toggle("hidden", !role);
+  if (role) $("homeQueue").textContent = waiting ? `${waiting} card${waiting === 1 ? "" : "s"} waiting in the review queue.` : "Nothing is waiting in the review queue.";
+  const ranks = account ? [account.fixed ? "Founding Owner" : account.owner ? "Owner" : account.admin ? "Admin" : account.reviewer ? "Reviewer" : "", account.tester && !account.admin ? "In-game tester" : ""].filter(Boolean) : [];
+  $("homeAccount").textContent = (account && account.player ? `Linked to game player ${account.playerName}.` : "Not linked to the game yet.") + (ranks.length ? " Role: " + ranks.join(", ") + "." : "");
 }
 const sentence = e => e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".";
 async function rename() {
@@ -2313,23 +2367,25 @@ async function loadList() {
     if (editingId) { const fresh = allCards.find(c => c.id === editingId); if (fresh) editingCard = fresh; }
     preview();
     drawList();
+    if (!$("viewHome").classList.contains("hidden")) drawHome();
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
 // The Card Creator tab on the top ribbon opens the second ribbon with these pages; it remembers the last one.
 const CREATOR_GROUP = ["Create", "Mine", "List", "Examples", "Keywords", "Artwork", "Cards", "Rules"];
 let lastCreatorPage = "Create";
-const TITLES = { Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 function show(which, replace) {                // a page name from PAGES
   if (me) goto(PAGES[which], replace);
   if (me) document.title = TITLES[which] + " – Warpforge Revival";
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["Home", "People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["Home", "Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   $("tabCreator").classList.toggle("on", inCreator); $("creatorTabs").classList.toggle("hidden", !inCreator);
+  if (which === "Home") drawHome();
   if (which === "Examples") showExamples();
   if (which === "Cards") showViewer();
   if (which === "Keywords") showKeywords();
@@ -2399,6 +2455,7 @@ async function start() {
   $("suggest").onclick = () => { $("f_text").value = suggestText().slice(0, 300); redraw(true); };
   $("save").onclick = () => save(true); $("saveDraft").onclick = () => save(false);
   $("reset").onclick = () => { fill(null); $("agree").checked = false; say(""); };
+  for (const a of document.querySelectorAll("#viewHome a[data-page]")) a.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(a.dataset.page); } };
   $("tabCreator").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastCreatorPage); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's

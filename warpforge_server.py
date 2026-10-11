@@ -716,8 +716,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(429, {"error": "too many requests - wait a minute and try again"})
         pack = self.pack
         pack.refresh()
-        if path == "/":                            # the site's front door: the page itself sends signed-in visitors on
-            return self._send(302, b"", "text/plain", extra={"Location": "/login", "Cache-Control": "no-store"})
+        if path == "/":                            # the site's front door: the Home page (signed-out visitors are sent to /login by the page)
+            return self._serve_file("creator.html")
         if path == "/api/v1/status":
             return self._json(200, {"name": SERVER_NAME, "apiVersion": API_VERSION,
                                     "packVersion": pack.version, "cards": pack.card_count,
