@@ -720,8 +720,6 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_file("creator.html")
         if path == "/terms":                       # the Terms and Privacy notice: open to everyone, no account needed
             return self._serve_file("terms.html")
-        if path == "/guides":                      # the install guides: open to everyone, no account needed
-            return self._serve_file("guides.html")
         if path == "/api/v1/status":
             return self._json(200, {"name": SERVER_NAME, "apiVersion": API_VERSION,
                                     "packVersion": pack.version, "cards": pack.card_count,
@@ -873,7 +871,7 @@ def zipped_file(root, rel):
             return None
 
 
-CREATOR_PAGES = {"/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords", "/artwork", "/rules", "/profile", "/server", "/bugs"}
+CREATOR_PAGES = {"/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords", "/artwork", "/rules", "/profile", "/server", "/bugs", "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu"}
 
 
 def main():

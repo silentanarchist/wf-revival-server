@@ -110,6 +110,19 @@
   #msg .close:hover { opacity: 1; }
   #msg.ok { display: flex; background: #1f3d22; color: var(--ok); } #msg.bad { display: flex; background: #45211c; color: var(--bad); }
   #msg.info { display: flex; background: #1c2f40; color: var(--accent2); }
+  /* Guides page: the text comes from content/files/guides.html (Revival/Guides) */
+  .guides { max-width: 860px; line-height: 1.6; }
+  .guides h1 { font: 600 24px/1.2 Georgia, serif; margin: 6px 0; }
+  .guides section { background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
+  .guides h2 { font: 600 20px/1.3 Georgia, serif; text-transform: none; letter-spacing: normal; color: var(--accent);
+               border-bottom: 1px solid var(--line); padding-bottom: 4px; margin: 34px 0 8px; }
+  .guides h3 { font-size: 16px; margin: 18px 0 4px; }
+  .guides > h2:first-child { margin-top: 0; }
+  .guides a { color: var(--accent2); }
+  .guides ol, .guides ul { padding-left: 24px; } .guides li { margin: 5px 0; }
+  .guides pre { max-height: none; }
+  .guides code { overflow-wrap: anywhere; background: #0e1013; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+  .guides .dim { color: var(--dim); }
   pre { background: #0e1013; border: 1px solid var(--line); border-radius: 6px; padding: 10px; overflow: auto; font-size: 12px; max-height: 300px; }
   details summary { cursor: pointer; color: var(--dim); }
   .artwrap { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
@@ -213,7 +226,7 @@
     <button class="primary" id="loginGo" type="submit">Sign in</button>
     <p class="switch"><span id="loginAsk">New here?</span> <a href="#" id="loginSwitch">Create an account</a></p>
     <p class="switch" id="forgotLine"><a href="#" id="forgotLink">Forgot your password?</a></p>
-    <p class="switch"><a href="/guides">Install guides</a> · <a href="/terms" target="_blank" rel="noopener">Terms and Privacy</a></p>
+    <p class="switch"><a href="/terms" target="_blank" rel="noopener">Terms and Privacy</a></p>
   </form>
   <form class="login hidden" id="recoverForm" autocomplete="off">
     <h2>Reset your password</h2>
@@ -239,6 +252,13 @@
   <a id="tabGuides" href="/guides">Guides</a>
   <a id="tabBugs" href="/bugs" class="hidden">Bugs</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
+</nav>
+<nav id="guideTabs" class="sub hidden">
+  <a id="tabGuideHome" href="/guides">Which guide?</a>
+  <a id="tabGuidePc" href="/guides/pc">PC (Windows)</a>
+  <a id="tabGuidePhone" href="/guides/phone">Android phone: Patcher app</a>
+  <a id="tabGuideAndroid" href="/guides/android-pc">Android phone: with a PC</a>
+  <a id="tabGuideMumu" href="/guides/mumu">MuMu Player</a>
 </nav>
 <nav id="creatorTabs" class="sub">
   <a id="tabCreate" href="/creator">Create a card</a>
@@ -481,6 +501,10 @@
         <textarea class="json" id="setJson" spellcheck="false"></textarea>
         <div class="row"><button id="setJsonSave" type="button">Save revival-settings.json</button></div></details>
     </section>
+  </div>
+
+  <div id="viewGuides" class="hidden">
+    <section class="guides" id="guidesText"><p class="hint">Loading the guides…</p></section>
   </div>
 
   <div id="viewBugs" class="hidden">
@@ -1683,7 +1707,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -2507,7 +2531,34 @@ async function loadList() {
 // The Card Creator tab on the top ribbon opens the second ribbon with these pages; it remembers the last one.
 const CREATOR_GROUP = ["Create", "Mine", "List", "Examples", "Keywords", "Artwork", "Cards", "Rules"];
 let lastCreatorPage = "Create";
-const TITLES = { Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+// Guides: install guides for every signed-in account (text kept in content/files/guides.html).
+// The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
+const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu" };
+let lastGuidePage = "GuideHome", guideParts = null, guideAsk = null;
+async function showGuide(which) {
+  if (!guideParts) {
+    guideAsk = guideAsk || call("Guides");
+    let d;
+    try { d = await guideAsk; } catch (e) { guideAsk = null; $("guidesText").textContent = ""; return say("Could not load the guides: " + e.message, "bad"); }
+    const doc = document.createElement("div"); doc.innerHTML = d.html;    // our own page from the server's content folder
+    guideParts = {};
+    for (const sec of [...doc.querySelectorAll("section[id]")]) { guideParts[sec.id] = sec.innerHTML; sec.remove(); }
+    guideParts[""] = doc.innerHTML;                                      // the introduction and "Which guide?"
+    for (const k of Object.keys(guideParts)) guideParts[k] = guideParts[k].replace(/<p class="dim" style="margin-top:40px">[\s\S]*$/, "");
+    guideParts.footer = (d.html.match(/<p class="dim" style="margin-top:40px">[\s\S]*?<\/p>/) || [""])[0];
+  }
+  if (!(which in GUIDE_SECTIONS) || $("viewGuides").classList.contains("hidden")) return;   // moved on meanwhile
+  const box = $("guidesText");
+  box.innerHTML = (guideParts[GUIDE_SECTIONS[which]] || "") + guideParts.footer;
+  // a link to another guide (#pc, #mumu, ...) opens that guide's page
+  for (const a of box.querySelectorAll('a[href^="#"]')) {
+    const page = Object.keys(GUIDE_SECTIONS).find(k => GUIDE_SECTIONS[k] && GUIDE_SECTIONS[k] === a.getAttribute("href").slice(1));
+    if (!page) continue;
+    a.href = PAGES[page];
+    a.onclick = e => { if (plainClick(e)) { e.preventDefault(); show(page); window.scrollTo(0, 0); } };
+  }
+}
 function show(which, replace) {                // a page name from PAGES
   if (me) goto(PAGES[which], replace);
   if (me) document.title = TITLES[which] + " – Warpforge Revival";
@@ -2515,10 +2566,15 @@ function show(which, replace) {                // a page name from PAGES
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
   for (const v of ["Bugs", "Home", "People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Bugs", "Home", "Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "Bugs", "Home", "Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   $("tabCreator").classList.toggle("on", inCreator); $("creatorTabs").classList.toggle("hidden", !inCreator);
+  const inGuides = which in GUIDE_SECTIONS;
+  if (inGuides) lastGuidePage = which;
+  $("viewGuides").classList.toggle("hidden", !inGuides);
+  $("tabGuides").classList.toggle("on", inGuides); $("guideTabs").classList.toggle("hidden", !inGuides);
+  if (inGuides) showGuide(which);
   if (which === "Home") drawHome();
   if (which === "Examples") showExamples();
   if (which === "Cards") showViewer();
@@ -2592,6 +2648,7 @@ async function start() {
   $("save").onclick = () => save(true); $("saveDraft").onclick = () => save(false);
   $("reset").onclick = () => { fill(null); $("agree").checked = false; say(""); };
   $("tabCreator").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastCreatorPage); } };
+  $("tabGuides").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGuidePage); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's
     if (t) t.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(name); } };

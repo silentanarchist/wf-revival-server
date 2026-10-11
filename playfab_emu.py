@@ -1992,6 +1992,20 @@ class PlayFabEmulator:
         base = site.split("/creator")[0] if site else ""
         return ok({"id": bug_id, "url": (base + "/bugs?id=" + bug_id) if base else ""})
 
+    def api_Revival_Guides(self, req, headers):
+        """The install guides for the site's Guides page: any signed-in account that has been let in
+        (not one still waiting for approval, not a banned one). Text from content/files/guides.html."""
+        me = self._creator_account(req)
+        if not me or self._creator_perms(me)["access"] != "approved":
+            return err("NotAuthorized", "sign in first")
+        try:
+            with open(os.path.join(self.content_root, "files", "guides.html"), encoding="utf-8") as f:
+                page = f.read()
+        except OSError:
+            return err("NotFound", "the guides are not on the server")
+        m = re.search(r"<main>(.*)</main>", page, re.S)
+        return ok({"html": m.group(1) if m else ""})
+
     def _bug_reader(self, req):
         """(account, perms) for a signed-in tester or above on the site, or (None, error)."""
         me = self._creator_account(req)
