@@ -1954,10 +1954,10 @@ async function loadPeople() {
     access.value = p.access;
     const toggle = (key, label) => el("label", { title: myRank < ({ admin: 2, owner: 3 }[key] || 1) ? (key === "owner" ? "Only the founding owner can give or take owner" : "Only an owner can give or take admin") : "" },
       el("input", { type: "checkbox", checked: p[key],
-      disabled: locked || myRank < ({ admin: 2, owner: 3 }[key] || 1) || (p.owner && key !== "owner") || (p.admin && !p.owner && key !== "admin"),
+      disabled: locked || myRank < ({ admin: 2, owner: 3 }[key] || 1) || (p.owner && key !== "owner") || (p.admin && !p.owner && key !== "admin" && key !== "owner"),
       onchange: e => setAccount(p.name, { [key]: e.target.checked }, `${label.toLowerCase()} ${e.target.checked ? "on" : "off"}`) }), label);
     box.append(el("div", { class: "item" },
-      el("div", {}, el("span", { class: "title", text: p.name + " " }), p.fixed ? el("span", { class: "badge approved", text: "founding owner" }) : p.owner ? el("span", { class: "badge approved", text: "owner" }) : p.admin ? el("span", { class: "badge draft", text: "admin" }) : null,
+      el("div", {}, el("span", { class: "title", text: p.name + " " }), p.fixed ? el("span", { class: "badge approved", text: "Founding Owner" }) : p.owner ? el("span", { class: "badge approved", text: "Owner" }) : p.admin ? el("span", { class: "badge draft", text: "Admin" }) : null,
         p.access !== "approved" ? el("span", { class: "badge " + (p.access === "banned" ? "rejected" : "pending"), text: p.access }) : null,
         el("div", { class: "hint", text: `${p.cards} card(s)${p.created ? " · joined " + p.created.slice(0, 10) : ""}` }),
         el("div", { class: "hint" }, p.player ? `Linked to game player ${p.playerName} ` : "Not linked to a game player",
@@ -2291,7 +2291,7 @@ async function loadList() {
     allCards = d.cards.sort((a, b) => (b.updated || "").localeCompare(a.updated || "")); role = d.role; me = d.name;
     ownCardsInLists();
     if (!me && session()) setSession("");
-    $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
+    $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
     $("tabPeople").classList.toggle("hidden", role < 2);
     const founder = !!(d.account && d.account.fixed);
