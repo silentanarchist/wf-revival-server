@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Guides - Warpforge Revival</title>
-<!-- Install guides, open to everyone (no account needed): served at /guides. The guide texts are
-     written in another chat and dropped into the sections below (one <section> per guide). -->
+<!-- Install guides, open to everyone (no account needed): served at /guides. Made from the Discord
+     forum guides (the "Warpforge Discord Guides" page): keep the two in step when a guide changes. -->
 <style>
   :root { --bg: #14161a; --panel: #1d2026; --line: #343a45; --text: #e6e3da; --dim: #9aa0aa; --accent: #c9a24a; }
   * { box-sizing: border-box; }
@@ -23,7 +23,9 @@
   .dim { color: var(--dim); }
   a { color: var(--accent); }
   ol, ul { padding-left: 24px; } li { margin: 5px 0; }
-  code { background: #0e1013; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+  pre { background: #0e1013; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 13px; }
+  h3 { color: var(--text); }
+  code { overflow-wrap: anywhere; background: #0e1013; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
   .box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
 </style>
 </head>
@@ -31,30 +33,288 @@
 <header><a href="/">Warpforge Revival</a></header>
 <nav>
   <a href="#pc">PC (Windows)</a>
-  <a href="#android">Android phone</a>
+  <a href="#phone-app">Android phone (patcher app)</a>
+  <a href="#android">Android phone (with a PC)</a>
   <a href="#mumu">Android on PC (MuMu Player)</a>
 </nav>
 <main>
 <h1>Install guides</h1>
-<p class="dim">How to play Warhammer 40,000: Warpforge on the Warpforge Revival server. You need your own copy of the game.
+<p class="dim">How to play Warhammer 40,000: Warpforge on the Warpforge Revival server. Unofficial fan project, not affiliated with Everguild or Games Workshop. You need your own copy of the game.
 Stuck? Ask on our <a href="https://discord.gg/f4N6RU2sYy" rel="noopener">Discord server</a>.</p>
+<div class="box">
+<strong>Which guide?</strong>
+<ul>
+<li>Playing on a Windows PC: <a href="#pc">PC (Windows)</a>.</li>
+<li>Playing on an Android phone: <a href="#phone-app">the patcher app</a> is the easiest; <a href="#android">with a PC</a> is the older way and still works.</li>
+<li>Playing the Android version on a PC through an emulator: <a href="#mumu">MuMu Player</a>.</li>
+</ul>
+The same account works everywhere and keeps your decks and progress.
+</div>
 
 <section id="pc">
 <h2>PC (Windows)</h2>
-<div class="box">The full guide is on its way. Until then, the steps are on the
-<a href="https://github.com/silentanarchist/warpforge-revival-mod" rel="noopener">PC mod's GitHub page</a>.</div>
+<p>Play <em>Warhammer 40,000: Warpforge</em> against the Revival server now that the game's own servers are closed. Unofficial fan project, not affiliated with Everguild or Games Workshop. You need your own copy of the game.</p>
+<p><strong>You need</strong></p>
+<ul>
+<li>Warpforge installed through Steam (game version 1.35.0)</li>
+<li>MelonLoader <strong>0.7.3</strong> - installer and help at <a href="https://melonwiki.xyz/" rel="noopener">melonwiki.xyz</a></li>
+<li>The mod: the <code>WarpforgeRevival-...-w.zip</code> file from the <a href="https://github.com/silentanarchist/warpforge-revival-mod/releases/latest" rel="noopener">latest release</a></li>
+</ul>
+<h3>1. Install MelonLoader</h3>
+<ol>
+<li>Run the MelonLoader installer, pick Warpforge and choose version <strong>0.7.3</strong>.</li>
+<li>Start the game once. A console window does some work, then the game opens.</li>
+<li>Close the game.</li>
+</ol>
+<h3>2. Install the mod</h3>
+<ol>
+<li>In Steam, right-click the game &gt; <strong>Manage</strong> &gt; <strong>Browse local files</strong>.</li>
+<li>Open the <code>Mods</code> folder (create it if it is not there).</li>
+<li>Copy the whole <code>WarpforgeRevival</code> folder from the zip into <code>Mods</code>.</li>
+<li>Start the game.</li>
+</ol>
+<p>You should end up with these two files. Keep <code>manifest.json</code> next to the DLL, or the mod is not loaded.</p>
+<pre>Mods\WarpforgeRevival\WarpforgeRevival.dll
+Mods\WarpforgeRevival\manifest.json</pre>
+<h3>3. Sign in or make an account</h3>
+<p>If the server asks for an account, a sign-in window appears while the game loads.</p>
+<p><strong>New player? Make your account right there. There is no separate form.</strong></p>
+<ol>
+<li>In <strong>Name</strong>, type the name you want (5 to 30 letters, digits, <code>.</code> <code>'</code> <code>-</code> or <code>_</code>, no spaces).</li>
+<li>In <strong>Password</strong>, type the password you want (at least 6 characters, no spaces). Do not reuse one from another site.</li>
+<li>Press <strong>Create account</strong>.</li>
+</ol>
+<p><strong>Already have an account?</strong> Type its name and password and press <strong>Sign in</strong>.</p>
+<ul>
+<li>The game remembers the sign-in, so it asks only once per computer or phone.</li>
+<li>The same account works on PC and Android and keeps the same decks and progress.</li>
+<li><strong>Sign out</strong> in <strong>Settings &gt; Account</strong> signs out this computer only.</li>
+<li>Make a <strong>recovery code</strong> on the website's Profile page while you still know your password, and keep the file. <strong>Forgot your password?</strong> on the website's sign-in page uses it.</li>
+</ul>
+<h3>Updates</h3>
+<p>The mod updates itself. When the server has a newer version, the sign-in window says so while the game loads, downloads it, and the game closes and starts again with it.</p>
+<h3>If something goes wrong</h3>
+<ul>
+<li><strong>The game looks unmodded</strong> (no connection, original menus): check both files are in <code>Mods\WarpforgeRevival\</code> and that MelonLoader is installed.</li>
+<li><strong>An older copy of the mod cannot connect:</strong> delete <code>UserData\WarpforgeRevival.cfg</code> in the game folder and start the game again.</li>
+<li><strong>Reporting a problem:</strong> send the file <code>MelonLoader\Latest.log</code> from the game folder. It says what happened.</li>
+</ul>
+<h3>Good to know</h3>
+<ul>
+<li>The mod's version is shown next to the game's in <strong>Settings &gt; General</strong>. PC builds end in <code>-w</code>, Android builds in <code>-a</code>.</li>
+<li>Keep the game window open while you wait for a match. Minimising is fine.</li>
+<li>The connection to the server is encrypted (https) when the server offers it, and so are matches against other players.</li>
+<li><strong>Your original game files are safe.</strong> The mod never deletes the game's cached files and stops the game deleting them. It also keeps a second copy in <code>UserData\WarpforgeRevival\original-cache</code>.</li>
+</ul>
+</section>
+
+<section id="phone-app">
+<h2>Android phone: the Warpforge Patcher app</h2>
+<p>The <strong>Warpforge Patcher</strong> app puts the mod loader and the mod into your own copy of the game, on the phone itself. No PC patching, no cable, no adb.</p>
+<p><strong>Status:</strong> works in MuMu Player and on a Pixel 6 Pro. If it fails on your phone, press <strong>Share logs</strong> in the app and send the file to us on <a href="https://discord.gg/f4N6RU2sYy" rel="noopener">Discord</a> (see "If something goes wrong" below).</p>
+<p><strong>You need</strong></p>
+<ul>
+<li>An Android phone with a 64-bit ARM processor (every current phone), Android 8 or newer</li>
+<li>The game, version <strong>1.35.0</strong>, installed on the phone, or your own backup of it (one <code>.apks</code> or <code>.xapk</code> file of about 780 MB)</li>
+<li>About 2 GB free on the phone while patching (given back afterwards)</li>
+<li>The app: <code>WarpforgePatcher-....apk</code> (about 14 MB) from the <strong>Warpforge Patcher</strong> release on the <a href="https://github.com/silentanarchist/warpforge-revival-mod-android/releases" rel="noopener">Android mod's releases page</a></li>
+</ul>
+<h3>1. Install the app</h3>
+<ol>
+<li>On the phone, open the releases page and download <code>WarpforgePatcher-....apk</code>.</li>
+<li>Tap the downloaded file. Android asks whether your browser (or file manager) may install apps: allow it, go back and tap <strong>Install</strong>.</li>
+<li>Open <strong>Warpforge Patcher</strong>.</li>
+</ol>
+<h3>2. Give the app its two permissions</h3>
+<p>The app shows a button for each one it is still missing:</p>
+<ul>
+<li><strong>Allow access to the loader's folder</strong> (All files access): the loader and the mod live in <code>MelonLoader/com.Everguild.WarhammerWarpforge</code> on your phone's storage.</li>
+<li><strong>Allow this app to install the game.</strong></li>
+</ul>
+<h3>3. Patch</h3>
+<ol>
+<li>Leave <strong>Fix black menu after loading</strong> as the app set it. It is ticked on Pixels (6 and later) and on Samsungs with an Exynos chip and Mali graphics, where the opening video can leave the menu black. It then shows a still picture instead of the video.</li>
+<li>Press <strong>Patch and install</strong>. Have a backup file of the game instead? Press <strong>Patch from a backup file</strong> and pick it.</li>
+<li>If the game has to be removed first, the app asks before it starts: press <strong>Continue</strong>. The game's downloaded files go with it; the server hands them out again.</li>
+<li>Stay in the app while it works. The big data file takes a few minutes.</li>
+<li>Android asks you to confirm removing the old game, then installing the new one. Confirm both.</li>
+</ol>
+<p><strong>The two main buttons</strong></p>
+<ul>
+<li><strong>Patch and install</strong> (<strong>Patch again and install</strong> once the game is patched): puts the mod loader into the game, installs the patched game and puts the current mod in place. Use it the first time and whenever a new loader comes out. Patched by this app before, it installs over the game and keeps everything.</li>
+<li><strong>Update the mod only</strong>: downloads the current mod from the server and puts it in place without touching the game. Use it after a connection error at the title screen, or to get a new mod straight away.</li>
+</ul>
+<h3>4. Play</h3>
+<ol>
+<li>Start Warpforge from your home screen. If it asks for <strong>"All files access"</strong>, allow it.</li>
+<li>The first start sits on a black screen for up to a minute while the loader sets itself up. Later starts are quicker.</li>
+<li>If the server asks for an account, a sign-in window appears while the game loads. <strong>New player:</strong> type the name (5 to 30 characters) and password (at least 6) you want, then press <strong>Create account</strong>. <strong>Existing account:</strong> type its name and password and press <strong>Sign in</strong>. The same account works on PC and phone.</li>
+</ol>
+<h3>Updates</h3>
+<ul>
+<li><strong>The mod updates itself.</strong> The app's <strong>Update the mod only</strong> button does the same by hand.</li>
+<li><strong>A new loader</strong> means opening the app and pressing <strong>Patch again and install</strong>. It installs over your patched game without removing it, so nothing is lost.</li>
+</ul>
+<h3>Keep the app's signing key</h3>
+<p>The first patch makes a signing key inside the app. Every later patch has to use the same key, or the game has to be removed again. Press <strong>Save a copy of the signing key</strong> and keep the file somewhere private. If you ever reinstall the app, <strong>Load a saved signing key</strong> puts it back. Never share that file.</p>
+<h3>If something goes wrong</h3>
+<p>Press <strong>Share logs</strong> in the app and send the file to whoever is helping you. It holds the app's log, the loader's log and the mod's settings, never your game login. It can still contain your player id and the server address, so do not post it publicly.</p>
+<ul>
+<li><strong>Not enough free space:</strong> the app says how much it needs. Free some space and press the button again.</li>
+<li><strong>"The data pack is missing":</strong> start the original game once so Android finishes downloading it, then try again.</li>
+<li><strong>"This is game version ...":</strong> the mod only works with game version 1.35.0.</li>
+<li><strong>The app closes while patching:</strong> open it and press the button again. If it keeps happening, send the logs.</li>
+<li><strong>Game patched on a PC before:</strong> the app's key is different from the PC's, so the game has to be removed once. After that the app patches over it.</li>
+<li><strong>Connection error at the title screen:</strong> press <strong>Update the mod only</strong>, or check the server is up.</li>
+<li><strong>Black screen after the opening video:</strong> tick <strong>Fix black menu after loading</strong> and press <strong>Update the mod only</strong>.</li>
+<li><strong>Black screen during a match:</strong> turn on the game's <strong>Settings &gt; Graphics &gt; Extended compatibility</strong>, then restart.</li>
+</ul>
+<p>Prefer the PC route? The <strong>How to install: Android phone</strong> post still works the same way.</p>
 </section>
 
 <section id="android">
-<h2>Android phone</h2>
-<div class="box">The full guide is on its way. Until then, the steps are on the
-<a href="https://github.com/silentanarchist/warpforge-revival-mod-android" rel="noopener">Android mod's GitHub page</a>.</div>
+<h2>Android phone: patched with a PC</h2>
+<p><strong>Status: works on a Pixel 8 Pro and a Pixel 6 Pro</strong> (Android 17), and in MuMu Player on a PC. Other phones are untested. If it fails on yours, the logs are what is needed to find out why (see the end of this guide).</p>
+<p><strong>You need</strong></p>
+<ul>
+<li>A Windows PC and a USB cable</li>
+<li>An Android phone with a 64-bit ARM processor (every current phone)</li>
+<li>Your own copy of the Android game, version <strong>1.35.0</strong>: a backup of the app made from your own phone, one file of about 780 MB ending in <code>.apks</code> or <code>.xapk</code>. Other versions will not work.</li>
+<li>About 3 GB free on the PC and 2 GB free on the phone</li>
+<li>Google's <a href="https://developer.android.com/tools/releases/platform-tools" rel="noopener">SDK Platform-Tools for Windows</a></li>
+</ul>
+<p>Everything comes from the <a href="https://github.com/silentanarchist/warpforge-revival-mod-android" rel="noopener">Android mod repository</a>. Its front page has these same steps in full detail.</p>
+<h3>1. Get the patcher</h3>
+<p>On the repository page press the green <strong>Code</strong> button, then <strong>Download ZIP</strong>. Unzip it somewhere with a short path, for example <code>C:\warpforge-android</code>. Everything you run is in the <code>patcher</code> folder.</p>
+<h3>2. Put your game files in</h3>
+<p>Put your backup file (<code>.apks</code> or <code>.xapk</code>) straight into the <code>patcher</code> folder. Or put its three <code>.apk</code> files into <code>patcher\game-files</code>.</p>
+<h3>3. Patch</h3>
+<p>Double-click <strong><code>1 - patch.bat</code></strong>. The big data file takes a few minutes. When it finishes, the <code>patched</code> folder holds three files that belong together:</p>
+<pre>base.apk   config.arm64_v8a.apk   UnityDataAssetPack.apk</pre>
+<p>If it stops with an error, the details are in <code>patcher\patch-log.txt</code>.</p>
+<p><strong>Keep your signing key.</strong> The first patch makes <code>patcher\tool\signing-key.pem</code>. Every later patch has to be signed with that same key, or Android refuses it and the game has to be removed again. Keep the file, keep it private, and never share a patcher folder that has it inside.</p>
+<h3>4. Switch on USB debugging</h3>
+<ol>
+<li>On the phone: <strong>Settings &gt; About phone</strong>, tap <strong>Build number</strong> seven times.</li>
+<li><strong>Settings &gt; System &gt; Developer options</strong>, switch on <strong>USB debugging</strong>.</li>
+<li>Connect the phone to the PC by cable and accept "Allow USB debugging?" on the phone.</li>
+<li>Unzip Google's platform-tools so that this file exists: <code>patcher\tool\platform-tools\adb.exe</code></li>
+</ol>
+<h3>5. Install on the phone</h3>
+<p>Double-click <strong><code>2 - install on phone.bat</code></strong>.</p>
+<ul>
+<li>If the game on the phone was patched before with the same signing key, the new copy installs over it and nothing is lost.</li>
+<li>Otherwise the install is refused and the script asks whether to remove the copy on the phone first. It only goes ahead if you type <code>YES</code>. The game's downloaded files go with it; the server hands them out again.</li>
+</ul>
+<p>No cable? Copy the three files from <code>patched</code> to the phone and install them <em>together</em> with a split-APK installer app such as SAI. Tapping <code>base.apk</code> on its own does not work.</p>
+<h3>6. First start</h3>
+<ol>
+<li>Start the game once. If it asks for <strong>"All files access"</strong>, allow it.</li>
+<li>The first start sits on a black screen for up to a minute while it copies the loader's files.</li>
+<li>It then stops at the title screen with a connection error. That is expected without the mod.</li>
+<li>Close the game (swipe it away from the recent apps).</li>
+</ol>
+<h3>7. Put the mod on the phone</h3>
+<ol>
+<li>Download the mod from the <a href="https://github.com/silentanarchist/warpforge-revival-mod-android/releases/latest" rel="noopener">latest release</a> and unzip it.</li>
+<li>Copy <code>WarpforgeRevival.Android.dll</code> into <code>patcher\mods</code>.</li>
+<li>Double-click <strong><code>3 - put mod on phone.bat</code></strong>.</li>
+</ol>
+<p>Without a PC: copy the file on the phone itself into <code>MelonLoader/com.Everguild.WarhammerWarpforge/Mods/</code>.</p>
+<h3>8. Play</h3>
+<p>Start the game. It reaches the menu in about half a minute.</p>
+<p>If the server asks for an account, a sign-in window appears while the game loads. <strong>New player:</strong> type the name (5 to 30 characters) and password (at least 6) you want, then press <strong>Create account</strong>. <strong>Existing account:</strong> type its name and password and press <strong>Sign in</strong>. The same account works on PC and phone.</p>
+<p>Prefer not to type on the phone? Download a <strong>game login file</strong> from the website's Profile page and run <strong><code>4 - put game login on phone.bat</code></strong>. Treat that file like a password.</p>
+<h3>Updates</h3>
+<ul>
+<li><strong>The mod updates itself.</strong> When the server has a newer build, the sign-in window says so, downloads it and closes the game. Open the game again to use it.</li>
+<li><strong>The loader does not.</strong> A new loader means running <code>1 - patch.bat</code> and <code>2 - install on phone.bat</code> again. With the same signing key it installs over the old copy and keeps everything.</li>
+</ul>
+<h3>Removing it</h3>
+<p>Double-click <strong><code>5 - uninstall from phone.bat</code></strong> with the phone connected. Your account, decks and progress are on the server and stay there.</p>
+<h3>If something goes wrong</h3>
+<p>Connect the phone and double-click <strong><code>0 - get phone logs.bat</code></strong>. Press <code>1</code> if the game is closed and you are about to start it, or <code>2</code> if it is open and something just went wrong. Send the new folder under <code>patcher\phone-logs</code>. The logs can contain your player id and the server address, so do not post them publicly.</p>
+<ul>
+<li><strong>The install is refused:</strong> the copy on the phone was signed with a different key. See step 5.</li>
+<li><strong>Connection error at the title screen:</strong> the mod is not on the phone (step 7), or the server cannot be reached.</li>
+<li><strong>Black screen after the opening video</strong> (seen on a Pixel 6 Pro): the mod brings the picture back within a second or two. To stop it happening, run <strong><code>6 - fix loading video.bat</code></strong> (option <code>1</code>, needs ffmpeg - the script says where to get it), then <strong><code>7 - loading video setting.bat</code></strong> (option <code>1</code>, Still). The loading screen then shows a still picture instead of the video.</li>
+<li><strong>Opening video blocky or stuttering:</strong> <strong><code>6 - fix loading video.bat</code></strong> (option <code>1</code>) fixes that too.</li>
+<li><strong>Black screen during a match:</strong> turn on the game's <strong>Settings &gt; Graphics &gt; Extended compatibility</strong>, then restart.</li>
+<li><strong>The game closes by itself while loading:</strong> open it again. If it keeps happening, collect logs with <code>1</code>.</li>
+<li><strong>Stuck or closes within seconds of starting:</strong> swipe the app away and start again. If it keeps happening, collect logs with <code>2</code> before closing it.</li>
+</ul>
 </section>
 
 <section id="mumu">
 <h2>Android on PC (MuMu Player)</h2>
-<div class="box">The full guide is on its way. Ask on Discord for help in the meantime.</div>
+<p>Runs the Android version of the game, with the mod, inside the MuMu Player emulator on a Windows PC. Works from mod release <strong>0.12.20-a</strong>. MuMu is the only emulator tested so far.</p>
+<ul>
+<li><strong>The patcher version matters.</strong> The game must be patched with the patcher from 0.12.20-a or newer. Patched with an older one, it starts on an emulator but runs without the mod.</li>
+<li><strong>The scripts say "phone" throughout.</strong> Here that means the emulator.</li>
+</ul>
+<p><strong>Start with the Android phone guide</strong> and follow it through the <strong>Patch</strong> step. That leaves you with a <code>patcher</code> folder whose <code>patched</code> subfolder holds three <code>.apk</code> files. Then come back here.</p>
+<p><strong>You also need</strong></p>
+<ul>
+<li><strong>MuMu Player</strong> installed on the same PC. Testing used a MuMu device on Android 15.</li>
+<li>Google's <a href="https://developer.android.com/tools/releases/platform-tools" rel="noopener">SDK Platform-Tools</a>, unzipped so that <code>patcher\tool\platform-tools\adb.exe</code> exists</li>
+<li>The mod file <code>WarpforgeRevival.Android.dll</code> from the <a href="https://github.com/silentanarchist/warpforge-revival-mod-android/releases/latest" rel="noopener">latest release</a>, copied into <code>patcher\mods</code></li>
+<li><strong>No phone plugged in.</strong> The scripts take the first ready device and cannot tell MuMu from a phone.</li>
+</ul>
+<p>You still need your own copy of game version 1.35.0.</p>
+<h3>1. Start MuMu</h3>
+<ol>
+<li>Start MuMu and wait for the Android home screen.</li>
+<li>Run one MuMu device only.</li>
+<li>Do not use MuMu's own "APK Installation" entry. The game is three files that have to go in together.</li>
+</ol>
+<h3>2. Connect the PC to MuMu</h3>
+<p>Repeat this each time MuMu restarts.</p>
+<ol>
+<li>Open the <code>patcher</code> folder in File Explorer, click the address bar, type <code>cmd</code> and press Enter.</li>
+<li>Run this. It should answer <code>connected to 127.0.0.1:16384</code>.</li>
+</ol>
+<pre>tool\platform-tools\adb.exe connect 127.0.0.1:16384</pre>
+<ol>
+<li>Run this to check. <code>127.0.0.1:16384   device</code> should be the only entry marked <code>device</code>. Entries marked <code>offline</code> are fine; the scripts skip them.</li>
+</ol>
+<pre>tool\platform-tools\adb.exe devices</pre>
+<p>If step 2 says the connection was refused, try <code>16416</code> and then <code>7555</code> in place of <code>16384</code>.</p>
+<h3>3. Install the patched game</h3>
+<ol>
+<li>Double-click <strong><code>2 - install on phone.bat</code></strong>.</li>
+<li>Check the line <code>Using device: 127.0.0.1:16384</code>. If it names anything else, close the window, unplug the phone and start again.</li>
+<li>Wait a few minutes; the data file is about 740 MB.</li>
+<li>If it asks you to type <code>YES</code> to remove the copy first, type it. On the emulator that only removes the emulator's copy.</li>
+</ol>
+<h3>4. First start, then the mod</h3>
+<p>The game has to start once before the mod can be copied in, because that first start unpacks the loader's folder.</p>
+<ol>
+<li>Start the game in MuMu and allow <strong>"All files access"</strong> when it asks. The first start sits on a black screen for a minute or so.</li>
+<li>The game stops at the title screen with a connection error. That is expected without the mod. Close the game completely (swipe it away).</li>
+<li>Double-click <strong><code>3 - put mod on phone.bat</code></strong>. It ends by listing the Mods folder with <code>WarpforgeRevival.Android.dll</code> in it.</li>
+<li>Start the game again. If the server asks for an account, a sign-in window appears while it loads: sign in, or type a new name and password and press <strong>Create account</strong>.</li>
+<li>Check the mod is running: its version is shown next to the game's in <strong>Settings &gt; General</strong>.</li>
+</ol>
+<p>Instead of typing in step 4, you can download a <strong>game login file</strong> from the website's Profile page and run <strong><code>4 - put game login on phone.bat</code></strong>. It finds the file in your Downloads folder. Treat that file like a password.</p>
+<h3>Collecting logs</h3>
+<p>Double-click <strong><code>0 - get phone logs.bat</code></strong>. Each capture goes in its own folder under <code>patcher\phone-logs</code>.</p>
+<ul>
+<li>Press <code>1</code> for a fresh start: the game must be closed, and you start it after the script says so.</li>
+<li>Press <code>2</code> when the game is open and something just went wrong. Leave the game on the broken screen.</li>
+</ul>
+<p>The saved game login is left out of the capture. The logs can still contain your player id and the server address, so send the folder to whoever is helping you and do not post it publicly.</p>
+<h3>If something goes wrong</h3>
+<ul>
+<li><strong><code>cannot connect to 127.0.0.1:16384</code>:</strong> check MuMu is on its home screen, then try <code>16416</code> and <code>7555</code>.</li>
+<li><strong><code>No phone is ready</code>:</strong> run the connect command again. Restarting MuMu drops the link.</li>
+<li><strong><code>Using device:</code> names something other than <code>127.0.0.1:...</code>:</strong> a phone is plugged in. Close the window, unplug it and rerun.</li>
+<li><strong>The install is refused and the script asks for <code>YES</code>:</strong> type <code>YES</code>. The copy on the emulator was signed with a different key.</li>
+<li><strong><code>Copying failed</code> from script 3 or 4:</strong> the game has not been started once since the install. Start it, close it, rerun the script.</li>
+<li><strong>Connection error at the title screen after the mod was copied in:</strong> the game was patched with a patcher older than 0.12.20-a, or the server cannot be reached. Download the current patcher, patch and install again, then repeat step 4.</li>
+<li><strong>Black screen during a match:</strong> turn on the game's <strong>Settings &gt; Graphics &gt; Extended compatibility</strong> and restart it. If it stays black, collect logs with <code>2</code>.</li>
+</ul>
 </section>
+<p class="dim" style="margin-top:40px">Guides as of 11 October 2026 (mod 0.13, Warpforge Patcher 0.2).</p>
 </main>
 </body>
 </html>
