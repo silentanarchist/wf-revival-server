@@ -90,6 +90,12 @@
   .card .stats { display: flex; justify-content: space-between; font-weight: 700; }
   .card .stats span { background: #0e1013; border: 1px solid var(--line); border-radius: 5px; padding: 2px 8px; }
   .rar-Common { border-color: #b9b9b9; } .rar-Rare { border-color: #5b9bd5; } .rar-Epic { border-color: #a070d6; } .rar-Legendary { border-color: #e0a33a; }
+  .bugMeta { color: var(--dim); font-size: 13px; }
+  #viewBugs a { color: var(--accent2); } #viewBugs .list a.title { color: var(--text); text-decoration: none; } #viewBugs .list a.title:hover { color: var(--accent); }
+  .bugShot { max-width: 100%; border: 1px solid var(--line); border-radius: 4px; margin-top: 6px; }
+  .bugLog { max-height: 420px; overflow: auto; white-space: pre-wrap; font: 12px/1.4 Consolas, monospace; background: #0e1013; border: 1px solid var(--line); padding: 8px; border-radius: 4px; }
+  .bugCtx { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; font-size: 13px; }
+  .bugCtx dt { color: var(--dim); } .bugCtx dd { margin: 0; word-break: break-word; }
   .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
   .badge.pending { background: #4a3f1c; color: var(--warn); } .badge.approved { background: #1f3d22; color: var(--ok); }
   .badge.rejected { background: #45211c; color: var(--bad); } .badge.draft { background: #2c313b; color: var(--dim); }
@@ -230,6 +236,7 @@
 <nav id="mainTabs">
   <a id="tabCreator" href="/creator">Card Creator</a>
   <a id="tabPeople" href="/people" class="hidden">People</a>
+  <a id="tabBugs" href="/bugs" class="hidden">Bugs</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
 </nav>
 <nav id="creatorTabs" class="sub">
@@ -473,6 +480,27 @@
         <textarea class="json" id="setJson" spellcheck="false"></textarea>
         <div class="row"><button id="setJsonSave" type="button">Save revival-settings.json</button></div></details>
     </section>
+  </div>
+
+  <div id="viewBugs" class="hidden">
+    <section id="bugListBox">
+      <h2>Bug reports</h2>
+      <div class="box hint">
+        <strong>How to report a bug</strong> (testers): in the game press <strong>F8</strong> (PC) or <strong>Report bug</strong> in the Testers window <em>right when it happens</em>: the screenshot and log are taken at that moment.
+        One bug per report; the title says what went wrong ("Bolter Brother dealt 0 damage to a warlord"), not the cause.
+        Check this list first: if it is already here, still send a short report and put the other report's number in the title ("same as B-0042") — your device and version are what we need.
+        If the game crashes or freezes, just start it again: it offers to send a report with everything saved at the time.
+      </div>
+      <div class="row" style="margin-top:10px; align-items:end">
+        <div class="field"><label for="bugStatus">Status</label><select id="bugStatus"><option value="open">Open</option><option value="">All</option></select></div>
+        <div class="field"><label for="bugPlatform">Platform</label><select id="bugPlatform"><option value="">All</option><option>Windows</option><option>Android</option></select></div>
+        <div class="field"><label for="bugCategory">Type</label><select id="bugCategory"><option value="">All</option></select></div>
+        <div class="field grow"><label for="bugSearch">Search titles</label><input id="bugSearch" autocomplete="off"></div>
+        <label style="margin-bottom:8px"><input type="checkbox" id="bugMine"> Mine only</label>
+      </div>
+      <div class="list" id="bugList"></div>
+    </section>
+    <section id="bugOne" class="hidden"></section>
   </div>
 
   <div id="viewPeople" class="hidden">
@@ -1654,7 +1682,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -1827,6 +1855,90 @@ function drawProfile() {
   $("p_recMake").textContent = hasCode ? "Make a new code (cancels the old one)" : "Make a recovery code";
   $("p_recRemove").classList.toggle("hidden", !hasCode);
   $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
+}
+
+// Bug reports from the game (testers and above). The list, then one report at /bugs?id=B-0042.
+const BUG_CATEGORIES = { crash: "Crash / freeze", picture: "Black or wrong picture", card: "Card does the wrong thing", rules: "Rules / mode",
+  ui: "Menus & UI", connection: "Connection / sign-in", replay: "Replay", text: "Text / translation", other: "Other" };
+const BUG_SEVERITIES = { blocker: "Can't play", match: "Breaks a match", annoying: "Annoying", cosmetic: "Cosmetic" };
+const BUG_STATUSES = { new: "New", confirmed: "Confirmed", progress: "In progress", fixed: "Fixed (awaiting check)", verified: "Verified",
+  cantrepro: "Can't reproduce", wontfix: "Won't fix", duplicate: "Duplicate" };
+const BUG_OPEN = ["new", "confirmed", "progress", "fixed"];
+let bugs = [], bugAdmin = false, bugMe = "";
+const bugBadge = st => el("span", { class: "badge " + ({ new: "pending", confirmed: "pending", progress: "pending", fixed: "approved", verified: "approved" }[st] || "draft"), text: BUG_STATUSES[st] || st });
+async function loadBugs() {
+  const id = new URLSearchParams(location.search).get("id");
+  if (id) return showBug(id);
+  $("bugOne").classList.add("hidden"); $("bugListBox").classList.remove("hidden");
+  try { const d = await call("BugList"); bugs = d.bugs; bugAdmin = d.admin; bugMe = d.me; } catch (e) { return say("Could not load the bug reports: " + e.message, "bad"); }
+  drawBugs();
+}
+function drawBugs() {
+  const box = $("bugList"); box.textContent = "";
+  const st = val("bugStatus"), pf = val("bugPlatform"), cat = val("bugCategory"), q = val("bugSearch").trim().toLowerCase(), mine = $("bugMine").checked;
+  const shown = bugs.filter(b => (!st || (st === "open" ? BUG_OPEN.includes(b.status) : b.status === st)) && (!pf || b.platform === pf)
+    && (!cat || b.category === cat) && (!q || b.title.toLowerCase().includes(q) || b.id.toLowerCase() === q) && (!mine || b.author === bugMe));
+  if (!shown.length) box.append(el("p", { class: "hint", text: bugs.length ? "No reports match." : "No bug reports yet." }));
+  for (const b of shown) box.append(el("div", { class: "item" },
+    el("div", {}, el("a", { class: "title", href: "/bugs?id=" + b.id, text: b.id + "  " + b.title, onclick: e => { if (plainClick(e)) { e.preventDefault(); history.pushState(null, "", "/bugs?id=" + b.id); showBug(b.id); } } }),
+      el("div", { class: "bugMeta", text: [BUG_CATEGORIES[b.category], BUG_SEVERITIES[b.severity], b.kind !== "manual" ? b.kind : "", b.platform, b.mod, "by " + b.author, "updated " + (b.updated || "").slice(0, 10)].filter(Boolean).join(" · ") })),
+    el("div", { class: "actions" }, bugBadge(b.status), b.fixedIn ? el("span", { class: "badge draft", text: "fixed in " + b.fixedIn }) : null)));
+}
+async function bugFile(id, file) { return call("BugFile", { id, file }); }
+async function showBug(id) {
+  $("bugListBox").classList.add("hidden"); const box = $("bugOne"); box.classList.remove("hidden"); box.textContent = "Loading…";
+  let r;
+  try { r = await call("BugGet", { id }); } catch (e) { box.textContent = ""; return say("Could not load " + id + ": " + e.message, "bad"); }
+  box.textContent = "";
+  document.title = r.id + " – Bug reports – Warpforge Revival";
+  const back = el("a", { href: "/bugs", text: "← All reports", onclick: e => { if (plainClick(e)) { e.preventDefault(); history.pushState(null, "", "/bugs"); loadBugs(); } } });
+  box.append(back, el("h2", { text: r.id + "  " + r.title }),
+    el("div", { class: "bugMeta" }, bugBadge(r.status), " ", [BUG_CATEGORIES[r.category], BUG_SEVERITIES[r.severity], r.kind !== "manual" ? "sent after a " + r.kind : "",
+      "by " + r.author, "sent " + r.created.slice(0, 16).replace("T", " "), r.fixedIn ? "fixed in " + r.fixedIn : "", r.duplicateOf ? "duplicate of " + r.duplicateOf : ""].filter(Boolean).join(" · ")));
+  if (r.description) box.append(el("h3", { text: "What happened" }), el("p", { style: "white-space:pre-wrap", text: r.description }));
+  const ctx = el("dl", { class: "bugCtx" });
+  for (const [k, v] of Object.entries(r.context || {})) if (v) ctx.append(el("dt", { text: k }), el("dd", { text: v }));
+  if (r.signedInMod) ctx.append(el("dt", { text: "signed in with" }), el("dd", { text: r.signedInMod }));
+  box.append(el("h3", { text: "Sent automatically" }), ctx);
+  if (r.adminNote) box.append(el("h3", { text: "Note from the admins" }), el("p", { style: "white-space:pre-wrap", text: r.adminNote }));
+  const files = r.files || {};
+  if (files.screen) {
+    const img = el("img", { class: "bugShot", alt: "Screenshot" });
+    box.append(el("h3", { text: "Screenshot" }), img);
+    bugFile(r.id, "screen").then(f => { img.src = "data:" + f.type + ";base64," + f.data; }).catch(e => img.replaceWith(el("p", { class: "hint", text: "Could not load: " + e.message })));
+  }
+  if (files.log) {
+    const pre = el("div", { class: "bugLog", text: "Loading…" });
+    const dl = el("button", { class: "small", type: "button", text: "Download log" });
+    box.append(el("h3", { text: "Log (last lines from the game)" }), pre, dl);
+    bugFile(r.id, "log").then(f => {
+      pre.textContent = f.log; pre.scrollTop = pre.scrollHeight;
+      dl.onclick = () => { const a = el("a", { href: URL.createObjectURL(new Blob([f.log], { type: "text/plain" })), download: r.id + "-log.txt" }); a.click(); };
+    }).catch(e => { pre.textContent = "Could not load: " + e.message; });
+  }
+  if (files.dump) box.append(el("p", {}, el("button", { class: "small", type: "button", text: "Download crash dump (admins)", onclick: async () => {
+    try { const f = await bugFile(r.id, "dump"); const bin = Uint8Array.from(atob(f.data), c => c.charCodeAt(0));
+      el("a", { href: URL.createObjectURL(new Blob([bin], { type: f.type })), download: f.name }).click(); } catch (e) { say(sentence(e), "bad"); } } })));
+  if (!files.log && !files.screen && (r.mine || r.admin)) box.append(el("p", { class: "hint", text: "No screenshot or log was sent with this report." }));
+  if (r.admin) {
+    const status = el("select", {}); for (const [v, t] of Object.entries(BUG_STATUSES)) status.append(el("option", { value: v, text: t })); status.value = r.status;
+    const sev = el("select", {}); for (const [v, t] of Object.entries(BUG_SEVERITIES)) sev.append(el("option", { value: v, text: t })); sev.value = r.severity;
+    const cat = el("select", {}); for (const [v, t] of Object.entries(BUG_CATEGORIES)) cat.append(el("option", { value: v, text: t })); cat.value = r.category;
+    const fixed = el("input", { value: r.fixedIn || "", placeholder: "0.13.3", size: 10 });
+    const dup = el("input", { value: r.duplicateOf || "", placeholder: "B-0042", size: 10 });
+    const note = el("textarea", { value: r.adminNote || "", rows: 2 });
+    const save = el("button", { class: "primary", type: "button", text: "Save", onclick: async () => {
+      try { await call("BugUpdate", { id: r.id, status: status.value, severity: sev.value, category: cat.value, fixedIn: fixed.value.trim(), duplicateOf: dup.value.trim(), note: note.value });
+        say(r.id + " saved.", "ok"); showBug(r.id); } catch (e) { say("Not saved: " + e.message, "bad"); } } });
+    box.append(el("h3", { text: "Admin" }), el("div", { class: "row" }, field("Status", status), field("Severity", sev), field("Type", cat), field("Fixed in", fixed), field("Duplicate of", dup)),
+      field("Note (shown on the report)", note, true), save);
+  }
+  if (r.status === "new" && (r.mine || r.admin)) {
+    const t = el("input", { value: r.title, maxLength: 120 }), dsc = el("textarea", { value: r.description || "", rows: 4 });
+    box.append(el("h3", { text: "Edit (while the report is new)" }), field("Title", t, true), field("What happened, steps to make it happen again", dsc, true),
+      el("button", { type: "button", text: "Save changes", onclick: async () => {
+        try { await call("BugUpdate", { id: r.id, title: t.value, description: dsc.value }); say("Saved.", "ok"); showBug(r.id); } catch (e) { say("Not saved: " + e.message, "bad"); } } }));
+  }
 }
 // Home: the welcome message and the project's links.
 function drawHome() {
@@ -2372,6 +2484,9 @@ async function loadList() {
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
     $("tabPeople").classList.toggle("hidden", role < 2);
+    const bugsOk = !!(d.account && (d.account.tester || d.account.reviewer));
+    $("tabBugs").classList.toggle("hidden", !bugsOk);
+    if (!bugsOk && !$("viewBugs").classList.contains("hidden")) show("Home");
     const founder = !!(d.account && d.account.fixed);
     $("tabServer").classList.toggle("hidden", !founder);
     if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
@@ -2391,15 +2506,15 @@ async function loadList() {
 // The Card Creator tab on the top ribbon opens the second ribbon with these pages; it remembers the last one.
 const CREATOR_GROUP = ["Create", "Mine", "List", "Examples", "Keywords", "Artwork", "Cards", "Rules"];
 let lastCreatorPage = "Create";
-const TITLES = { Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 function show(which, replace) {                // a page name from PAGES
   if (me) goto(PAGES[which], replace);
   if (me) document.title = TITLES[which] + " – Warpforge Revival";
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["Home", "People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Home", "Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["Bugs", "Home", "People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["Bugs", "Home", "Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   $("tabCreator").classList.toggle("on", inCreator); $("creatorTabs").classList.toggle("hidden", !inCreator);
@@ -2411,6 +2526,7 @@ function show(which, replace) {                // a page name from PAGES
   if (list) loadList();
   if (which === "People") { loadPeople(); loadReports(); loadBans(val("banQuery").trim()); loadWords(); loadUploads(); }
   if (which === "Rules") loadRules();
+  if (which === "Bugs") loadBugs();
   if (which === "Server") loadServer();
 }
 
@@ -2480,6 +2596,9 @@ async function start() {
     if (t) t.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(name); } };
   }
   $("exKeyword").onchange = () => showExamples();
+  for (const [v, t] of Object.entries(BUG_CATEGORIES)) $("bugCategory").append(el("option", { value: v, text: t }));
+  for (const id of ["bugStatus", "bugPlatform", "bugCategory", "bugMine"]) $(id).onchange = drawBugs;
+  $("bugSearch").addEventListener("input", drawBugs);
   $("cvSearch").addEventListener("input", drawViewerList);
   for (const id of ["cvArmy", "cvKind", "cvShow"]) $(id).onchange = drawViewerList;
   window.addEventListener("popstate", () => { const page = pageOf(location.pathname); if (me && page) show(page, true); else gate(); });

@@ -1775,6 +1775,7 @@ class PlayFabEmulator:
                         pass
                 os.remove(path)
                 cards += 1
+        self._bugs_forget_author(names)
         del users[key]
         log.info("account %s deleted: %d game player(s), %d card(s) removed, %d approved card(s) now by '%s'",
                  name, len(players), cards, changed, self.DELETED_NAME)
@@ -1804,6 +1805,340 @@ class PlayFabEmulator:
                     for e in self._chat:
                         f.write(json.dumps(e, ensure_ascii=False) + "\n")
                 os.replace(self._chat_file + ".tmp", self._chat_file)
+
+    # ------------------------------------------------------------------ bug reports (testers)
+    # Plan: claude/tester-bug-reports.md (project docs). The game sends a report over its own session
+    # (Revival/BugSubmit): a title and a few fixed choices typed by the tester, an automatic context
+    # block, the mod's recent log lines, and optionally a screenshot (BMP) and, after a crash, Unity's
+    # crash dump. Reports live in data/bugs/<id>/ with a summary list in data/bugs/index.json and are
+    # read and triaged on the creator site's Bugs page (Revival/BugList, BugGet, BugFile, BugUpdate).
+    # Who may send: revival-settings.json "bugReports": "testers" (default) | "everyone" | "off".
+    # Logs and screenshots are seen by the report's author and admins only, crash dumps by admins only;
+    # other testers see the title, the text and the context summary.
+    BUG_CATEGORIES = ("crash", "picture", "card", "rules", "ui", "connection", "replay", "text", "other")
+    BUG_SEVERITIES = ("blocker", "match", "annoying", "cosmetic")
+    BUG_KINDS = ("manual", "crash", "freeze")
+    BUG_STATUSES = ("new", "confirmed", "progress", "fixed", "verified", "cantrepro", "wontfix", "duplicate")
+    BUG_CONTEXT_KEYS = {"mod": 40, "platform": 20, "game": 40, "os": 120, "device": 120, "gpu": 120, "api": 60,
+                        "screen": 20, "loadingVideo": 20, "scene": 80, "screenName": 80, "mode": 64, "match": 80,
+                        "rules": 2000, "cards": 80, "frozenSeconds": 10, "closedAt": 40, "runStarted": 40}
+    BUG_MAX_LOG = 256 * 1024
+    BUG_MAX_SCREEN = 3 * 1024 * 1024
+    BUG_MAX_DUMP = 4 * 1024 * 1024
+    BUG_SECRET_PATTERNS = [
+        re.compile(r"wfr-login-[0-9a-f]{8,}", re.I),                    # game logins
+        re.compile(r"\b[0-9A-F]{16}-[0-9a-f]{64}\b"),                   # game session tickets
+        re.compile(r"\b[0-9a-f]{64}\b", re.I),                          # site sessions and other 32-byte secrets
+        re.compile(r"\b[A-Z0-9]{4}(?:-[A-Z0-9]{4}){4}\b"),              # recovery codes
+        re.compile(r"(X-Authorization|X-EntityToken|SessionTicket|passphrase)\W{0,4}\S+", re.I),
+    ]
+
+    def _bugs_dir(self):
+        d = os.path.join(self.store.root, "bugs")
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    def _bugs_index(self):
+        try:
+            with open(os.path.join(self._bugs_dir(), "index.json"), encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except (OSError, ValueError):
+            return []
+
+    def _bugs_index_save(self, index):
+        path = os.path.join(self._bugs_dir(), "index.json")
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(index, f, ensure_ascii=False, indent=1)
+        os.replace(path + ".tmp", path)
+
+    def _bug_path(self, bug_id):
+        if not isinstance(bug_id, str) or not re.fullmatch(r"B-\d{4,6}", bug_id):
+            return None
+        return os.path.join(self._bugs_dir(), bug_id)
+
+    def _bug_load(self, bug_id):
+        d = self._bug_path(bug_id)
+        if not d:
+            return None
+        try:
+            with open(os.path.join(d, "report.json"), encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return None
+
+    def _bug_save(self, report):
+        d = self._bug_path(report["id"])
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, "report.json")
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(report, f, ensure_ascii=False, indent=1)
+        os.replace(path + ".tmp", path)
+        index = [e for e in self._bugs_index() if e.get("id") != report["id"]]
+        index.append(self._bug_summary(report))
+        index.sort(key=lambda e: e["id"])
+        self._bugs_index_save(index)
+
+    @staticmethod
+    def _bug_summary(r):
+        ctx = r.get("context") or {}
+        return {"id": r["id"], "title": r["title"], "status": r["status"], "category": r["category"], "severity": r["severity"],
+                "kind": r.get("kind", "manual"), "platform": ctx.get("platform", ""), "mod": r.get("signedInMod") or ctx.get("mod", ""),
+                "author": r.get("author", ""), "created": r["created"], "updated": r["updated"], "fixedIn": r.get("fixedIn", ""),
+                "duplicateOf": r.get("duplicateOf", "")}
+
+    def _bug_scrub(self, text, headers):
+        """The log with secrets removed, and the exact addresses this server knows (no IP pattern:
+        version numbers look like addresses)."""
+        for p in self.BUG_SECRET_PATTERNS:
+            text = p.sub("<removed>", text)
+        for addr in {self._address(headers), str(self._settings().get("publicAddress") or "")} - {"", "unknown"}:
+            text = text.replace(addr, "<address>")
+        return text
+
+    @staticmethod
+    def _bug_bytes(value, limit, signatures, what):
+        """(bytes or None, error) for an optional base64 attachment."""
+        if value in (None, ""):
+            return None, None
+        if not isinstance(value, str) or len(value) > limit * 4 // 3 + 8:
+            return None, err("InvalidParams", f"the {what} is too large")
+        try:
+            raw = base64.b64decode(value, validate=True)
+        except (ValueError, binascii.Error):
+            return None, err("InvalidParams", f"the {what} could not be read")
+        if len(raw) > limit or not any(raw.startswith(s) for s in signatures):
+            return None, err("InvalidParams", f"the {what} is not in a format the server accepts")
+        return raw, None
+
+    def _bug_who(self, pfid):
+        """(account perms with name, None) for a player allowed to send reports, or (None, error)."""
+        mode = str(self._settings().get("bugReports") or "testers").lower()
+        if mode == "off":
+            return None, err("NotAuthorized", "bug reports are switched off on this server", 1089, 403)
+        perms = self.creator_perms_for_player(pfid)
+        if perms is None or perms["access"] != "approved":
+            return None, err("NotAuthorized", "link this game to an approved site account to send bug reports", 1089, 403)
+        if mode != "everyone" and not perms["tester"]:
+            return None, err("NotAuthorized", "bug reports are for testers", 1089, 403)
+        return perms, None
+
+    def api_Revival_BugSubmit(self, req, headers):
+        """A report from the game (see the section comment). Refused whole if anything is not as expected."""
+        pfid = self.store.session_player_id(headers)
+        if not pfid:
+            return err("NotAuthenticated", "sign in to send bug reports", 1074, 401)
+        allowed = {"title", "category", "severity", "description", "kind", "context", "log", "screenshot", "dump"}
+        if not isinstance(req, dict) or not set(req) <= allowed:
+            return err("InvalidParams", "that is not a bug report")
+        perms, problem = self._bug_who(pfid)
+        if problem:
+            return problem
+        title = " ".join(str(req.get("title") or "").split())
+        if not isinstance(req.get("title"), str) or not 3 <= len(title) <= 120:
+            return err("InvalidParams", "the title must be 3 to 120 characters")
+        category, severity, kind = req.get("category"), req.get("severity"), req.get("kind") or "manual"
+        if category not in self.BUG_CATEGORIES or severity not in self.BUG_SEVERITIES or kind not in self.BUG_KINDS:
+            return err("InvalidParams", "unknown category, severity or kind")
+        description = req.get("description") or ""
+        if not isinstance(description, str) or len(description.encode("utf-8")) > 4096:
+            return err("InvalidParams", "the description is limited to 4 KB")
+        ctx = req.get("context") or {}
+        if not isinstance(ctx, dict) or not set(ctx) <= set(self.BUG_CONTEXT_KEYS):
+            return err("InvalidParams", "the report's context is not as expected")
+        for k, v in ctx.items():
+            if not isinstance(v, str) or len(v) > self.BUG_CONTEXT_KEYS[k]:
+                return err("InvalidParams", "the report's context is not as expected")
+        log_text = req.get("log") or ""
+        if not isinstance(log_text, str) or len(log_text.encode("utf-8")) > self.BUG_MAX_LOG:
+            return err("InvalidParams", "the log is limited to 256 KB")
+        screen, problem = self._bug_bytes(req.get("screenshot"), self.BUG_MAX_SCREEN, (b"BM", b"\xff\xd8\xff", b"\x89PNG"), "screenshot")
+        if problem:
+            return problem
+        dump, problem = self._bug_bytes(req.get("dump"), self.BUG_MAX_DUMP, (b"MDMP",), "crash dump")
+        if problem:
+            return problem
+        if not self._allow("bug-hour", pfid, 10, 3600, count=False) or not self._allow("bug-day", pfid, 30, 86400, count=False):
+            return err("TooManyAttempts", "too many bug reports - try again later", 1199, 429)
+        self._allow("bug-hour", pfid, 10, 3600)
+        self._allow("bug-day", pfid, 30, 86400)
+        now = now_iso()
+        with self.store.lock:
+            index = self._bugs_index()
+            n = max([int(e["id"][2:]) for e in index if re.fullmatch(r"B-\d+", str(e.get("id")))] + [0]) + 1
+            bug_id = "B-%04d" % n
+            d = self._bug_path(bug_id)
+            os.makedirs(d, exist_ok=True)
+            report = {"id": bug_id, "title": title, "category": category, "severity": severity, "kind": kind,
+                      "description": self._bug_scrub(description, headers), "status": "new", "author": perms["name"],
+                      "player": pfid, "signedInMod": str(headers.get("X-Revival-Mod") or "")[:40],
+                      "context": ctx, "created": now, "updated": now, "files": {}, "history": [{"at": now, "by": perms["name"], "status": "new"}]}
+            if log_text:
+                with open(os.path.join(d, "log.txt"), "w", encoding="utf-8") as f:
+                    f.write(self._bug_scrub(log_text, headers))
+                report["files"]["log"] = len(log_text)
+            if screen:
+                ext = "bmp" if screen.startswith(b"BM") else "jpg" if screen.startswith(b"\xff\xd8") else "png"
+                with open(os.path.join(d, "screen." + ext), "wb") as f:
+                    f.write(screen)
+                report["files"]["screen"] = ext
+            if dump:
+                with open(os.path.join(d, "crash.dmp"), "wb") as f:
+                    f.write(dump)
+                report["files"]["dump"] = len(dump)
+            self._bug_save(report)
+        log.info("bug report %s from %s (%s, %s): %s", bug_id, perms["name"], kind, ctx.get("platform", "?"), title)
+        site = str(self._settings().get("creatorUrl") or "").rstrip("/")
+        base = site.split("/creator")[0] if site else ""
+        return ok({"id": bug_id, "url": (base + "/bugs?id=" + bug_id) if base else ""})
+
+    def _bug_reader(self, req):
+        """(account, perms) for a signed-in tester or above on the site, or (None, error)."""
+        me = self._creator_account(req)
+        if not me:
+            return None, err("NotAuthorized", "sign in first")
+        perms = self._creator_perms(me)
+        if perms["access"] != "approved" or not (perms["tester"] or perms["reviewer"]):
+            return None, err("NotAuthorized", "the bug list is for testers")
+        return me, perms
+
+    def api_Revival_BugList(self, req, headers):
+        me, perms = self._bug_reader(req)
+        if not me:
+            return perms
+        with self.store.lock:
+            index = self._bugs_index()
+        index.sort(key=lambda e: e.get("updated", ""), reverse=True)
+        return ok({"bugs": index, "admin": perms["admin"], "me": me["name"]})
+
+    def api_Revival_BugGet(self, req, headers):
+        me, perms = self._bug_reader(req)
+        if not me:
+            return perms
+        with self.store.lock:
+            r = self._bug_load(str(req.get("id") or ""))
+        if not r:
+            return err("NotFound", "no bug report with that number")
+        mine = r.get("author", "").lower() == me["name"].lower()
+        out = {k: v for k, v in r.items() if k not in ("player",)}
+        files = dict(r.get("files") or {})
+        if not (mine or perms["admin"]):
+            files.pop("log", None)
+            files.pop("screen", None)
+        if not perms["admin"]:
+            files.pop("dump", None)
+        out["files"] = files
+        out["mine"], out["admin"] = mine, perms["admin"]
+        return ok(out)
+
+    def api_Revival_BugFile(self, req, headers):
+        """One attachment: {"id", "file": "log" | "screen" | "dump"} (author and admins; dumps admins only)."""
+        me, perms = self._bug_reader(req)
+        if not me:
+            return perms
+        which = req.get("file")
+        with self.store.lock:
+            r = self._bug_load(str(req.get("id") or ""))
+        if not r or which not in ("log", "screen", "dump") or which not in (r.get("files") or {}):
+            return err("NotFound", "that report has no such attachment")
+        mine = r.get("author", "").lower() == me["name"].lower()
+        if not perms["admin"] and (which == "dump" or not mine):
+            return err("NotAuthorized", "only the reporter and admins can see this")
+        d = self._bug_path(r["id"])
+        if which == "log":
+            with open(os.path.join(d, "log.txt"), encoding="utf-8") as f:
+                return ok({"log": f.read()})
+        name = "crash.dmp" if which == "dump" else "screen." + r["files"]["screen"]
+        with open(os.path.join(d, name), "rb") as f:
+            raw = f.read()
+        kind = "application/octet-stream" if which == "dump" else {"bmp": "image/bmp", "jpg": "image/jpeg", "png": "image/png"}[r["files"]["screen"]]
+        return ok({"name": "%s-%s" % (r["id"], name), "type": kind, "data": base64.b64encode(raw).decode("ascii")})
+
+    def api_Revival_BugUpdate(self, req, headers):
+        """Admins: status, severity, category, fixedIn, duplicateOf, note. The author: title and
+        description while the report is still new."""
+        me, perms = self._bug_reader(req)
+        if not me:
+            return perms
+        with self.store.lock:
+            r = self._bug_load(str(req.get("id") or ""))
+            if not r:
+                return err("NotFound", "no bug report with that number")
+            mine = r.get("author", "").lower() == me["name"].lower()
+            changed = []
+            if perms["admin"]:
+                if "status" in req:
+                    if req["status"] not in self.BUG_STATUSES:
+                        return err("InvalidParams", "unknown status")
+                    r["status"] = req["status"]
+                    changed.append("status")
+                if "severity" in req:
+                    if req["severity"] not in self.BUG_SEVERITIES:
+                        return err("InvalidParams", "unknown severity")
+                    r["severity"] = req["severity"]
+                    changed.append("severity")
+                if "category" in req:
+                    if req["category"] not in self.BUG_CATEGORIES:
+                        return err("InvalidParams", "unknown category")
+                    r["category"] = req["category"]
+                    changed.append("category")
+                if "fixedIn" in req:
+                    v = str(req["fixedIn"] or "").strip()
+                    if v and not re.fullmatch(r"\d+(\.\d+){1,3}(-[aw])?", v):
+                        return err("InvalidParams", "fixed in: a mod version like 0.13.3")
+                    r["fixedIn"] = v
+                    changed.append("fixedIn")
+                if "duplicateOf" in req:
+                    v = str(req["duplicateOf"] or "").strip().upper()
+                    if v and (not self._bug_load(v) or v == r["id"]):
+                        return err("InvalidParams", "duplicate of: the number of another report")
+                    r["duplicateOf"] = v
+                    changed.append("duplicateOf")
+                if "note" in req:
+                    r["adminNote"] = str(req["note"] or "")[:2000]
+                    changed.append("note")
+            if (mine or perms["admin"]) and r["status"] == "new":
+                if "title" in req:
+                    t = " ".join(str(req["title"] or "").split())
+                    if not 3 <= len(t) <= 120:
+                        return err("InvalidParams", "the title must be 3 to 120 characters")
+                    r["title"] = t
+                    changed.append("title")
+                if "description" in req:
+                    t = str(req["description"] or "")
+                    if len(t.encode("utf-8")) > 4096:
+                        return err("InvalidParams", "the description is limited to 4 KB")
+                    r["description"] = self._bug_scrub(t, headers)
+                    changed.append("description")
+            if not changed:
+                return err("NotAuthorized", "nothing you can change was sent")
+            r["updated"] = now_iso()
+            r.setdefault("history", []).append({"at": r["updated"], "by": me["name"], "changed": changed,
+                                                "status": r["status"]})
+            r["history"] = r["history"][-100:]
+            self._bug_save(r)
+        return ok({"id": r["id"], "status": r["status"]})
+
+    def _bugs_forget_author(self, names):
+        """Account deletion: the author's attachments go, the reports stay as from "deleted account"."""
+        d = self._bugs_dir()
+        for e in self._bugs_index():
+            if str(e.get("author") or "").lower() not in names:
+                continue
+            r = self._bug_load(e["id"])
+            if not r:
+                continue
+            for name in os.listdir(os.path.join(d, r["id"])):
+                if name != "report.json":
+                    try:
+                        os.remove(os.path.join(d, r["id"], name))
+                    except OSError:
+                        pass
+            r["files"], r["author"], r["player"] = {}, self.DELETED_NAME, ""
+            for h in r.get("history") or []:
+                if str(h.get("by") or "").lower() in names:
+                    h["by"] = self.DELETED_NAME
+            self._bug_save(r)
 
     # Permissions belong to accounts and only admins can change them:
     #   access    "requested" (asked to join), "approved" or "banned". New accounts are approved
@@ -3227,7 +3562,13 @@ class PlayFabEmulator:
         log_req, log_resp = req, resp
         if api == "Client/LoginWithSteam" and str(req.get("SteamTicket", "")).startswith(self.GAME_LOGIN_PREFIX):
             log_req = dict(req, SteamTicket=self.GAME_LOGIN_PREFIX + "<not logged>")
-        if api.startswith("Revival/Creator") or api.startswith("Revival/Account"):
+        if api.startswith("Revival/Bug"):
+            # bug reports: never the screenshot, crash dump, log text or description (they can hold chat)
+            log_req = {k: (v if k in ("id", "status", "file", "category", "severity", "kind", "fixedIn", "duplicateOf")
+                           else "<%d chars>" % len(v) if isinstance(v, str) else "<not logged>") for k, v in req.items() if k != "session"}
+            if isinstance(resp.get("data"), dict) and any(k in resp["data"] for k in ("data", "log", "description", "bugs")):
+                log_resp = dict(resp, data="<not logged>")
+        elif api.startswith("Revival/Creator") or api.startswith("Revival/Account"):
             # never write secrets or whole pictures to the log: passphrases, sign-in tokens, staff keys, images
             log_req = {k: v for k, v in req.items() if k not in ("image", "session", "key", "passphrase", "newPassphrase")}
             if isinstance(resp.get("data"), dict) and any(k in resp["data"] for k in ("image", "session", "token")):
