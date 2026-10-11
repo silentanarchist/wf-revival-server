@@ -887,7 +887,7 @@ def zipped_file(root, rel):
             return None
 
 
-CREATOR_PAGES = {"/", "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords", "/artwork", "/rules", "/profile", "/server", "/bugs", "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu"}
+CREATOR_PAGES = {"/", "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords", "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu"}
 
 
 def main():

@@ -892,7 +892,7 @@ SITE_PAGES = {
     "/terms": "terms.html",                       # Terms and Privacy: open to everyone, no account needed
     **{p: "creator.html" for p in (
         "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
-        "/artwork", "/rules", "/profile", "/server", "/bugs",
+        "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads",
         "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu")},
 }
 # Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
@@ -3297,14 +3297,40 @@ class PlayFabEmulator:
         def game_name(pfid):
             p = self.store.load(pfid) if pfid else None
             return (p.get("DisplayName") or pfid) if p else ""
+        # the Admin > People page leaves out accounts still waiting for access: Admin > Requests lists those
+        skip = req.get("skipRequested") is True
         people = [dict(self._creator_perms(u), name=u["name"], created=u.get("created", ""), cards=counts.get(key, 0),
                        playerName=game_name(u.get("player")), deleteAt=u.get("deleteAt") or "",
-                       terms=u.get("termsAgreed") or "") for key, u in users.items()]
+                       terms=u.get("termsAgreed") or "") for key, u in users.items()
+                  if not (skip and self._creator_perms(u)["access"] == "requested")]
         people.sort(key=lambda p: (p["access"] != "requested", not p["fixed"], not p["owner"], not p["admin"], p["name"].lower()))
         me = self._creator_account(req)
         mine = self._creator_perms(me) if me else {"owner": False, "fixed": False}
         return ok({"people": people, "owner": mine["owner"], "founder": mine["fixed"], "autoApprove": self._creator_auto_approve(),
                    "requireAccount": self._settings().get("requireAccount") is True})
+
+    def api_Revival_CreatorRequests(self, req, headers):
+        """Accounts waiting for access, oldest first, a page at a time (admins only). Kept small on purpose
+        (name, when it was made, whether it is set to be deleted) so a long queue stays quick to load."""
+        if self._creator_role(req) < 2:
+            return err("NotAuthorized", "only admins can see the requests")
+        try:
+            offset = max(0, int(req.get("offset") or 0))
+            limit = min(100, max(0, int(req.get("limit") if req.get("limit") is not None else 50)))
+        except (TypeError, ValueError):
+            return err("InvalidParams", "offset and limit are numbers")
+        query = " ".join(str(req.get("query") or "").split()).lower()[:30]
+        with self.store.lock:
+            users = self._creator_users()
+        waiting = [u for u in users.values() if self._creator_perms(u)["access"] == "requested"]
+        total = len(waiting)
+        if query:
+            waiting = [u for u in waiting if query in u["name"].lower()]
+        waiting.sort(key=lambda u: (u.get("created", ""), u["name"].lower()))
+        page = [{"name": u["name"], "created": u.get("created", ""), "deleteAt": u.get("deleteAt") or ""}
+                for u in waiting[offset:offset + limit]]
+        return ok({"requests": page, "total": total, "matching": len(waiting), "offset": offset,
+                   "autoApprove": self._creator_auto_approve()})
 
     def api_Revival_CreatorSetAccount(self, req, headers):
         """An admin changes one account: any of access, reviewer, tester, admin, owner (see the ranks above)."""

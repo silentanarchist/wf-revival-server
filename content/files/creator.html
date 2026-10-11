@@ -111,6 +111,7 @@
   #msg.ok { display: flex; background: #1f3d22; color: var(--ok); } #msg.bad { display: flex; background: #45211c; color: var(--bad); }
   #msg.info { display: flex; background: #1c2f40; color: var(--accent2); }
   /* Guides page: the text comes from content/files/guides.html (Revival/Guides) */
+  .list.slim .item { padding: 6px 0; } .list.slim .item .actions { gap: 8px; }
   .guides { max-width: 860px; line-height: 1.6; }
   .guides h1 { font: 600 24px/1.2 Georgia, serif; margin: 6px 0; }
   .guides section { background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
@@ -248,9 +249,17 @@
 <div id="tabs" class="hidden">
 <nav id="mainTabs">
   <a id="tabCreator" href="/creator">Card Creator</a>
-  <a id="tabPeople" href="/people" class="hidden">People</a>
+  <a id="tabAdmin" href="/people" class="hidden">Admin</a>
   <a id="tabGuides" href="/guides">Guides</a>
   <a id="tabBugs" href="/bugs" class="hidden">Bugs</a>
+</nav>
+<nav id="adminTabs" class="sub hidden">
+  <a id="tabPeople" href="/people" class="hidden">People</a>
+  <a id="tabRequests" href="/requests" class="hidden">Requests</a>
+  <a id="tabModeration" href="/moderation" class="hidden">Moderation</a>
+  <a id="tabUploads" href="/uploads" class="hidden">Uploaded artwork</a>
+  <a id="tabList" href="/review" class="hidden">Review queue</a>
+  <a id="tabCards" href="/cards" class="hidden">Card viewer</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
 </nav>
 <nav id="guideTabs" class="sub hidden">
@@ -263,11 +272,9 @@
 <nav id="creatorTabs" class="sub">
   <a id="tabCreate" href="/creator">Create a card</a>
   <a id="tabMine" href="/my-cards">My cards</a>
-  <a id="tabList" href="/review" class="hidden">Review queue</a>
   <a id="tabExamples" href="/examples">Examples</a>
   <a id="tabKeywords" href="/keywords">Keywords</a>
   <a id="tabArtwork" href="/artwork">Artwork</a>
-  <a id="tabCards" href="/cards" class="hidden">Card viewer</a>
   <a id="tabRules" href="/rules">Rules</a>
 </nav>
 </div>
@@ -531,19 +538,36 @@
   <div id="viewPeople" class="hidden">
     <section>
       <h2>People</h2>
-      <p class="hint">Every account. Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
+      <p class="hint">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
       <p class="hint" id="peopleHint"></p>
       <div class="list" id="people"></div>
     </section>
+  </div>
+
+  <div id="viewRequests" class="hidden">
+    <section>
+      <h2>Requests</h2>
+      <p class="hint">Accounts waiting for access, oldest first. <strong>Approve</strong> lets the account use this site and play on the game server. <strong>Decline</strong> signs it out and deletes it after 7 days, as Delete does on the People page (signing in again within those days cancels that, and the account waits here again).</p>
+      <p class="hint" id="reqHint"></p>
+      <div class="row">
+        <div class="field grow"><label>Find a name</label><input id="reqQuery" placeholder="part of a name"></div>
+        <button class="small" id="reqApproveAll" type="button">Approve everyone shown</button>
+      </div>
+      <div class="list slim" id="requests"></div>
+      <div class="row"><button class="small" id="reqPrev" type="button">Previous</button><span class="hint" id="reqPage"></span><button class="small" id="reqNext" type="button">Next</button></div>
+    </section>
+  </div>
+
+  <div id="viewModeration" class="hidden">
     <section>
       <h2>Reported chat messages</h2>
-      <p class="hint">Messages players reported with <strong>Report message</strong> in the game's global chat. <strong>Checked</strong> means the server still had the message and it matches; otherwise the text is what the reporter's game showed. To act on a report, ban the account in the list above. <strong>Done</strong> takes a report off this list.</p>
+      <p class="hint">Messages players reported with <strong>Report message</strong> in the game's global chat. <strong>Checked</strong> means the server still had the message and it matches; otherwise the text is what the reporter's game showed. To act on a report, ban the account on the <strong>People</strong> page (or its game player below). <strong>Done</strong> takes a report off this list.</p>
       <div class="row"><label class="hint"><input type="checkbox" id="reportsClosed"> Show done reports too</label></div>
       <div class="list" id="reports"></div>
     </section>
     <section>
       <h2 id="banTitle">Banned game players</h2>
-      <p class="hint" id="banHint">For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (above) are listed here too; unban those above.</p>
+      <p class="hint" id="banHint">For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (on the People page) are listed here too; unban those there.</p>
       <div class="row" id="banFindRow"><div class="field grow"><label>Find a player (name, friend code or id)</label><input id="banQuery" placeholder="e.g. Commander-1A2B or 1A2B-3C4D"></div><button id="banFind" type="button">Find</button></div>
       <div class="list" id="banFound"></div>
       <h3>Banned now</h3>
@@ -556,6 +580,9 @@
       <textarea id="wordList" rows="12" spellcheck="false" style="width:100%; font-family:monospace"></textarea>
       <div class="row"><button id="wordSave" type="button">Save list</button><div class="field grow"><label>Try a sentence</label><input id="wordTry" placeholder="type something to see what the filter does"></div><span class="hint" id="wordResult"></span></div>
     </section>
+  </div>
+
+  <div id="viewUploads" class="hidden">
     <section>
       <h2>Uploaded artwork</h2>
       <p class="hint">Every picture stored on the server, drafts included, newest first. <strong>Delete</strong> removes the picture and its mask from the server for good; a card that was waiting for review or approved goes back to its author as rejected.</p>
@@ -1707,7 +1734,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -2149,10 +2176,56 @@ async function setAccount(name, change, done) {
   catch (x) { say("Not changed: " + x.message, "bad"); }
   loadPeople(); loadList();
 }
+// Requests: accounts waiting for access, a page at a time (the server sends only names and dates).
+const REQ_PAGE = 50;
+let reqOffset = 0, reqTimer = 0, reqShown = [];
+async function loadRequestCount() {
+  try { const d = await call("CreatorRequests", { limit: 0 }); $("tabRequests").textContent = d.total ? `Requests (${d.total})` : "Requests"; } catch (e) { /* the tab just shows no number */ }
+}
+async function loadRequests() {
+  let d;
+  try { d = await call("CreatorRequests", { offset: reqOffset, limit: REQ_PAGE, query: val("reqQuery").trim() }); }
+  catch (e) { return say("Could not load the requests: " + e.message, "bad"); }
+  if (d.offset && d.offset >= d.matching) { reqOffset = Math.max(0, d.matching - REQ_PAGE); return loadRequests(); }   // the last page emptied
+  $("tabRequests").textContent = d.total ? `Requests (${d.total})` : "Requests";
+  $("reqHint").textContent = (d.autoApprove ? "New accounts are approved automatically for now, so new ones do not wait here. " : "") +
+    (d.total ? `${d.total} waiting.` : "Nobody is waiting.");
+  reqShown = d.requests;
+  const box = $("requests"); box.textContent = "";
+  for (const r of d.requests) {
+    box.append(el("div", { class: "item" },
+      el("div", {}, el("span", { class: "title", text: r.name + " " }),
+        r.deleteAt ? el("span", { class: "badge rejected", text: "deleted on " + new Date(r.deleteAt).toLocaleDateString() }) : null,
+        el("span", { class: "hint", text: r.created ? " asked " + r.created.slice(0, 10) : "" })),
+      el("div", { class: "actions" },
+        el("button", { class: "small primary", text: "Approve", onclick: () => answerRequest(r.name, { access: "approved" }, "approved") }),
+        r.deleteAt ? null : el("button", { class: "small danger", text: "Decline", title: "Signs the account out and deletes it after 7 days",
+          onclick: () => { if (confirm(`Decline ${r.name}? The account is deleted in 7 days unless someone signs in to it.`)) answerRequest(r.name, { delete: true }, "declined: deleted in 7 days"); } }))));
+  }
+  const last = Math.min(d.offset + d.requests.length, d.matching);
+  $("reqPage").textContent = d.matching ? `${d.offset + 1}-${last} of ${d.matching}` : (val("reqQuery").trim() ? "No name matches." : "");
+  $("reqPrev").disabled = d.offset === 0; $("reqNext").disabled = last >= d.matching;
+  $("reqApproveAll").disabled = !d.requests.length;
+}
+async function answerRequest(name, change, done) {
+  try { await call("CreatorSetAccount", Object.assign({ name }, change)); say(`${name}: ${done}.`, "ok"); }
+  catch (x) { say("Not changed: " + x.message, "bad"); }
+  loadRequests();
+}
+async function approveShown() {
+  const names = reqShown.map(r => r.name);
+  if (!names.length || !confirm(`Approve all ${names.length} account(s) shown on this page?`)) return;
+  let done = 0, failed = 0;
+  for (const name of names) {
+    try { await call("CreatorSetAccount", { name, access: "approved" }); done++; } catch (x) { failed++; }
+  }
+  say(`${done} approved${failed ? `, ${failed} not changed` : ""}.`, failed ? "bad" : "ok");
+  loadRequests();
+}
 async function loadPeople() {
   const box = $("people"); box.textContent = "";
   let d;
-  try { d = await call("CreatorPeople"); } catch (e) { return say("Could not load the accounts: " + e.message, "bad"); }
+  try { d = await call("CreatorPeople", { skipRequested: true }); } catch (e) { return say("Could not load the accounts: " + e.message, "bad"); }
   const oneAccount = !!d.requireAccount;          // account and game player are one: "unlink" only signs the game out
   $("peopleHint").textContent = d.autoApprove ? "New accounts are approved automatically for now." : "New accounts wait as “requested” until an admin approves them.";
   const rank = q => q.fixed ? 3 : q.owner ? 2 : q.admin ? 1 : 0;
@@ -2510,17 +2583,19 @@ async function loadList() {
     if (!me && session()) setSession("");
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
-    $("tabPeople").classList.toggle("hidden", role < 2);
+    for (const t of ["People", "Requests", "Moderation", "Uploads", "Cards"]) $("tab" + t).classList.toggle("hidden", role < 2);
+    $("tabAdmin").classList.toggle("hidden", !role);              // reviewers: Admin holds only the review queue
+    $("tabAdmin").href = role >= 2 ? "/people" : "/review";
+    if (role >= 2) loadRequestCount();
     const bugsOk = !!(d.account && (d.account.tester || d.account.reviewer));
     $("tabBugs").classList.toggle("hidden", !bugsOk);
     if (!bugsOk && !$("viewBugs").classList.contains("hidden")) show("Home");
     const founder = !!(d.account && d.account.fixed);
     $("tabServer").classList.toggle("hidden", !founder);
     if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
-    if (role < 2 && !$("viewPeople").classList.contains("hidden")) show("Mine");
+    if (role < 2 && ["People", "Requests", "Moderation", "Uploads"].some(v => !$("view" + v).classList.contains("hidden"))) show(role ? "List" : "Mine");
     $("tabList").classList.toggle("hidden", !role);
-    $("tabCards").classList.toggle("hidden", !role);                 // card viewer: reviewers and admins for now
-    if (!role && !$("viewCards").classList.contains("hidden")) show("Create");
+    if (role < 2 && !$("viewCards").classList.contains("hidden")) show(role ? "List" : "Create");   // card viewer: admins for now
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
     gate();
@@ -2531,9 +2606,12 @@ async function loadList() {
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
 // The Card Creator tab on the top ribbon opens the second ribbon with these pages; it remembers the last one.
-const CREATOR_GROUP = ["Create", "Mine", "List", "Examples", "Keywords", "Artwork", "Cards", "Rules"];
+const CREATOR_GROUP = ["Create", "Mine", "Examples", "Keywords", "Artwork", "Rules"];
 let lastCreatorPage = "Create";
-const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+// The Admin tab opens its own ribbon: admins see every page, reviewers only the review queue.
+const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Cards", "Server"];
+let lastAdminPage = "";
+const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
 const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu" };
@@ -2567,10 +2645,13 @@ function show(which, replace) {                // a page name from PAGES
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["Bugs", "Home", "People", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "Bugs", "Home", "Create", "Mine", "List", "People", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
+  const inAdmin = ADMIN_GROUP.includes(which);
+  if (inAdmin) lastAdminPage = which;
+  $("tabAdmin").classList.toggle("on", inAdmin); $("adminTabs").classList.toggle("hidden", !inAdmin);
   $("tabCreator").classList.toggle("on", inCreator); $("creatorTabs").classList.toggle("hidden", !inCreator);
   const inGuides = which in GUIDE_SECTIONS;
   if (inGuides) lastGuidePage = which;
@@ -2583,7 +2664,10 @@ function show(which, replace) {                // a page name from PAGES
   if (which === "Keywords") showKeywords();
   if (which === "Profile") { say(""); loadList(); }
   if (list) loadList();
-  if (which === "People") { loadPeople(); loadReports(); loadBans(val("banQuery").trim()); loadWords(); loadUploads(); }
+  if (which === "People") loadPeople();
+  if (which === "Requests") loadRequests();
+  if (which === "Moderation") { loadReports(); loadBans(val("banQuery").trim()); loadWords(); }
+  if (which === "Uploads") loadUploads();
   if (which === "Rules") loadRules();
   if (which === "Bugs") loadBugs();
   if (which === "Server") loadServer();
@@ -2650,6 +2734,11 @@ async function start() {
   $("save").onclick = () => save(true); $("saveDraft").onclick = () => save(false);
   $("reset").onclick = () => { fill(null); $("agree").checked = false; say(""); };
   $("tabCreator").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastCreatorPage); } };
+  $("tabAdmin").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastAdminPage && !$("tab" + lastAdminPage).classList.contains("hidden") ? lastAdminPage : role >= 2 ? "People" : "List"); } };
+  $("reqQuery").addEventListener("input", () => { clearTimeout(reqTimer); reqTimer = setTimeout(() => { reqOffset = 0; loadRequests(); }, 300); });
+  $("reqPrev").onclick = () => { reqOffset = Math.max(0, reqOffset - REQ_PAGE); loadRequests(); };
+  $("reqNext").onclick = () => { reqOffset += REQ_PAGE; loadRequests(); };
+  $("reqApproveAll").onclick = approveShown;
   $("tabGuides").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGuidePage); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's
