@@ -882,6 +882,24 @@ class CardCompiler:
         return d, list(dict.fromkeys(self.notes))
 
 
+
+# The website's pages: address -> file in content/files. warpforge_server.py asks for this on every
+# page request, and this file reloads itself when it changes, so a page added or moved here goes live
+# without restarting the server (matches in progress are not dropped). The site's single page
+# (creator.html) shows the tab named in the address.
+SITE_PAGES = {
+    "/": "creator.html",
+    "/terms": "terms.html",                       # Terms and Privacy: open to everyone, no account needed
+    **{p: "creator.html" for p in (
+        "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
+        "/artwork", "/rules", "/profile", "/server", "/bugs",
+        "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu")},
+}
+# Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
+# the guides are for signed-in accounts and reach the site through Revival/Guides.
+SITE_PRIVATE_FILES = {"guides.html"}
+
+
 class PlayFabEmulator:
     def __init__(self, data_root, content_root, log_dir):
         self.content_root = content_root

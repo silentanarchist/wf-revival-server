@@ -716,10 +716,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(429, {"error": "too many requests - wait a minute and try again"})
         pack = self.pack
         pack.refresh()
-        if path == "/":                            # the site's front door: the Home page (signed-out visitors are sent to /login by the page)
-            return self._serve_file("creator.html")
-        if path == "/terms":                       # the Terms and Privacy notice: open to everyone, no account needed
-            return self._serve_file("terms.html")
+        page = self._site_page(path)               # the website's pages: the list lives in playfab_emu.py (reloads itself)
+        if page:
+            return self._serve_file(page)
         if path == "/api/v1/status":
             return self._json(200, {"name": SERVER_NAME, "apiVersion": API_VERSION,
                                     "packVersion": pack.version, "cards": pack.card_count,
@@ -759,11 +758,28 @@ class Handler(BaseHTTPRequestHandler):
             if self.mods.info(android) is None:
                 return self._json(404, {"error": "not found"})
             return self._send_file(self.mods.path(android), "application/octet-stream")
-        if path.rstrip("/") in CREATOR_PAGES:        # one page serves every tab; it shows the one in the address
-            return self._serve_file("creator.html")
         if path.startswith("/api/v1/content/files/"):
-            return self._serve_file(unquote(path[len("/api/v1/content/files/"):]))
+            rel = unquote(path[len("/api/v1/content/files/"):])
+            if self._site_private(rel):
+                return self._json(404, {"error": "not found"})
+            return self._serve_file(rel)
         return self._json(404, {"error": "not found"})
+
+    # The website's pages are listed in playfab_emu.py (SITE_PAGES, SITE_PRIVATE_FILES), which reloads
+    # itself when it changes, so new or changed pages go live without restarting the server (and without
+    # dropping matches in progress). CREATOR_PAGES below is only the fallback for an older playfab_emu.py.
+    def _site_page(self, path):
+        Handler.current_playfab()                              # picks up a changed playfab_emu.py first
+        pages = getattr(playfab_emu, "SITE_PAGES", None)
+        if isinstance(pages, dict):
+            return pages.get(path.rstrip("/") or "/")
+        if path == "/" or path.rstrip("/") in CREATOR_PAGES:
+            return "creator.html"
+        return "terms.html" if path == "/terms" else None
+
+    def _site_private(self, rel):
+        private = getattr(playfab_emu, "SITE_PRIVATE_FILES", ())
+        return os.path.basename(rel.replace("\\", "/")).lower().rstrip(". ") in private
 
     FILE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                   ".json": "application/json", ".txt": "text/plain",
@@ -871,7 +887,7 @@ def zipped_file(root, rel):
             return None
 
 
-CREATOR_PAGES = {"/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords", "/artwork", "/rules", "/profile", "/server", "/bugs", "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu"}
+CREATOR_PAGES = {"/", "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords", "/artwork", "/rules", "/profile", "/server", "/bugs", "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu"}
 
 
 def main():
