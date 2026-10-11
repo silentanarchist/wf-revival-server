@@ -3748,6 +3748,11 @@ class PlayFabEmulator:
     # player's history, and are deleted with the entry when it drops off the list. Each is stamped
     # with revival-settings.json "rulesVersion": a replay only re-runs the moves, so after a rules
     # change old recordings would play out wrongly - bumping rulesVersion retires them.
+    # Since mod 0.12.43 the game also sends the rules the match was played under ("revivalRules":
+    # the mode, its gameplay values, starting hands, warlord health multiplier, turn timer, plus the
+    # mod's rules number and the card pack version). A recording kept with those rules is played
+    # back under them, so it no longer depends on rulesVersion; the mod itself refuses it when its
+    # rules number or card pack differ (cards are not part of the rules).
     REPLAY_MAX_BYTES = 256 * 1024
     PINNED_MAX = 20                                   # pinned matches per player (review #16)
     REPLAY_PLAYER_MAX_BYTES = 10 * 1024 * 1024        # all of a player's recordings together
@@ -3774,6 +3779,35 @@ class PlayFabEmulator:
                 pass
         return used + size <= self.REPLAY_PLAYER_MAX_BYTES
     RECORD_NAME = re.compile(r"[0-9a-f]{16}")
+
+    # The rules sent with a recording, in exactly the shape the mod writes them; anything else is dropped
+    # (the recording is still kept, without them). Ranges are wide enough for every mode's own values.
+    REPLAY_RULE_RANGES = {"warlordHealthMultiplier": (10, 30), "warlordLifeChange": (-100, 100), "startingHand": (0, 20),
+                          "secondPlayerExtraCards": (0, 10), "drawCardsPerTurn": (0, 10), "handLimit": (1, 30),
+                          "startingMana": (0, 20), "startingManaSecond": (0, 20), "manaPerTurn": (0, 10),
+                          "overtimeTurn": (0, 200), "turnSeconds": (0, 600)}
+    REPLAY_RULE_EVENT = re.compile(r"[A-Za-z0-9_.-]{1,64}")
+    REPLAY_RULE_CARDS = re.compile(r"[A-Za-z0-9._-]{1,80}")
+
+    def _replay_rules_snapshot(self, raw):
+        """{"v": 1, "event", "mod", "cards", "rules": {...}} as sent with a recording, or None."""
+        whole = lambda x: isinstance(x, int) and not isinstance(x, bool)
+        if not isinstance(raw, dict) or set(raw) != {"v", "event", "mod", "cards", "rules"} or raw["v"] != 1 or not whole(raw["v"]):
+            return None
+        if not isinstance(raw["event"], str) or not self.REPLAY_RULE_EVENT.fullmatch(raw["event"]):
+            return None
+        if not whole(raw["mod"]) or not 0 <= raw["mod"] <= 10000:
+            return None
+        if not isinstance(raw["cards"], str) or not self.REPLAY_RULE_CARDS.fullmatch(raw["cards"]):
+            return None
+        rules = raw["rules"]
+        if not isinstance(rules, dict) or set(rules) != set(self.REPLAY_RULE_RANGES):
+            return None
+        for k, (lo, hi) in self.REPLAY_RULE_RANGES.items():
+            if not whole(rules[k]) or not lo <= rules[k] <= hi:
+                return None
+        return {"v": 1, "event": raw["event"], "mod": raw["mod"], "cards": raw["cards"],
+                "rules": {k: rules[k] for k in self.REPLAY_RULE_RANGES}}
 
     def _replay_dir(self, pfid):
         return os.path.join(self.store.root, "replays", pfid)
@@ -3807,7 +3841,15 @@ class PlayFabEmulator:
             entries = self._battle_log(player)
             if self.RECORD_NAME.fullmatch(name) and isinstance(record, dict) \
                     and any(str(e.get("recordingIndex")) == name for e in entries):
-                body = json.dumps({"rules": self._replay_rules(), "record": record}, separators=(",", ":"))
+                kept = {"rules": self._replay_rules(), "record": record}
+                if "revivalRules" in data:
+                    snapshot = self._replay_rules_snapshot(data.get("revivalRules"))
+                    if snapshot is None:
+                        log.warning("replay %s of %s: the rules sent with it are not in the expected form; kept without them",
+                                    name, player["PlayFabId"])
+                    else:
+                        kept["revivalRules"] = snapshot
+                body = json.dumps(kept, separators=(",", ":"))
                 if len(body) > self.REPLAY_MAX_BYTES:
                     log.warning("replay %s of %s not kept: %d bytes", name, player["PlayFabId"], len(body))
                 elif not self._replay_room(player["PlayFabId"], name, len(body), entries):
@@ -3836,7 +3878,13 @@ class PlayFabEmulator:
                 kept = json.load(f)
         except (OSError, ValueError):
             return {}
-        if not isinstance(kept, dict) or str(kept.get("rules", "")) != self._replay_rules():
+        if not isinstance(kept, dict):
+            return {}
+        snapshot = self._replay_rules_snapshot(kept.get("revivalRules")) if "revivalRules" in kept else None
+        if snapshot is not None:
+            # played back under its own rules; the mod checks its rules number and card pack
+            return {"recordingData": kept.get("record"), "revivalRules": snapshot}
+        if str(kept.get("rules", "")) != self._replay_rules():
             return {}
         return {"recordingData": kept.get("record")}
 
