@@ -3118,6 +3118,17 @@ class PlayFabEmulator:
     def _creator_check_passphrase(self, user, passphrase):
         return bool(passphrase) and hmac.compare_digest(user["hash"], self._creator_hash(str(passphrase), user["salt"]))
 
+    def _staff_password(self, me, req):
+        """The acting admin's own password, asked again before deleting an account or making a reset
+        code. None when right; otherwise the error to send (5 wrong tries per admin per 15 minutes)."""
+        key = me["name"].lower()
+        if not self._allow("staff-pass-fail", key, 5, 900, count=False):
+            return err("TooManyAttempts", "too many wrong passwords - wait a few minutes and try again", 1199, 429)
+        if not self._creator_check_passphrase(me, req.get("passphrase")):
+            self._allow("staff-pass-fail", key, 5, 900)
+            return err("InvalidPassword", "your password is wrong" if req.get("passphrase") else "enter your password to confirm")
+        return None
+
     def api_Revival_CreatorRename(self, req, headers):
         """Changes the account's username (the current passphrase is asked again). Cards follow the new name."""
         new = " ".join(str(req.get("name") or "").split())
@@ -3258,7 +3269,8 @@ class PlayFabEmulator:
         return user["adminResetHash"]
 
     def api_Revival_CreatorResetCode(self, req, headers):
-        """Admins: a one-time password reset code for another account ({"name"}), or {"name", "remove": true}."""
+        """Admins: a one-time password reset code for another account ({"name", "passphrase": the admin's
+        own password}), or {"name", "remove": true} to cancel one."""
         name = " ".join(str(req.get("name") or "").split())[:30].lower()
         with self.store.lock:
             me = self._creator_account(req)
@@ -3283,6 +3295,9 @@ class PlayFabEmulator:
                 return err("AccountBanned", f"{user['name']} is banned")
             if user.get("deleteSticks") and user.get("deleteAt"):
                 return err("AccountBeingDeleted", f"{user['name']} was banned and is being deleted")
+            bad = self._staff_password(me, req)
+            if bad:
+                return bad
             code = self._recovery_new()
             until = datetime.fromtimestamp(time.time() + self.RESET_CODE_HOURS * 3600, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             user["adminResetHash"], user["adminResetUntil"] = self._recovery_hash(code), until
@@ -3722,6 +3737,10 @@ class PlayFabEmulator:
                 return err("InvalidParams", "you cannot remove your own rights - ask someone ranked above you")
             if delete is not None and name == me["name"].lower():
                 return err("InvalidParams", "delete your own account from your Profile")
+            if delete is True and theirs["access"] != "requested":     # declining a request (Admin > Requests) does not ask
+                bad = self._staff_password(me, req)
+                if bad:
+                    return bad
             if "role" in user:                      # move the older single role to the separate switches
                 old = user.pop("role")
                 user.setdefault("admin", old == "admin")
