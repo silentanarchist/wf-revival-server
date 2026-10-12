@@ -1159,11 +1159,13 @@ function openPicker(opts) {
 function closePicker() { const p = $("picker"); if (p) p.remove(); }
 function keywordItems(type) {
   return schema.traits.filter(t => kwType(t.id) === type && t.id !== "none" || (type === "static" && t.id === "none" && ADV))
-    .filter(t => t.official || ADV || type !== "static" || kwDesc(t.id))
+    .filter(t => t.official || ADV)
     .filter(t => keywordAllowed(t.id, type))
-    .map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card",
-                 off: state.traits.some(x => x.name === t.id) }));
+    .map(t => Object.assign({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card",
+                 off: state.traits.some(x => x.name === t.id) }, usedGroup(t.official)));
 }
+// The two groups every picker list uses: what official cards use, then (advanced options only) the rest.
+function usedGroup(official) { return official ? { rank: 0, group: "Used by official cards" } : { rank: 1, group: "Untested \u2013 no official card uses it" }; }
 // Triggers for a custom ability. Triggers that belong to an Ability keyword (Strike, Talent, Codex ...) are
 // added through that keyword, so they only show here with advanced options on.
 function keywordTrigger(id) { return schema.traits.some(k => k.trigger === id && k.id.toLowerCase() === id.toLowerCase() && kwType(k.id) === "ability"); }
@@ -1175,12 +1177,12 @@ function triggerItems() {
     return { id: id + "@" + g.ctx, label: (g.labels || {})[id] || d.label, text: (g.texts || {})[id] || trigDesc(id), note: d.official ? d.official + " official" : "untested", rank: g.rank, group: g.group };
   }));
   return schema.triggers.filter(x => ADV || t.ench || !ONLY_ENCH_TRIGGERS.includes(x.id)).filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)) && (ADV || t.official))
-    .map(t => t.official ? { id: t.id, label: t.label, text: trigDesc(t.id), note: t.official + " official", rank: 0, group: "Used by official cards" }
-                         : { id: t.id, label: t.label, text: trigDesc(t.id), note: "untested", rank: 1, group: "Untested – the game can fire these, but no official card uses them" });
+    .map(t => Object.assign({ id: t.id, label: t.label, text: trigDesc(t.id), note: t.official ? t.official + " official" : "untested" }, usedGroup(t.official)));
 }
 function actionItems() {
-  const items = schema.traits.filter(t => t.action && keywordAllowed(t.id, "action")).map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official + " official" }));
-  if (ADV && tmpl().kind !== "tactic") items.push({ id: "", label: "Plain action (no keyword)", text: "An action without a keyword, as on one official card (Armorium Cherub).", note: "advanced" });
+  const items = schema.traits.filter(t => t.action && keywordAllowed(t.id, "action") && (t.official || ADV))
+    .map(t => Object.assign({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card" }, usedGroup(t.official)));
+  if (ADV && tmpl().kind !== "tactic") items.push(Object.assign({ id: "", label: "Plain action (no keyword)", text: "An action without a keyword, as on one official card (Armorium Cherub).", note: "1 official" }, usedGroup(1)));
   return items;
 }
 function splitTrig(v) { const [id, ctx] = String(v).split("@"); return { id, ctx: ctx || "" }; }
@@ -1212,7 +1214,17 @@ function newBuff() { return { type: "", melee: 0, ranged: 0, health: 0, armour: 
                               meleeFrom: "", rangedFrom: "", healthFrom: "", armourFrom: "", costFrom: "", random: 0,
                               permanent: false, doNotStack: false, enchantAnim: false, mark: "", daemonHost: "", mutation: "", race: "",
                               enchantment: "", effectName: "", effectText: "" }; }
-function newEffect() { return { effect: "doDamage", amount: 1, amountMax: 0, amountFrom: "", damageType: "", count: 1, card: "", note: "", targets: newTargets(),
+// Effects made in the editor (not loaded) start on "the target"; on a trigger with no such unit (Slay, turn
+// end ...) they are moved to "every unit that matches" the first time they are drawn.
+const freshFx = new WeakSet();
+function newEffect() { const n = baseEffect(); freshFx.add(n); return n; }
+function settleFresh() {
+  for (const ab of state.abilities) for (const fx of ab.effects) if (freshFx.has(fx)) {
+    freshFx.delete(fx);
+    if (whoMode(ab) === "noevent" && fx.targets && /^(target|targetIfMeetsCriteria|adjacentToTargetIfMeetsCriteria)$/.test(fx.targets.pool)) fx.targets.pool = "allFiltered";
+  }
+}
+function baseEffect() { return { effect: "doDamage", amount: 1, amountMax: 0, amountFrom: "", damageType: "", count: 1, card: "", note: "", targets: newTargets(),
                                 buff: newBuff(), times: 0, chance: 0, per: null, casterMustBeInPlay: false, players: "",
                                 hand: { players: "", uses: 0, targets: null },
                                 mana: { amount: 0, resource: "energy", player: "self", mode: "", untilEndOfTurn: false },
@@ -1228,7 +1240,7 @@ function ticksOff(o) { for (const k of Object.keys(o)) if (typeof o[k] === "bool
 // targets, "every matching card" for trigger filters and counts) - shown as that instead of "the chosen target"
 function mergeTargets(t, fallback) { const n = newTargets(); if (!t) return n; ticksOff(n); n.pool = fallback || "any"; Object.assign(n, t); for (const k of ["attack", "health", "cost", "rarity"]) n[k] = Object.assign(STAT(), t[k] || {}); n.cards = (t.cards || []).slice(); n.notEnchantedBy = (t.notEnchantedBy || []).slice(); return n; }
 function mergeEffect(fx) {
-  const n = newEffect(); Object.assign(n, fx);
+  const n = baseEffect(); Object.assign(n, fx);
   n.tgOn = !!fx.targets;                 // effects whose menu has no targets can still carry them (official cards do)
   if (fx.amount == null && fx.mana && fx.mana.amount != null) n.amount = fx.mana.amount;          // energy amounts may be stored under mana
   const d0 = (schema.effects.find(x => x.id === fx.effect) || {}).uses || [];
@@ -1306,8 +1318,16 @@ const WHO = [
   { id: "adjTarget", label: "Units next to the picked unit that match…", pool: "adjacentToTargetIfMeetsCriteria" },
   { id: "any", label: "Not needed for this effect", pool: "any" },
   { id: "other", label: "Other (advanced)…" }];
+// Triggers where the player picks nothing but "the target" is still a unit: the unit the event is about.
+// Only these have official cards aiming at it (Venomthrope, Jain Zar, Tyranid Prime, ...); on other triggers
+// without a pick there is no such unit, so the choices are left out (advanced options: offered, marked untested).
+const EVENT_UNIT_TRIGGERS = ["UnitAttack", "Strike", "UnitStunned", "ThisUnitDeath", "OtherUnitDeath", "TriggeredSwarm"];
 const NOPICK_WHO = { pick: "The unit the event is about (e.g. the unit attacked)", ifMatches: "That unit, only if it also matches…",
                      adjTarget: "Units next to that unit that match…" };
+function whoMode(ab) {
+  if (!ab.trigger || choosesTrigger(ab.trigger)) return true;              // an action, or a trigger where the player picks
+  return EVENT_UNIT_TRIGGERS.includes(ab.trigger) || tmpl().ench ? "nopick" : "noevent";
+}
 function whoOf(t) { if (t.pool === "allFiltered") return t.max ? "random" : "all"; const w = WHO.find(x => x.pool === t.pool); return w ? w.id : "other"; }
 function setWho(t, id) {
   const w = WHO.find(x => x.id === id); if (!w || !w.pool) return;          // "other": keep the group, show the full list
@@ -1354,7 +1374,12 @@ function drawTargets(t, title, pools, maxLabel, foldNote, who, pick) {
     const w = whoOf(t);
     // on triggers where the player picks nothing (Strike, Slay, "when a unit attacks" ...) "the target" is the
     // unit the event is about, e.g. the unit that was attacked (Venomthrope, Blastmaster Noise Marine)
-    const list = who === "nopick" ? WHO.map(x => NOPICK_WHO[x.id] ? Object.assign({}, x, { label: NOPICK_WHO[x.id] }) : x) : WHO;
+    let list = WHO;
+    if (who === "nopick" || who === "noevent") list = WHO.flatMap(x => {
+      if (!NOPICK_WHO[x.id]) return [x];
+      if (who === "nopick") return [Object.assign({}, x, { label: NOPICK_WHO[x.id] })];
+      return ADV || x.id === w ? [Object.assign({}, x, { label: NOPICK_WHO[x.id] + " \u2013 untested on this trigger" })] : [];
+    });
     head = el("div", { class: "row" },
       field("Who does it affect?", sel(list, w, v => { setWho(t, v); }), true),
       w === "other" ? field("Group", sel(schema.targetPools, t.pool, v => { t.pool = v; }, true), true) : null,
@@ -1461,7 +1486,7 @@ function drawEffect(ab, fx, i) {
       has("card") ? field(ench ? "Which enchantment" : "Which card", cardPicker(fx, "card", ench ? "enchList" : "cardList"), true) : null,
       el("button", { class: "small danger", text: "Remove", onclick: () => { ab.effects.splice(i, 1); redraw(); } })),
     has("buff") ? drawBuff(fx.buff) : null,
-    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null, ab.trigger && !choosesTrigger(ab.trigger) ? "nopick" : true)
+    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null, whoMode(ab))
       : fx.tgOn && advOr(tgSaid) ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
     has("note") ? field("Describe what this should do", el("input", { value: fx.note || "", maxLength: 200,
       oninput: e => { fx.note = e.target.value; redraw(true); } }), true) : null,
@@ -2185,6 +2210,7 @@ function redraw(light) {
   $("enchRow").classList.add("hidden");
   $("tokenRow").classList.toggle("hidden", t.token !== undefined); $("f_token").disabled = t.token !== undefined;
   if (!light) {
+    settleFresh();
     ensurePick(state, cardPickEffects());
     if (state.action) ensurePick(state.action, state.action.effects);
     if (state.alternative) ensurePick(state.alternative, state.alternative.effects);
