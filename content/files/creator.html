@@ -1306,6 +1306,8 @@ const WHO = [
   { id: "adjTarget", label: "Units next to the picked unit that match…", pool: "adjacentToTargetIfMeetsCriteria" },
   { id: "any", label: "Not needed for this effect", pool: "any" },
   { id: "other", label: "Other (advanced)…" }];
+const NOPICK_WHO = { pick: "The unit the event is about (e.g. the unit attacked)", ifMatches: "That unit, only if it also matches…",
+                     adjTarget: "Units next to that unit that match…" };
 function whoOf(t) { if (t.pool === "allFiltered") return t.max ? "random" : "all"; const w = WHO.find(x => x.pool === t.pool); return w ? w.id : "other"; }
 function setWho(t, id) {
   const w = WHO.find(x => x.id === id); if (!w || !w.pool) return;          // "other": keep the group, show the full list
@@ -1350,8 +1352,11 @@ function drawTargets(t, title, pools, maxLabel, foldNote, who, pick) {
   let head;
   if (who) {
     const w = whoOf(t);
+    // on triggers where the player picks nothing (Strike, Slay, "when a unit attacks" ...) "the target" is the
+    // unit the event is about, e.g. the unit that was attacked (Venomthrope, Blastmaster Noise Marine)
+    const list = who === "nopick" ? WHO.map(x => NOPICK_WHO[x.id] ? Object.assign({}, x, { label: NOPICK_WHO[x.id] }) : x) : WHO;
     head = el("div", { class: "row" },
-      field("Who does it affect?", sel(WHO, w, v => { setWho(t, v); }), true),
+      field("Who does it affect?", sel(list, w, v => { setWho(t, v); }), true),
       w === "other" ? field("Group", sel(schema.targetPools, t.pool, v => { t.pool = v; }, true), true) : null,
       w === "random" ? field("How many", num(t.max, v => { t.max = Math.max(1, v); }, 1, 20))
         : w !== "all" && advOr(t.max) ? field("At most (0 = all)", num(t.max, v => { t.max = v; }, 0, 20)) : null,
@@ -1456,7 +1461,7 @@ function drawEffect(ab, fx, i) {
       has("card") ? field(ench ? "Which enchantment" : "Which card", cardPicker(fx, "card", ench ? "enchList" : "cardList"), true) : null,
       el("button", { class: "small danger", text: "Remove", onclick: () => { ab.effects.splice(i, 1); redraw(); } })),
     has("buff") ? drawBuff(fx.buff) : null,
-    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null, true)
+    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null, ab.trigger && !choosesTrigger(ab.trigger) ? "nopick" : true)
       : fx.tgOn && advOr(tgSaid) ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
     has("note") ? field("Describe what this should do", el("input", { value: fx.note || "", maxLength: 200,
       oninput: e => { fx.note = e.target.value; redraw(true); } }), true) : null,
