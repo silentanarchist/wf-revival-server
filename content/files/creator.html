@@ -973,21 +973,36 @@ function newEffect() { return { effect: "doDamage", amount: 1, amountMax: 0, amo
 function newAbility(trigger, keyword) { return { trigger: trigger || "ThisCardPlayed", keyword: keyword || "", condition: "", effects: [newEffect()],
                                                  context: "", priority: "", playIcon: "", triggerValue: 0, random: false,
                                                  when: { turn: "", count: null, is: "", value: 0, minusAllies: false, chance: 0 }, countEach: null, victim: null }; }
-function mergeTargets(t) { const n = newTargets(); if (!t) return n; Object.assign(n, t); for (const k of ["attack", "health", "cost", "rarity"]) n[k] = Object.assign(STAT(), t[k] || {}); n.cards = (t.cards || []).slice(); n.notEnchantedBy = (t.notEnchantedBy || []).slice(); return n; }
+// A stored design lists only the ticks that are on (official cards) or all of them (saved custom cards);
+// a tick it leaves out is off - the card builder reads it that way. So a loaded design starts from all
+// ticks off, never from the "new" defaults (which tick Enemy/Friendly and Troops for convenience).
+function ticksOff(o) { for (const k of Object.keys(o)) if (typeof o[k] === "boolean") o[k] = false; return o; }
+// fallback: the group the card builder uses when a stored filter names none ("any" for an effect's
+// targets, "every matching card" for trigger filters and counts) - shown as that instead of "the chosen target"
+function mergeTargets(t, fallback) { const n = newTargets(); if (!t) return n; ticksOff(n); n.pool = fallback || "any"; Object.assign(n, t); for (const k of ["attack", "health", "cost", "rarity"]) n[k] = Object.assign(STAT(), t[k] || {}); n.cards = (t.cards || []).slice(); n.notEnchantedBy = (t.notEnchantedBy || []).slice(); return n; }
 function mergeEffect(fx) {
   const n = newEffect(); Object.assign(n, fx);
-  n.targets = mergeTargets(fx.targets); n.buff = Object.assign(newBuff(), fx.buff || {});
-  if (Array.isArray(n.buff.duration)) { const d = n.buff.duration; n.buff.duration = d[0] || ""; n.buff.alsoLasts = d[1] || ""; }   // several at once n.per = fx.per ? mergeTargets(fx.per) : null;
-  n.hand = Object.assign({ players: "", uses: 0, targets: null }, fx.hand || {}); n.hand.targets = n.hand.targets ? mergeTargets(n.hand.targets) : null; n.mana = Object.assign(newEffect().mana, fx.mana || {});
+  n.tgOn = !!fx.targets;                 // effects whose menu has no targets can still carry them (official cards do)
+  n._orig = fx;                          // what was loaded: parts this effect's menu does not show are kept (see trimEffect)
+  if (fx.amount == null && fx.mana && fx.mana.amount != null) n.amount = fx.mana.amount;          // energy amounts may be stored under mana
+  const d0 = (schema.effects.find(x => x.id === fx.effect) || {}).uses || [];
+  if (!fx.card && fx.buff && fx.buff.enchantment && d0.includes("enchantment") && !d0.includes("summon")) n.card = fx.buff.enchantment;   // ... and the enchantment under buff
+  n._handBuff = !fx.buff && !!(fx.hand && fx.hand.buff);   // a hand buff stored under hand goes back there
+  n.targets = mergeTargets(fx.targets); n.buff = Object.assign(newBuff(), fx.buff || (fx.hand && fx.hand.buff) || {});   // a hand buff may be stored under hand
+  if (Array.isArray(n.buff.duration)) { const d = n.buff.duration; n.buff.duration = d[0] || ""; n.buff.alsoLasts = d[1] || ""; }   // several at once
+  n.per = fx.per ? mergeTargets(fx.per, "any") : null;
+  n.hand = Object.assign({ players: "", uses: 0, targets: null }, fx.hand || {}); n.hand.targets = n.hand.targets ? mergeTargets(n.hand.targets, "inHandFiltered") : null; n.mana = Object.assign(newEffect().mana, fx.mana || {});
   n.summon = Object.assign(newEffect().summon, fx.summon || {}); n.summon.cards = (n.summon.cards || []).filter(Boolean);
   if (n.summon.cards.length) { n.card = n.summon.cards[0]; n.summon.cards = n.summon.cards.slice(1); }   // the first card is "Which card", the rest "More cards" 
   return n;
 }
 function mergeAbility(a) {
   const n = newAbility(a.trigger, a.keyword); Object.assign(n, a);
-  n.effects = (a.effects || []).map(mergeEffect); n.subject = a.subject ? Object.assign(newSubject(), a.subject) : null;
-  n.when = Object.assign(newAbility().when, a.when || {}); n.when.count = n.when.count ? mergeTargets(n.when.count) : null;
-  n.countEach = a.countEach ? mergeTargets(a.countEach) : null; n.victim = a.victim ? mergeTargets(a.victim) : null;
+  n.effects = (a.effects || []).map(mergeEffect); n.subject = a.subject ? Object.assign(ticksOff(newSubject()), a.subject) : null;
+  n.subjectKept = !!a.subject && !WATCHES.test(a.trigger || "");   // official cards also filter "who" on some other triggers
+  n.when = Object.assign(newAbility().when, a.when || {}); n.when.count = n.when.count ? mergeTargets(n.when.count, "allFiltered") : null;
+  n.countEach = a.countEach ? mergeTargets(a.countEach, "allFiltered") : null; n.victim = a.victim ? mergeTargets(a.victim, "allFiltered") : null;
+  n.victimKept = !!a.victim && !WATCHES.test(a.trigger || "");
   n.playIcon = a.playIcon === true ? "yes" : a.playIcon === false ? "no" : "";
   return n;
 }
@@ -1114,7 +1129,7 @@ function drawEffect(ab, fx, i) {
   const def = schema.effects.find(x => x.id === fx.effect) || { fields: ["targets", "note"], uses: [] };
   const has = f => def.fields.includes(f), uses = f => (def.uses || []).includes(f);
   const ench = uses("enchantment");
-  const adv = ["times", "chance", "per", "casterMustBeInPlay", "players", "amountFrom", "damageType"].some(k => isSet(fx[k]))
+  const adv = ["times", "chance", "per", "casterMustBeInPlay", "players", "amountFrom", "damageType", "tgOn"].some(k => isSet(fx[k]))
     || (uses("hand") && isSet(fx.hand)) || (uses("mana") && (fx.mana.resource !== "energy" || fx.mana.player !== "self" || isSet(fx.mana.mode) || fx.mana.untilEndOfTurn))
     || (uses("summon") && isSet(fx.summon));
   return el("div", { class: "effect" },
@@ -1126,7 +1141,7 @@ function drawEffect(ab, fx, i) {
       has("card") ? field(ench ? "Which enchantment" : "Which card", cardPicker(fx, "card", ench ? "enchList" : "cardList"), true) : null,
       el("button", { class: "small danger", text: "Remove", onclick: () => { ab.effects.splice(i, 1); redraw(); } })),
     has("buff") ? drawBuff(fx.buff) : null,
-    has("targets") ? drawTargets(fx.targets) : null,
+    has("targets") ? drawTargets(fx.targets) : fx.tgOn ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
     has("note") ? field("Describe what this should do", el("input", { value: fx.note || "", maxLength: 200,
       oninput: e => { fx.note = e.target.value; redraw(true); } }), true) : null,
     more(fx, "More options", adv,
@@ -1138,6 +1153,7 @@ function drawEffect(ab, fx, i) {
         uses("players") ? field("Which player", sel(schema.players, fx.players, v => { fx.players = v; }, false, "you")) : null),
       el("div", { class: "checks", style: "margin-bottom:8px" },
         check("Only while this card is in play", fx, "casterMustBeInPlay"),
+        has("targets") ? null : el("label", {}, el("input", { type: "checkbox", checked: !!fx.tgOn, onchange: e => { fx.tgOn = e.target.checked; if (fx.tgOn) fx.targets = mergeTargets({ pool: "self" }); redraw(); } }), "Set what it works on"),
         el("label", {}, el("input", { type: "checkbox", checked: !!fx.per, onchange: e => { fx.per = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Once for each …")),
       fx.per ? drawTargets(fx.per, "Once for each of these") : null,
       uses("hand") ? el("div", { class: "row" }, field("Whose hand", sel(schema.players, fx.hand.players, v => { fx.hand.players = v; }, false, "as the filter says")),
@@ -1224,11 +1240,11 @@ const SUBJECT_POOLS = [
   { id: "self", label: "Only this card itself" },
   { id: "any", label: "Any card at all" }];
 function drawSubject(ab) {
-  if (!WATCHES.test(ab.trigger)) return null;
+  if (!WATCHES.test(ab.trigger) && !ab.subjectKept) return null;
   if (!ab.subject) ab.subject = newSubject();
   const t = ab.subject;
   if (!t.pool) t.pool = "allFiltered";            // older designs left it empty, which builds the same thing
-  const filtered = t.pool === "allFiltered";
+  const filtered = true;   // official cards set these ticks and filters with every group (e.g. "any card" + Beast), so they always show
   return el("div", { class: "targets", style: "margin-bottom:10px" },
     el("label", { text: "Triggered by" }),
     el("div", { class: "row" }, field("Group", sel(SUBJECT_POOLS, t.pool, v => { t.pool = v; }), true)),
@@ -1272,7 +1288,7 @@ function drawAbilityOptions(ab) {
     el("div", { class: "checks", style: "margin-bottom:8px" },
       check("Pick one of the effects at random", ab, "random"),
       el("label", {}, el("input", { type: "checkbox", checked: !!ab.countEach, onchange: e => { ab.countEach = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Repeat the effects once for each …"),
-      WATCHES.test(ab.trigger) ? el("label", {}, el("input", { type: "checkbox", checked: !!ab.victim, onchange: e => { ab.victim = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Only when the event hit certain units …") : null),
+      WATCHES.test(ab.trigger) || ab.victimKept ? el("label", {}, el("input", { type: "checkbox", checked: !!ab.victim, onchange: e => { ab.victim = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Only when the event hit certain units …") : null),
     ab.countEach ? drawTargets(ab.countEach, "Once for each of these") : null,
     ab.victim ? drawTargets(ab.victim, "The unit the event hit must match") : null);
 }
@@ -1309,7 +1325,7 @@ function drawAbilities() {
     const b = el("div", { class: "box" },
       el("div", { class: "head" }, el("strong", { text: "Ability " + n }), el("span", { class: "spacer" }),
         el("button", { class: "small danger", text: "Remove ability", onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
-      el("div", { class: "row" }, field("When", sel(schema.triggers, ab.trigger, v => { ab.trigger = v; ab.keyword = ""; keywordFor(ab); }, true), true)));
+      el("div", { class: "row" }, field("When", sel(schema.triggers, ab.trigger, v => { ab.trigger = v; ab.keyword = ""; ab.subjectKept = ab.victimKept = false; keywordFor(ab); }, true), true)));
     if (ab.condition) b.append(el("p", { class: "hint", text: `This ability still has an old free-text condition the game never read ("${ab.condition}"). It is dropped when the card is saved; use the ability's "when" settings for a real condition.` }));
     if (ab.keyword) b.append(el("p", { class: "hint", text: `Also shown as ${lab(schema.traits, ab.keyword)} (a second ability under the same keyword).` }));
     else if (troopPlay) b.append(el("p", { class: "hint", text: "On official troops a \"when played\" ability is always a Rally ability. To make this one Rally, add the Rally keyword above and set it up there." }));
@@ -1353,6 +1369,12 @@ function trimEffect(fx) {
     if (f === "card") out.card = fx.card; else if (f === "note") out.note = fx.note;
     else if (f === "buff") out.buff = cleanBuff(fx.buff); else if (f === "targets") out.targets = cleanTargets(fx.targets); else out[f] = fx[f];
   }
+  if (!def.fields.includes("targets") && fx.tgOn) out.targets = cleanTargets(fx.targets);
+  // a loaded official effect keeps the numbers its menu does not show (e.g. "up to" on doDamageFast)
+  const o = fx._orig && fx._orig.effect === fx.effect ? fx._orig : null;
+  if (o) for (const k of ["amount", "amountMax", "count"]) if (!(k in out) && o[k] != null) out[k] = fx[k];
+  if (o && uses("enchantment") && !out.buff && o.buff && o.buff.type) out.buff = { type: o.buff.type };
+  if (o && uses("summon") && !out.buff && o.buff && o.buff.enchantment) out.buff = { enchantment: o.buff.enchantment };   // summon-then-trigger keeps its effect card
   for (const k of ["times", "chance", "casterMustBeInPlay", "players"]) if (fx[k]) out[k] = fx[k];
   if (fx.per) out.per = cleanTargets(fx.per);
   if ((uses("damage") || uses("heal")) && fx.amountFrom) out.amountFrom = fx.amountFrom;
@@ -1361,11 +1383,12 @@ function trimEffect(fx) {
   if (uses("mana")) { const m = fx.mana, d = newEffect().mana; const mm = {}; for (const k of Object.keys(d)) if (k !== "amount" && m[k] !== d[k] && m[k]) mm[k] = m[k]; if (Object.keys(mm).length) out.mana = mm; }
   if (uses("summon")) { const s = fx.summon, mm = {}; for (const k of Object.keys(s)) if (k === "cards" ? s.cards.filter(Boolean).length : s[k]) mm[k] = k === "cards" ? s.cards.filter(Boolean) : s[k];
     if (mm.cards) mm.cards = [fx.card, ...mm.cards].filter(Boolean); if (Object.keys(mm).length) out.summon = mm; }
+  if (fx._handBuff && out.buff) { out.hand = Object.assign(out.hand || {}, { buff: out.buff }); delete out.buff; }
   return out;
 }
 function trimAbility(a) {
   const out = { trigger: a.trigger, keyword: a.keyword || "", effects: a.effects.map(trimEffect) };
-  if (WATCHES.test(a.trigger) && a.subject) out.subject = Object.assign({}, a.subject);
+  if ((WATCHES.test(a.trigger) || a.subjectKept) && a.subject) out.subject = Object.assign({}, a.subject);
   for (const k of ["context", "priority", "triggerValue", "random"]) if (a[k]) out[k] = a[k];
   if (a.playIcon === "yes") out.playIcon = true; else if (a.playIcon === "no") out.playIcon = false;
   const w = a.when || {}, when = {};
@@ -1374,7 +1397,7 @@ function trimAbility(a) {
   else if (w.chance) when.chance = w.chance;
   if (Object.keys(when).length) out.when = when;
   if (a.countEach) out.countEach = cleanTargets(a.countEach);
-  if (a.victim && WATCHES.test(a.trigger)) out.victim = cleanTargets(a.victim);
+  if (a.victim && (WATCHES.test(a.trigger) || a.victimKept)) out.victim = cleanTargets(a.victim);
   return out;
 }
 function collect() {
