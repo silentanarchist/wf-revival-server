@@ -3481,9 +3481,26 @@ class PlayFabEmulator:
                        terms=u.get("termsAgreed") or "") for key, u in users.items()
                   if not (skip and self._creator_perms(u)["access"] == "requested")]
         people.sort(key=lambda p: (p["access"] != "requested", not p["fixed"], not p["owner"], not p["admin"], p["name"].lower()))
+        # who is on now: in a match room ("playing"), or their game asked for chat lately ("online")
+        now = time.time()
+        playing = set()
+        try:
+            with photon_emu.SERVICE.lock:
+                for room in photon_emu.SERVICE.rooms.values():
+                    for a in room.actors.values():
+                        if a.conn is not None and a.player:
+                            playing.add(a.player)
+        except Exception:
+            pass
+        online = {pid for pid, t in list(photon_emu.SEEN.items()) if now - t <= self.ONLINE_SECONDS} | playing
+        for p in people:
+            p["online"] = "playing" if p["player"] in playing else "online" if p["player"] in online else ""
+        totals = {"accounts": len(users),
+                  "waiting": sum(1 for u in users.values() if self._creator_perms(u)["access"] == "requested"),
+                  "online": len(online), "playing": len(playing)}
         me = self._creator_account(req)
         mine = self._creator_perms(me) if me else {"owner": False, "fixed": False}
-        return ok({"people": people, "owner": mine["owner"], "founder": mine["fixed"], "autoApprove": self._creator_auto_approve(),
+        return ok({"people": people, "totals": totals, "owner": mine["owner"], "founder": mine["fixed"], "autoApprove": self._creator_auto_approve(),
                    "requireAccount": self._settings().get("requireAccount") is True})
 
     def api_Revival_CreatorRequests(self, req, headers):

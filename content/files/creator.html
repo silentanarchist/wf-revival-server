@@ -540,9 +540,12 @@
 
   <div id="viewPeople" class="hidden">
     <section>
-      <h2>People</h2>
+      <h2>People <span class="hint" id="peopleTotals" style="text-transform:none; letter-spacing:0; font-family:inherit; font-weight:normal"></span></h2>
       <p class="hint">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
       <p class="hint" id="peopleHint"></p>
+      <div class="row"><div class="field grow"><label>Find an account</label><input id="peopleSearch" placeholder="account or game player name"></div>
+        <div class="field"><label>Show</label><select id="peopleShow"><option value="">Everyone</option><option value="online">Online now</option><option value="staff">Staff (reviewers, admins, owners)</option><option value="tester">Testers</option><option value="banned">Banned</option></select></div></div>
+      <p class="hint" id="peopleCount"></p>
       <div class="list" id="people"></div>
     </section>
   </div>
@@ -2277,6 +2280,8 @@ async function loadPeople() {
   let d;
   try { d = await call("CreatorPeople", { skipRequested: true }); } catch (e) { return say("Could not load the accounts: " + e.message, "bad"); }
   const oneAccount = !!d.requireAccount;          // account and game player are one: "unlink" only signs the game out
+  const tt = d.totals || {};
+  $("peopleTotals").textContent = tt.accounts != null ? `· ${tt.accounts} account${tt.accounts === 1 ? "" : "s"}${tt.waiting ? ` (${tt.waiting} waiting)` : ""} · ${tt.online} online now${tt.playing ? ` (${tt.playing} in a match)` : ""}` : "";
   $("peopleHint").textContent = d.autoApprove ? "New accounts are approved automatically for now." : "New accounts wait as “requested” until an admin approves them.";
   const rank = q => q.fixed ? 3 : q.owner ? 2 : q.admin ? 1 : 0;
   const myRank = d.founder ? 3 : d.owner ? 2 : 1;
@@ -2290,7 +2295,9 @@ async function loadPeople() {
       disabled: locked || myRank < ({ admin: 2, owner: 3 }[key] || 1) || (p.owner && key !== "owner") || (p.admin && !p.owner && key !== "admin" && key !== "owner"),
       onchange: e => setAccount(p.name, { [key]: e.target.checked }, `${label.toLowerCase()} ${e.target.checked ? "on" : "off"}`) }), label);
     box.append(el("div", { class: "item" },
-      el("div", {}, el("span", { class: "title", text: p.name + " " }), p.fixed ? el("span", { class: "badge approved", text: "Founding Owner" }) : p.owner ? el("span", { class: "badge approved", text: "Owner" }) : p.admin ? el("span", { class: "badge draft", text: "Admin" }) : null,
+      el("div", {}, el("span", { class: "title", text: p.name + " " }),
+        p.online ? el("span", { class: "badge approved", text: p.online === "playing" ? "in a match" : "online" }) : null,
+        p.fixed ? el("span", { class: "badge approved", text: "Founding Owner" }) : p.owner ? el("span", { class: "badge approved", text: "Owner" }) : p.admin ? el("span", { class: "badge draft", text: "Admin" }) : null,
         p.access !== "approved" ? el("span", { class: "badge " + (p.access === "banned" ? "rejected" : "pending"), text: p.access }) : null,
         p.deleteAt ? el("span", { class: "badge rejected", text: "deleted on " + new Date(p.deleteAt).toLocaleDateString() }) : null,
         el("div", { class: "hint", text: `${p.cards} card(s)${p.created ? " · joined " + p.created.slice(0, 10) : ""}` }),
@@ -2306,7 +2313,22 @@ async function loadPeople() {
           ? el("button", { class: "small", text: "Keep account", title: "Cancels the deletion", onclick: () => setAccount(p.name, { delete: false }, "deletion cancelled") })
           : el("button", { class: "small danger", text: "Delete", title: "Signs the account out everywhere and deletes it after 7 days (signing in again cancels it)",
               onclick: () => { if (confirm(`Delete the account ${p.name}? It is signed out everywhere now and deleted in 7 days unless someone signs in to it.`)) setAccount(p.name, { delete: true }, "will be deleted in 7 days"); } })))));
+    const row = box.lastElementChild;            // what the search box and the Show list match on
+    row.dataset.search = (p.name + " " + (p.playerName || "")).toLowerCase();
+    row.dataset.tags = [p.online ? "online" : "", p.reviewer || p.admin || p.owner || p.fixed ? "staff" : "", p.tester ? "tester" : "", p.access === "banned" ? "banned" : ""].join(" ");
   }
+  filterPeople();
+}
+function filterPeople() {
+  const q = val("peopleSearch").trim().toLowerCase(), show = val("peopleShow");
+  let n = 0, all = 0;
+  for (const row of $("people").children) {
+    all++;
+    const hit = (!q || row.dataset.search.includes(q)) && (!show || row.dataset.tags.split(" ").includes(show));
+    row.classList.toggle("hidden", !hit);
+    if (hit) n++;
+  }
+  $("peopleCount").textContent = q || show ? `${n} of ${all} shown` : "";
 }
 // Keyword cheat sheet: short descriptions from the fan rulebook, joined with how the official cards use each keyword.
 let kwList = null;
@@ -2790,6 +2812,7 @@ async function start() {
   $("reqPrev").onclick = () => { reqOffset = Math.max(0, reqOffset - REQ_PAGE); loadRequests(); };
   $("reqNext").onclick = () => { reqOffset += REQ_PAGE; loadRequests(); };
   $("reqApproveAll").onclick = approveShown;
+  $("peopleSearch").addEventListener("input", filterPeople); $("peopleShow").onchange = filterPeople;
   $("unrelQuery").addEventListener("input", drawUnreleased); $("unrelShow").onchange = drawUnreleased;
   $("tabGuides").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGuidePage); } };
   for (const [name, path] of Object.entries(PAGES)) {
