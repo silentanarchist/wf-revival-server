@@ -1215,19 +1215,36 @@ function drawAction() {
 }
 function labelsFor(trigger) { return schema.traits.filter(t => t.trigger === trigger && t.id.toLowerCase() !== trigger.toLowerCase()); }
 const WATCHES = /^(Other|Unit|AboutToAttack|Triggered)/;      // triggers about some other unit or card
-function newSubject() { return { pool: "", friendly: true, enemy: false, troops: true, warlords: false, self: false, trait: "", keyword: "" }; }
+function newSubject() { return { pool: "allFiltered", friendly: true, enemy: false, troops: true, warlords: false, self: false, trait: "", keyword: "" }; }
+// "Triggered by": which card has to do the thing for the ability to go off. Laid out like an effect's
+// targets: first the group, then (for "every card matching the filter") who counts. Official cards use
+// these three groups: allFiltered 89, self 30, any 13 (e.g. Invictor Warsuit: allFiltered, enemy troops and warlords).
+const SUBJECT_POOLS = [
+  { id: "allFiltered", label: "A card matching the filter below" },
+  { id: "self", label: "Only this card itself" },
+  { id: "any", label: "Any card at all" }];
 function drawSubject(ab) {
   if (!WATCHES.test(ab.trigger)) return null;
   if (!ab.subject) ab.subject = newSubject();
   const t = ab.subject;
-  return el("div", { style: "margin-bottom:10px" },
-    el("label", { text: "Triggered by which units or cards" }),
-    el("div", { class: "checks", style: "margin:4px 0 8px" }, check("Friendly", t, "friendly"), check("Enemy", t, "enemy"),
-      check("Troops", t, "troops"), check("Warlords", t, "warlords"), check("This card too", t, "self")),
-    el("div", { class: "row" }, field("Only with keyword", sel(schema.traits, t.trait, v => { t.trait = v; }, true, "any")),
+  if (!t.pool) t.pool = "allFiltered";            // older designs left it empty, which builds the same thing
+  const filtered = t.pool === "allFiltered";
+  return el("div", { class: "targets", style: "margin-bottom:10px" },
+    el("label", { text: "Triggered by" }),
+    el("div", { class: "row" }, field("Group", sel(SUBJECT_POOLS, t.pool, v => { t.pool = v; }), true)),
+    filtered ? el("div", { class: "checks", style: "margin:4px 0 8px" },
+      check("Friendly", t, "friendly"), check("Enemy", t, "enemy"),
+      check("Troops", t, "troops"), check("Warlords", t, "warlords"), check("Stratagems", t, "stratagems"),
+      check("This card too", t, "self")) : null,
+    filtered ? el("div", { class: "row" },
+      field("Only with keyword", sel(schema.traits, t.trait, v => { t.trait = v; }, true, "any")),
+      el("div", { class: "checks" }, check("…without it instead", t, "excludeTrait")),
       field("Only unit type", sel(schema.keywords, t.keyword, v => { t.keyword = v; }, false, "any")),
-      field("Group", sel(schema.targetPools, t.pool, v => { t.pool = v; }, true, "Every card matching the filter"))),
-    el("p", { class: "hint", text: 'In the effects below, "The card that caused the trigger" (actingCard) means the unit that matched here.' }));
+      field("Only if", sel(schema.conditions, t.condition, v => { t.condition = v; }, true, "any")),
+      el("div", { class: "checks" }, check("…unless instead", t, "excludeCondition"))) : null,
+    el("p", { class: "hint", text: filtered
+      ? 'Tick who counts: e.g. "Enemy" + "Troops" + "Warlords" = when an enemy unit does it (Invictor Warsuit). In the effects below, "The card that caused the trigger" means that card.'
+      : t.pool === "self" ? "Only this card doing it sets the ability off." : "Any card doing it sets the ability off." }));
 }
 // The parts of an ability beyond its trigger and effects: where the card has to be, whose turn,
 // a condition on the board, a cost in points, and the "for each" count. Same for every trigger.
