@@ -1159,6 +1159,9 @@ class PlayFabEmulator:
             return ok({"sent": False})              # the game's messages to itself are not passed back
         if not self._allow("private", me, 30, 60):
             return err("TooManyRequests", "too many messages; wait a moment", 1199, 429)
+        if not self._private_rules_ok(data):
+            log.info("private message from %s dropped: its challenge rules are not in the expected form", me)
+            return err("InvalidParams", "that challenge's rules are not in the expected form")
         if me not in self._friend_ids(to):
             # only players who have the sender on their friend list hear from them, and the sender is
             # not told either way (review #17): no messages from strangers, no "online?" probing
@@ -1174,6 +1177,41 @@ class PlayFabEmulator:
             waiting.append({"from": me, "data": data, "t": time.time()})
             del waiting[:-self.PRIVATE_WAITING]
         return ok({"sent": True})
+
+    # A friend challenge with custom rules carries them as "revivalRules" in the game's challenge message
+    # (mod ChallengeRules.cs). The receiving mod already refuses anything not in the exact form; the server
+    # checks the same form so a modified client cannot pass odd values on at all (review #22).
+    # key: (min, max, step) - the same table as ChallengeRules.Fields; keep the two in step.
+    CHALLENGE_RULE_FIELDS = {"warlordHealthMultiplier": (10, 30, 2), "warlordLifeChange": (-20, 40, 1),
+                             "startingHand": (1, 10, 1), "secondPlayerExtraCards": (0, 3, 1),
+                             "drawCardsPerTurn": (0, 5, 1), "handLimit": (3, 20, 1), "startingMana": (0, 10, 1),
+                             "startingManaSecond": (0, 10, 1), "manaPerTurn": (0, 5, 1), "overtimeTurn": (5, 60, 1),
+                             "turnSeconds": (30, 300, 5)}
+    CHALLENGE_RULE_EVENT = re.compile(r"[A-Za-z0-9_.-]{1,64}")
+
+    def _private_rules_ok(self, data):
+        """False only for a message that carries "revivalRules" not in the exact form the mod sends."""
+        if "revivalRules" not in data:
+            return True
+        try:
+            msg = json.loads(data)
+        except ValueError:
+            return True                                  # not JSON: not a challenge, passed on as before
+        if not isinstance(msg, dict) or "revivalRules" not in msg:
+            return True
+        rr = msg["revivalRules"]
+        whole = lambda x: isinstance(x, int) and not isinstance(x, bool)
+        if not isinstance(rr, dict) or set(rr) != {"event", "v"}:
+            return False
+        if not isinstance(rr["event"], str) or not self.CHALLENGE_RULE_EVENT.fullmatch(rr["event"]):
+            return False
+        v = rr["v"]
+        if not isinstance(v, dict) or set(v) != set(self.CHALLENGE_RULE_FIELDS):
+            return False
+        for k, (lo, hi, step) in self.CHALLENGE_RULE_FIELDS.items():
+            if not whole(v[k]) or not lo <= v[k] <= hi or (v[k] - lo) % step:
+                return False
+        return v["startingHand"] + v["secondPlayerExtraCards"] <= v["handLimit"]
 
     ACK_SECONDS = 15               # chat polls come every 3 s in front, every 12 s in the background
 
@@ -1280,7 +1318,8 @@ class PlayFabEmulator:
     SETTING_SWITCHES = ("offenseCards", "onlyRevivalMod", "requireAccount", "requireHttps", "requireEncryptedMatches")
     # every top-level key the server or the mod reads; keys starting with "_" are notes (review #21)
     SETTING_KEYS = SETTING_SWITCHES + ("turnSeconds", "practiceClassicWarlordLife", "rulesVersion", "minModVersion", "creatorUrl",
-                                       "relays", "accounts", "longGame", "photon", "logDays", "matchPort", "startingHands")
+                                       "relays", "accounts", "longGame", "photon", "logDays", "matchPort", "startingHands",
+                                       "bugReports", "bugStorageMB")
 
     def _config_unknown(self, which, data):
         """Top-level settings nothing reads (most likely a typo) - warned about, not refused."""
@@ -1888,6 +1927,9 @@ class PlayFabEmulator:
     BUG_MAX_LOG = 256 * 1024
     BUG_MAX_SCREEN = 3 * 1024 * 1024
     BUG_MAX_DUMP = 4 * 1024 * 1024
+    # All of data/bugs/ together (review #24): new reports are refused past this, so testers cannot fill
+    # the disk. revival-settings.json "bugStorageMB" changes it (default 2048).
+    BUG_STORAGE_MB = 2048
     BUG_SECRET_PATTERNS = [
         re.compile(r"wfr-login-[0-9a-f]{8,}", re.I),                    # game logins
         re.compile(r"\b[0-9A-F]{16}-[0-9a-f]{64}\b"),                   # game session tickets
@@ -1895,6 +1937,21 @@ class PlayFabEmulator:
         re.compile(r"\b[A-Z0-9]{4}(?:-[A-Z0-9]{4}){4}\b"),              # recovery codes
         re.compile(r"(X-Authorization|X-EntityToken|SessionTicket|passphrase)\W{0,4}\S+", re.I),
     ]
+
+    def _bugs_storage_full(self, incoming):
+        """True when storing `incoming` more bytes would take data/bugs/ past its cap."""
+        try:
+            cap = int(self._settings().get("bugStorageMB", self.BUG_STORAGE_MB)) * 1024 * 1024
+        except (TypeError, ValueError):
+            cap = self.BUG_STORAGE_MB * 1024 * 1024
+        used = 0
+        for root, _dirs, files in os.walk(self._bugs_dir()):
+            for name in files:
+                try:
+                    used += os.path.getsize(os.path.join(root, name))
+                except OSError:
+                    pass
+        return used + incoming > cap
 
     def _bugs_dir(self):
         d = os.path.join(self.store.root, "bugs")
@@ -2023,6 +2080,10 @@ class PlayFabEmulator:
             return problem
         if not self._allow("bug-hour", pfid, 10, 3600, count=False) or not self._allow("bug-day", pfid, 30, 86400, count=False):
             return err("TooManyAttempts", "too many bug reports - try again later", 1199, 429)
+        incoming = len(log_text.encode("utf-8")) + len(screen or b"") + len(dump or b"") + len(description.encode("utf-8"))
+        if self._bugs_storage_full(incoming):
+            log.warning("bug report from %s refused: data/bugs is at its storage cap (bugStorageMB)", perms["name"])
+            return err("StorageFull", "the server's bug report storage is full - please tell an admin on Discord", 1199, 507)
         self._allow("bug-hour", pfid, 10, 3600)
         self._allow("bug-day", pfid, 30, 86400)
         now = now_iso()
