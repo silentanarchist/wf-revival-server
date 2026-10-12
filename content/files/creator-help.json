@@ -496,7 +496,7 @@
  "keywords": {
   "frenzied": {
    "name": "Destroyer",
-   "text": "Always attacks a unit it can destroy before any other unit. (Keyword 680, frenzied in the game's list; the game's attack code checks it as the Destroyer rule.)"
+   "text": "Always attacks a unit it can destroy before any other unit."
   },
   "rage": {
    "name": "Penitence",
@@ -508,7 +508,7 @@
   },
   "unstoppable": {
    "name": "Ignores Vanguard",
-   "text": "This troop can ignore enemy units with Vanguard when attacking (Canoptek Wraith, where it is hidden and written in the card text)."
+   "text": "This troop can ignore enemy units with Vanguard when attacking."
   },
   "none": {
    "name": "(empty keyword slot)",

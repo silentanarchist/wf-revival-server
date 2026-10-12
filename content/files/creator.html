@@ -89,6 +89,7 @@
   #picker .item:hover, #picker .item.sel { background: #262b34; }
   #picker .item .nm { display: block; font-weight: 600; text-align: left; } #picker .item .tx { display: block; color: var(--dim); font-size: 13px; text-align: left; margin-top: 2px; }
   #picker .item.off { opacity: .45; cursor: default; }
+  #picker .grp { margin: 12px 8px 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); border-bottom: 1px solid var(--line); padding-bottom: 3px; }
   .kwbox .head .hint { margin-left: 4px; }
   .hint { color: var(--dim); font-size: 13px; }
   .checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
@@ -1018,11 +1019,17 @@ function openPicker(opts) {
     for (const t of opts.tabs) tabs.append(el("button", { class: "small" + (t.id === tab ? " on" : ""), text: t.label, onclick: () => { tab = t.id; sel = 0; fillTabs(); fillList(); search.focus(); } })); };
   const fillList = () => {
     const q = search.value.trim().toLowerCase();
-    shown = opts.items(tab).filter(x => !q || (x.label + " " + (x.text || "") + " " + x.id).toLowerCase().includes(q));
+    // alphabetical within each group (groups in the order given by "rank"); the usage count stays on each entry
+    shown = opts.items(tab).filter(x => !q || (x.label + " " + (x.text || "") + " " + x.id).toLowerCase().includes(q))
+      .sort((x, y) => (x.rank || 0) - (y.rank || 0) || x.label.localeCompare(y.label));
     list.textContent = "";
     if (!shown.length) list.append(el("p", { class: "hint", text: "Nothing matches." }));
-    shown.forEach((x, i) => list.append(el("div", { class: "item" + (i === sel ? " sel" : "") + (x.off ? " off" : ""), onclick: () => choose(x) },
-      el("div", { class: "nm", text: x.label + (x.note ? "  ·  " + x.note : "") }), x.text ? el("div", { class: "tx", text: x.text }) : null)));
+    let group = null;
+    shown.forEach((x, i) => {
+      if (x.group && x.group !== group) { group = x.group; list.append(el("div", { class: "grp", text: group })); }
+      list.append(el("div", { class: "item" + (i === sel ? " sel" : "") + (x.off ? " off" : ""), onclick: () => choose(x) },
+        el("div", { class: "nm", text: x.label + (x.note ? "  ·  " + x.note : "") }), x.text ? el("div", { class: "tx", text: x.text }) : null));
+    });
   };
   const choose = x => { if (!x || x.off) return; closePicker(); opts.onPick(x.id, tab); };
   search.addEventListener("keydown", e => {
@@ -1046,9 +1053,11 @@ function keywordItems(type) {
 // Triggers for a custom ability. Triggers that belong to an Ability keyword (Strike, Talent, Codex ...) are
 // added through that keyword, so they only show here with advanced options on.
 function keywordTrigger(id) { return schema.traits.some(k => k.trigger === id && k.id.toLowerCase() === id.toLowerCase() && kwType(k.id) === "ability"); }
+// Two groups: triggers official cards use, then (advanced options only) the untested ones the game can fire.
 function triggerItems() {
-  return schema.triggers.filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)))
-    .map(t => ({ id: t.id, label: t.label, text: trigDesc(t.id), note: t.official ? t.official + " official" : "untested" }));
+  return schema.triggers.filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)) && (ADV || t.official))
+    .map(t => t.official ? { id: t.id, label: t.label, text: trigDesc(t.id), note: t.official + " official", rank: 0, group: "Used by official cards" }
+                         : { id: t.id, label: t.label, text: trigDesc(t.id), note: "untested", rank: 1, group: "Untested – the game can fire these, but no official card uses them" });
 }
 function actionItems() {
   const items = schema.traits.filter(t => t.action).map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official + " official" }));
