@@ -893,7 +893,7 @@ SITE_PAGES = {
     **{p: "creator.html" for p in (
         "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
         "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/unreleased",
-        "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu")},
+        "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu", "/guides/creator")},
 }
 # Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
 # the guides are for signed-in accounts and reach the site through Revival/Guides.
