@@ -358,6 +358,12 @@
       </section>
 
       <section>
+        <h2>What the player picks</h2>
+        <div id="choose"></div>
+        <p class="hint">When the card is played, the player picks one unit (or card) that matches this. Effects aimed at <em>the chosen target</em> act on it; an effect aimed at <em>the target, if it matches</em> acts on it only when it also matches that effect's own filter (e.g. "if it is a Vehicle"). The action has its own pick, in its box above.</p>
+      </section>
+
+      <section>
         <h2>Keywords</h2>
         <div id="traits"></div>
         <button class="small" id="addTrait">+ Add keyword</button>
@@ -368,7 +374,6 @@
         <h2>Abilities</h2>
         <div id="abilities"></div>
         <button class="small" id="addAbility">+ Add ability</button>
-        <div id="choose"></div>
         <p class="hint">For abilities that belong to no keyword. An ability is one trigger followed by one or more effects, resolved in order. Entries used by many official cards are the safest choices; ones marked 0 exist in the engine but no official card uses them.</p>
       </section>
 
@@ -1067,8 +1072,9 @@ const TARGET_ADV = ["whispers", "weapons", "warlordParts", "onlySelf", "excludeS
 const foldKeys = new WeakMap();
 function foldKey(o) { if (!foldKeys.has(o)) foldKeys.set(o, {}); return foldKeys.get(o); }
 const TARGET_BASE = ["friendly", "enemy", "troops", "warlords", "stratagems", "remnants", "self", "trait", "excludeTrait", "keyword", "condition", "excludeCondition", "excludeKeyword"];
-function drawTargets(t, title, pools, maxLabel) {
-  const filtered = /Filtered|Criteria|^target$|lowestHealth/.test(t.pool);
+// foldNote: fold the ticks and filters away with this note (e.g. a chosen-target effect whose pick is said elsewhere)
+function drawTargets(t, title, pools, maxLabel, foldNote) {
+  const filtered = !foldNote && /Filtered|Criteria|^target$|lowestHealth/.test(t.pool);
   const adv = TARGET_ADV.some(k => isSet(t[k]));
   const ticks = el("div", { class: "checks", style: "margin-bottom:10px" },
       check("Friendly", t, "friendly"), check("Enemy", t, "enemy"), check("Troops", t, "troops"), check("Warlords", t, "warlords"),
@@ -1102,8 +1108,8 @@ function drawTargets(t, title, pools, maxLabel) {
       field(maxLabel || "At most (0 = all)", num(t.max, v => { t.max = v; }, 0, 20)),
       field("If picking some", sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–"))),
     filtered ? ticks : null, filtered ? filters : null, filtered ? moreFilters : null,
-    filtered ? null : more(foldKey(t), "Filters (this group rarely needs them)", adv || TARGET_BASE.some(k => isSet(t[k])),
-      el("p", { class: "hint", text: "Most cards leave these empty for this group; a few official cards set them, and the game reads them." }),
+    filtered ? null : more(foldKey(t), foldNote ? "Filters (not used here)" : "Filters (this group rarely needs them)", !foldNote && (adv || TARGET_BASE.some(k => isSet(t[k]))),
+      el("p", { class: "hint", text: foldNote || "Most cards leave these empty for this group; a few official cards set them, and the game reads them." }),
       ticks, filters, moreFilters));
 }
 const ENCH_TYPES = ["enchantment", "singleUseEnchantment", "choiceEnchantment"];
@@ -1174,6 +1180,11 @@ function drawSummonBlock(fx) {
       check("For the enemy", s, "forEnemy"), check("Summon all the targets", s, "allTargets"), check("Pick a card in play", s, "chooseInPlay"),
       check("Keep its effects", s, "keepEffects"), check("Remove it from the cemetery", s, "removeFromCemetery")));
 }
+// A "chosen target" effect whose pick is set in "What the player picks": the game uses the picked unit and does
+// not check the effect's own ticks (official Commissar Denkler picks a friendly unit with "Enemy" ticked here).
+// They are kept, so official cards rebuild exactly, but folded away.
+const PICK_NOTE = "The game does not check these ticks on \u201cthe chosen target\u201d: that is the unit the player picked (set in \u201cWhat the player picks\u201d), or, on triggers where nothing is picked, the unit the event is about (narrowed with the ability\u2019s \u201cOnly when the event hit certain units\u201d). They are only kept because some official cards carry them. To act only when that unit matches more (e.g. \u201cif it is a Vehicle\u201d), aim the effect at \u201cthe target, if it matches\u201d and use its filter.";
+function pickSaidElsewhere(ab, fx) { return !!fx.targets && fx.targets.pool === "target"; }
 function drawEffect(ab, fx, i) {
   const def = schema.effects.find(x => x.id === fx.effect) || { fields: ["targets", "note"], uses: [] };
   const has = f => def.fields.includes(f), uses = f => (def.uses || []).includes(f);
@@ -1191,7 +1202,8 @@ function drawEffect(ab, fx, i) {
       has("card") ? field(ench ? "Which enchantment" : "Which card", cardPicker(fx, "card", ench ? "enchList" : "cardList"), true) : null,
       el("button", { class: "small danger", text: "Remove", onclick: () => { ab.effects.splice(i, 1); redraw(); } })),
     has("buff") ? drawBuff(fx.buff) : null,
-    has("targets") ? drawTargets(fx.targets) : fx.tgOn ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
+    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null)
+      : fx.tgOn ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
     has("note") ? field("Describe what this should do", el("input", { value: fx.note || "", maxLength: 200,
       oninput: e => { fx.note = e.target.value; redraw(true); } }), true) : null,
     more(fx, "More options", adv,
@@ -1276,11 +1288,10 @@ function drawAction() {
   const kind = a.keyword && traitDef(a.keyword);
   if (kind && kind.id) b.append(el("p", { class: "hint" }, `The card is marked ${kind.label} automatically. `,
     kind.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(a.keyword); window.scrollTo(0, 0); } }) : null));
+  b.append(drawPick(a, a.effects, "What the player picks for the action", "+ Say what the player picks for the action"));
   a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
   b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
   b.append(el("div", { class: "checks" }, check("Play the action animation", a, "playAnim")));
-  if (a.effects.some(fx => fx.targets && fx.targets.pool === "target") || a.choose != null) b.append(drawChoice(a, "What the player picks for the action"));
-  else b.append(choiceButton(a, "+ Say what the player picks for the action"));
   box.append(b);
   drawAlternative(box);
 }
@@ -1303,10 +1314,9 @@ function drawAlternative(box) {
     el("p", { class: "hint", text: "The card uses its action above while this condition is met, and this action otherwise." }),
     drawWhen(a.when),
     el("div", { class: "row" }, field("Energy cost to use", num(a.cost, v => { a.cost = v; }, 0, 12)), el("div", { class: "checks" }, check("Play the action animation", a, "playAnim"))));
+  b.append(drawPick(a, a.effects, "What the player picks for it", "+ Say what the player picks for it"));
   a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
   b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
-  if (a.effects.some(fx => fx.targets && fx.targets.pool === "target") || a.choose != null) b.append(drawChoice(a, "What the player picks for it"));
-  else b.append(choiceButton(a, "+ Say what the player picks for it"));
   box.append(b);
 }
 function labelsFor(trigger) { return schema.traits.filter(t => t.trigger === trigger && t.id.toLowerCase() !== trigger.toLowerCase()); }
@@ -1370,28 +1380,47 @@ function drawAbilityOptions(ab) {
     ab.countEach ? drawTargets(ab.countEach, "Once for each of these") : null,
     ab.victim ? drawTargets(ab.victim, "The unit the event hit must match") : null);
 }
-// What the player picks. Three ways, stored in "choose": left out (null) = taken from the first
-// "chosen target" effect; a filter = exactly what may be picked (each effect's own filter is then written
-// as it is); false = the player picks nothing, and "the chosen target" means what the event hit
-// (official cards such as Fall Back, Angel's Wrath and Fenrisian Wolf).
-const CHOICE_MODES = [{ id: "filter", label: "Say exactly what the player may choose" },
+// What the player picks, stored in "choose": a filter = what may be picked; false = the player picks
+// nothing, and "the chosen target" means what the event hit (official cards such as Fall Back, Angel's
+// Wrath and Fenrisian Wolf); null = the card picks nothing (no effect aims at the chosen target).
+// The pick always lives here, as on every official card: a "chosen target" effect's own ticks are not
+// used by the game, so they are folded away (see PICK_NOTE). Narrower conditions on the picked unit go
+// on an effect aimed at "the target, if it matches".
+const CHOICE_MODES = [{ id: "filter", label: "The player picks one of these" },
                       { id: "none", label: "The player picks nothing: \"the chosen target\" is what the event hit" }];
-function drawChoice(holder, title) {
-  const mode = holder.choose === false ? "none" : holder.choose ? "filter" : "";
+function drawChoice(holder, title, effects) {
+  const mode = holder.choose === false ? "none" : "filter";
+  const usesTarget = effects.some(fx => fx.targets && /^(target|targetIfMeetsCriteria)$/.test(fx.targets.pool));
   const out = el("div", { style: "margin:8px 0" },
-    field(title, sel(CHOICE_MODES, mode, v => {
-      holder.choose = v === "none" ? false : v === "filter" ? mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }) : null; },
-      false, "Taken from the first \"chosen target\" effect"), true));
-  if (holder.choose) out.append(el("div", { class: "box" }, drawTargets(holder.choose, "The player may choose one of these"),
-    el("p", { class: "hint", text: "With this set, the filters on each \"chosen target\" effect are written as they are (they can narrow what the effect does to the chosen card)." })));
-  if (holder.choose === false) out.append(el("p", { class: "hint", text: "Nothing is picked when the card is played; effects aimed at \"the chosen target\" act on the unit the trigger is about, and their filters are written as they are." }));
+    el("div", { class: "row" }, field(title, sel(CHOICE_MODES, mode, v => {
+      holder.choose = v === "none" ? false : mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }); }), true),
+      usesTarget ? null : el("button", { class: "small danger", text: "Remove", onclick: () => { holder.choose = null; redraw(); } })));
+  if (holder.choose) out.append(el("div", { class: "box" }, drawTargets(holder.choose, "Pick one of these")));
+  if (holder.choose === false) out.append(el("p", { class: "hint", text: "Nothing is picked when the card is played; effects aimed at \"the chosen target\" act on the unit the trigger is about." }));
   return out;
 }
+// The pick for these effects: drawn first (the general part), before the effects that narrow it.
+function drawPick(holder, effects, title, buttonText) {
+  return holder.choose != null ? drawChoice(holder, title, effects) : choiceButton(holder, buttonText);
+}
+// A "chosen target" effect needs a pick. Designs made before the pick always lived in its own box took it
+// from the first such effect's ticks: those become the pick, and the effects keep only their group,
+// "at most" and "if picking some" (which builds exactly the same card).
+function ensurePick(holder, effects) {
+  const fx = effects.filter(f => f.targets && f.targets.pool === "target");
+  if (holder.choose != null || !fx.length) return;
+  const t = fx[0].targets, pick = mergeTargets({ pool: "allFiltered" });
+  for (const k of Object.keys(pick)) if (!["pool", "max", "select"].includes(k)) pick[k] = JSON.parse(JSON.stringify(t[k]));
+  holder.choose = pick;
+  for (const f of fx) { const { pool, max, select } = f.targets; f.targets = Object.assign(ticksOff(newTargets()), { pool, max, select }); }
+}
+// Only abilities on triggers where the player picks (when played, Codex, Use Faith ...; the menu says which,
+// as the compiler does) use the card's pick. On the others "the chosen target" is what the event is about.
+function choosesTrigger(trigger) { const t = schema.triggers.find(x => x.id === trigger); return t && t.chooses != null ? !!t.chooses : trigger === "ThisCardPlayed"; }
+function cardPickEffects() { return state.abilities.filter(a => choosesTrigger(a.trigger)).flatMap(a => a.effects); }
 function drawChoose() {
   const box = $("choose"); box.textContent = "";
-  const usesTarget = [...state.abilities, ...(state.action ? [state.action] : [])].some(a => a.effects.some(fx => fx.targets && fx.targets.pool === "target"));
-  if (!usesTarget && state.choose == null) { box.append(choiceButton(state, "+ Say what the player picks when playing the card")); return; }
-  box.append(drawChoice(state, "What the player picks when playing the card"));
+  box.append(drawPick(state, cardPickEffects(), "When the card is played", "+ Say what the player picks when playing the card"));
 }
 function drawAbilities() {
   const box = $("abilities"); box.textContent = "";
@@ -1837,7 +1866,12 @@ function redraw(light) {
   const hero = val("f_kind") === "hero"; $("enchRow").classList.toggle("hidden", hero);
   if (hero) $("f_enchantment").checked = false;
   if ($("f_enchantment").checked) { $("f_token").checked = true; $("f_token").disabled = true; } else $("f_token").disabled = false;
-  if (!light) { drawTraits(); drawAbilities(); drawAction(); drawChoose(); drawCardMore(); }
+  if (!light) {
+    ensurePick(state, cardPickEffects());
+    if (state.action) ensurePick(state.action, state.action.effects);
+    if (state.alternative) ensurePick(state.alternative, state.alternative.effects);
+    drawTraits(); drawAbilities(); drawAction(); drawChoose(); drawCardMore();
+  }
   preview();
 }
 
