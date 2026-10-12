@@ -73,6 +73,22 @@
   .box .head .spacer { flex: 1; }
   .effect { border-left: 3px solid var(--accent2); padding-left: 10px; margin: 10px 0; }
   .kwbox { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 10px; }
+  .kind { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #2c313b; color: var(--dim); margin-right: 6px; }
+  .kind.static { background: #23303b; color: #8fb8d8; } .kind.ability { background: #2f2a1c; color: var(--warn); }
+  .kind.action { background: #1f3d22; color: var(--ok); } .kind.custom { background: #33243b; color: #c9a3e0; }
+  .entryHead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .pickBtn { text-align: left; min-width: 220px; }
+  .pickDesc { margin: 2px 0 8px; }
+  #picker { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-start; justify-content: center; z-index: 50; padding-top: 6vh; }
+  #picker .panel { background: #1a1d23; border: 1px solid var(--line); border-radius: 8px; width: min(720px, 94vw); max-height: 82vh; display: flex; flex-direction: column; }
+  #picker .tabs { display: flex; gap: 6px; padding: 10px 12px 0; flex-wrap: wrap; }
+  #picker .tabs button.on { outline: 2px solid var(--accent2); }
+  #picker input { margin: 10px 12px; width: auto; }
+  #picker .list { overflow: auto; padding: 0 12px 12px; }
+  #picker .item { display: block; padding: 7px 8px; border-radius: 6px; cursor: pointer; border: 0; }
+  #picker .item:hover, #picker .item.sel { background: #262b34; }
+  #picker .item .nm { display: block; font-weight: 600; text-align: left; } #picker .item .tx { display: block; color: var(--dim); font-size: 13px; text-align: left; margin-top: 2px; }
+  #picker .item.off { opacity: .45; cursor: default; }
   .kwbox .head .hint { margin-left: 4px; }
   .hint { color: var(--dim); font-size: 13px; }
   .checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
@@ -294,6 +310,8 @@
 
   <div id="viewCreate" class="cols">
     <div>
+      <label class="agree" style="margin:0 0 10px"><input type="checkbox" id="advToggle">
+        <span>Show advanced options – settings only a few official cards use (timing, leftovers, card settings). Off, the editor shows only what the game uses for your choices.</span></label>
       <section>
         <h2>Basics</h2>
         <div class="row">
@@ -352,32 +370,13 @@
       </section>
 
       <section>
-        <h2>Action</h2>
-        <div id="action"></div>
-        <p class="hint">Something the player chooses to do during their turn, instead of something that happens by itself. Pick its kind here – Duty, Ferocity, Pray, Agenda or Oath, or a plain action – and the card gets that keyword automatically. A card has at most one action.</p>
+        <h2>Keywords and abilities</h2>
+        <div id="entries"></div>
+        <button class="small" id="addEntry">+ Add a keyword or ability</button>
+        <p class="hint"><strong>Static</strong> keywords work by themselves (Flying, Stealth). <strong>Ability</strong> keywords say <em>when</em> something happens (Rally, Strike, Slay) and open a box for <em>what</em> happens. <strong>Action</strong> keywords (Duty, Pray, Oath, Agenda, Ferocity) are something the player uses during their turn; a card has at most one. <strong>Custom</strong> is an ability without a keyword: you pick when it happens. The number after a name is how many official cards use it.</p>
       </section>
 
-      <section>
-        <h2>What the player picks</h2>
-        <div id="choose"></div>
-        <p class="hint">When the card is played, the player picks one unit (or card) that matches this. Effects aimed at <em>the chosen target</em> act on it; an effect aimed at <em>the target, if it matches</em> acts on it only when it also matches that effect's own filter (e.g. "if it is a Vehicle"). The action has its own pick, in its box above.</p>
-      </section>
-
-      <section>
-        <h2>Keywords</h2>
-        <div id="traits"></div>
-        <button class="small" id="addTrait">+ Add keyword</button>
-        <p class="hint">Some keywords work by themselves (Flying, Stealth, Vanguard): just add them. Others, like Rally, Artifice or Strike, say <em>when</em> something happens: pick one and a box opens under it for <em>what</em> happens. Actions (Duty, Ferocity, Pray, Agenda, Oath) are set up in the Action section above. Ephemeral works by itself (the card leaves your hand at the end of the turn) and is only found on stratagems. The number after each name is how many official cards use it.</p>
-      </section>
-
-      <section>
-        <h2>Abilities</h2>
-        <div id="abilities"></div>
-        <button class="small" id="addAbility">+ Add ability</button>
-        <p class="hint">For abilities that belong to no keyword. An ability is one trigger followed by one or more effects, resolved in order. Entries used by many official cards are the safest choices; ones marked 0 exist in the engine but no official card uses them.</p>
-      </section>
-
-      <section>
+      <section id="cardMoreSection">
         <h2>Card settings</h2>
         <div id="cardMore"></div>
       </section>
@@ -817,6 +816,12 @@ function plainClick(e) { return e.button === 0 && !e.ctrlKey && !e.metaKey && !e
 function session() { try { return localStorage.getItem("creator.session") || ""; } catch (x) { return ""; } }
 function setSession(v) { try { v ? localStorage.setItem("creator.session", v) : localStorage.removeItem("creator.session"); } catch (x) {} }
 const state = { traits: [], abilities: [], action: null, choose: null, more: newMore(), alternative: null };
+// Advanced options: off = only what the game uses for the current choices; on = everything the editor can
+// write (timing, official cards' leftovers, card settings). A control whose value is set always shows.
+let ADV = false;
+try { ADV = localStorage.getItem("creator.advanced") === "1"; } catch (x) {}
+const advOr = set => ADV || !!set;
+let help = { triggers: {}, keywords: {} }, kwText = {};
 // The card's own settings beyond its abilities, as official cards use them. All optional: blank = the usual rule.
 function newMore() { return { inventory: "", randomCreation: "", attackDamageType: "", blockActions: false, hintsOn: false, hints: [],
                               related: [], counter: null, choices: null, startingCard: "", goSecondCard: "", unitStats: false }; }
@@ -946,39 +951,121 @@ function drawKeywordAbility(t, def) {           // the box under a keyword that 
     return b;
   }
   if (!def.needsAbility) return null;
-  if (!def.trigger) return el("div", { class: "kwbox" }, el("span", { class: "hint", text: "Official cards use this keyword in several different ways, so it has no fixed ability: add an ability below and describe the link in the notes for the reviewer." }));
+  if (!def.trigger) return null;      // used in several ways on official cards: no fixed ability (add a custom one if needed)
   const ab = linkedAbility(t.name);
   if (!ab) return el("div", { class: "kwbox" }, el("span", { class: "hint", text: `${def.label} always comes with an ability.` }),
     el("button", { class: "small", text: "+ Set up its ability", onclick: () => { abilityFor(t.name); redraw(); } }));
   const b = el("div", { class: "kwbox" },
     el("div", { class: "head" }, el("strong", { text: `${def.label}: what happens` }),
       el("span", { class: "hint", text: lab(schema.triggers, ab.trigger) })));
+  const pk = drawAbilityPick(ab); if (pk) b.append(pk);
   const subj = drawSubject(ab); if (subj) b.append(subj);
   b.append(drawAbilityOptions(ab));
   ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
   b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
   return b;
 }
-function drawTraits() {
-  const box = $("traits"); box.textContent = "";
+// One list for everything: keywords (static, ability, action) and custom abilities (no keyword).
+function drawEntries() {
+  const box = $("entries"); box.textContent = "";
   linkKeywords();
-  state.traits.forEach((t, i) => {
-    const def = schema.traits.find(x => x.id === t.name) || {};
-    const owns = def.action || def.needsAbility;
-    const row = el("div", { class: "row" },
-      field("Keyword", sel(schema.traits.filter(x => !traitDef(x.id).action), t.name, v => changeKeyword(t, v), true)),
-      def.takesValue ? field("Value", num(t.value, v => { t.value = v; }, 0, 20)) : null,
-      more(t, def.takesValue ? "…" : "Number / hidden", !!t.hidden || (!def.takesValue && !!t.value),
-        el("div", { class: "row tight" }, def.takesValue ? null : field("Number (official cards set one on a few keywords)", num(t.value, v => { t.value = v; }, 0, 20)),
-          el("div", { class: "checks" }, check("Hidden on the card", t, "hidden")))),
-      el("button", { class: "small danger", text: owns ? "Remove keyword and its ability" : "Remove", onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }),
-      owns && linkedAbility(t.name) ? el("button", { class: "small", text: "Remove keyword only", title: "The ability stays (under Abilities); a few official cards have the ability without the keyword",
-        onclick: () => { const ab = linkedAbility(t.name); if (ab && ab.keyword === t.name) ab.keyword = ""; state.traits.splice(i, 1); redraw(); } }) : null,
-      def.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(t.name); window.scrollTo(0, 0); } }) : null,
-      owns ? null : el("span", { class: "hint", text: "works by itself" }),
-      def.onlyOn && def.onlyOn !== val("f_kind") ? el("span", { class: "hint", style: "color:var(--warn)", text: `official cards only have this on ${lab(schema.kinds, def.onlyOn).toLowerCase()}s` }) : null);
-    box.append(owns ? el("div", { class: "box" }, row, drawKeywordAbility(t, def)) : row);
+  state.traits.forEach((t, i) => box.append(drawKeywordEntry(t, i)));
+  if (state.action) box.append(drawActionEntry());
+  state.abilities.forEach((ab, i) => { if (!keywordOf(ab)) box.append(drawCustomEntry(ab, i)); });
+  if (!box.children.length) box.append(el("p", { class: "hint", text: "No keywords or abilities yet." }));
+}
+function drawKeywordEntry(t, i) {
+  const def = schema.traits.find(x => x.id === t.name) || {};
+  const type = kwType(t.name), owns = type === "ability" || (def.needsAbility && !def.trigger);
+  const ab = owns ? linkedAbility(t.name) : null;
+  const head = el("div", { class: "entryHead" },
+    el("span", { class: "kind " + type, text: KIND_LABEL[type] }),
+    el("button", { class: "small pickBtn", text: (def.label || t.name) + "  ▾", title: "Change the keyword",
+      onclick: () => openPicker({ title: "Change the keyword", tabs: [{ id: "static", label: "Static" }, { id: "ability", label: "Ability" }], tab: type === "ability" ? "ability" : "static",
+        items: keywordItems, onPick: v => { changeKeyword(t, v); redraw(); } }) }),
+    def.takesValue ? field("Value", num(t.value, v => { t.value = v; }, 0, 20)) : null,
+    el("span", { class: "spacer" }),
+    def.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(t.name); window.scrollTo(0, 0); } }) : null,
+    ADV && ab ? el("button", { class: "small", text: "Remove keyword only", title: "The ability stays, as a custom ability; a few official cards have the ability without the keyword",
+      onclick: () => { if (ab.keyword === t.name) ab.keyword = ""; state.traits.splice(i, 1); redraw(); } }) : null,
+    el("button", { class: "small danger", text: "Remove", onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }));
+  const b = el("div", { class: "box" }, head,
+    kwDesc(t.name) ? el("p", { class: "hint pickDesc", text: kwDesc(t.name) }) : null,
+    def.onlyOn && def.onlyOn !== val("f_kind") ? el("p", { class: "hint", style: "color:var(--warn)", text: `Official cards only have this on ${lab(schema.kinds, def.onlyOn).toLowerCase()}s.` }) : null,
+    advOr(t.hidden || (!def.takesValue && t.value)) ? el("div", { class: "row tight" },
+      def.takesValue ? null : field("Number (a few official cards set one)", num(t.value, v => { t.value = v; }, 0, 20)),
+      el("div", { class: "checks" }, check("Hidden on the card", t, "hidden"))) : null);
+  if (owns) b.append(drawKeywordAbility(t, def));
+  return b;
+}
+
+/* ---------- keyword types, descriptions and the searchable picker ---------- */
+// Static = works by itself; Ability = says when something happens (Rally, Strike); Action = used by the player.
+function kwType(id) { const d = traitDef(id); return d.action ? "action" : d.needsAbility && d.trigger ? "ability" : "static"; }
+const KIND_LABEL = { static: "Static", ability: "Ability", action: "Action", custom: "Custom" };
+function kwDesc(id) { return (help.keywords[id] || {}).text || kwText[id] || ""; }
+function trigDesc(id) { return (help.triggers[id] || {}).text || ""; }
+function trigStatus(id) { return (help.triggers[id] || {}).status || ""; }
+// A list to pick from: tabs, a search box, and each entry with its one-line description. items(tab) returns
+// [{id, label, text, note, off}]; onPick(id, tab).
+function openPicker(opts) {
+  closePicker();
+  let tab = opts.tab || (opts.tabs ? opts.tabs[0].id : ""), sel = 0, shown = [];
+  const list = el("div", { class: "list" });
+  const search = el("input", { placeholder: "Search…", oninput: () => { sel = 0; fillList(); } });
+  const tabs = opts.tabs ? el("div", { class: "tabs" }) : null;
+  const fillTabs = () => { if (!tabs) return; tabs.textContent = "";
+    for (const t of opts.tabs) tabs.append(el("button", { class: "small" + (t.id === tab ? " on" : ""), text: t.label, onclick: () => { tab = t.id; sel = 0; fillTabs(); fillList(); search.focus(); } })); };
+  const fillList = () => {
+    const q = search.value.trim().toLowerCase();
+    shown = opts.items(tab).filter(x => !q || (x.label + " " + (x.text || "") + " " + x.id).toLowerCase().includes(q));
+    list.textContent = "";
+    if (!shown.length) list.append(el("p", { class: "hint", text: "Nothing matches." }));
+    shown.forEach((x, i) => list.append(el("div", { class: "item" + (i === sel ? " sel" : "") + (x.off ? " off" : ""), onclick: () => choose(x) },
+      el("div", { class: "nm", text: x.label + (x.note ? "  ·  " + x.note : "") }), x.text ? el("div", { class: "tx", text: x.text }) : null)));
+  };
+  const choose = x => { if (!x || x.off) return; closePicker(); opts.onPick(x.id, tab); };
+  search.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { sel = Math.min(sel + 1, shown.length - 1); fillList(); e.preventDefault(); }
+    else if (e.key === "ArrowUp") { sel = Math.max(sel - 1, 0); fillList(); e.preventDefault(); }
+    else if (e.key === "Enter") { choose(shown[sel]); e.preventDefault(); }
+    else if (e.key === "Escape") closePicker();
   });
+  const box = el("div", { id: "picker", onclick: e => { if (e.target.id === "picker") closePicker(); } },
+    el("div", { class: "panel" }, el("div", { class: "row", style: "padding:10px 12px 0" }, el("strong", { text: opts.title }), el("span", { class: "spacer" }),
+      el("button", { class: "small", text: "Close", onclick: closePicker })), tabs, search, list));
+  document.body.append(box); fillTabs(); fillList(); search.focus();
+}
+function closePicker() { const p = $("picker"); if (p) p.remove(); }
+function keywordItems(type) {
+  return schema.traits.filter(t => kwType(t.id) === type && t.id !== "none" || (type === "static" && t.id === "none" && ADV))
+    .filter(t => t.official || ADV || type !== "static" || kwDesc(t.id))
+    .map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card",
+                 off: state.traits.some(x => x.name === t.id) }));
+}
+// Triggers for a custom ability. Triggers that belong to an Ability keyword (Strike, Talent, Codex ...) are
+// added through that keyword, so they only show here with advanced options on.
+function keywordTrigger(id) { return schema.traits.some(k => k.trigger === id && k.id.toLowerCase() === id.toLowerCase() && kwType(k.id) === "ability"); }
+function triggerItems() {
+  return schema.triggers.filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)))
+    .map(t => ({ id: t.id, label: t.label, text: trigDesc(t.id), note: t.official ? t.official + " official" : "untested" }));
+}
+function actionItems() {
+  const items = schema.traits.filter(t => t.action).map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official + " official" }));
+  if (ADV) items.push({ id: "", label: "Plain action (no keyword)", text: "An action without a keyword, as on one official card (Armorium Cherub).", note: "advanced" });
+  return items;
+}
+function addEntry(id, tab) {
+  if (tab === "custom") { const ab = newAbility(id, ""); if (WATCHES.test(id)) ab.subject = null; state.abilities.push(ab); keywordFor(ab); }
+  else if (tab === "action") { if (state.action) return say("A card has only one action. Remove the current one first.", "bad"); state.action = newAction(id); }
+  else { state.traits.push({ name: id, value: 0 }); abilityFor(id); }
+  redraw();
+}
+function openAdd() {
+  openPicker({ title: "Add a keyword or ability", tab: "static",
+    tabs: [{ id: "static", label: "Static" }, { id: "ability", label: "Ability" }, { id: "action", label: "Action" }, { id: "custom", label: "Custom (pick a trigger)" }],
+    items: tab => tab === "custom" ? triggerItems() : tab === "action" ? actionItems().map(x => Object.assign(x, { off: !!state.action })) : keywordItems(tab),
+    onPick: addEntry });
 }
 
 /* ---------- abilities ---------- */
@@ -1072,8 +1159,34 @@ const TARGET_ADV = ["whispers", "weapons", "warlordParts", "onlySelf", "excludeS
 const foldKeys = new WeakMap();
 function foldKey(o) { if (!foldKeys.has(o)) foldKeys.set(o, {}); return foldKeys.get(o); }
 const TARGET_BASE = ["friendly", "enemy", "troops", "warlords", "stratagems", "remnants", "self", "trait", "excludeTrait", "keyword", "condition", "excludeCondition", "excludeKeyword"];
+// "Who does it affect?": an effect's target group in plain words. Each maps onto the game's groups; the full
+// list stays under "Other". Random = "every unit matching" with "how many" set (the game picks at random).
+const WHO = [
+  { id: "pick", label: "A unit the player picks", pool: "target" },
+  { id: "ifMatches", label: "The picked unit, only if it also matches…", pool: "targetIfMeetsCriteria" },
+  { id: "random", label: "Random unit(s) that match…", pool: "allFiltered" },
+  { id: "all", label: "Every unit that matches…", pool: "allFiltered" },
+  { id: "self", label: "This card", pool: "self" },
+  { id: "friendlyHero", label: "Your warlord", pool: "friendlyHero" },
+  { id: "enemyHero", label: "The enemy warlord", pool: "enemyHero" },
+  { id: "actingCard", label: "The unit that set it off", pool: "actingCard" },
+  { id: "hand", label: "Cards in hand that match…", pool: "inHandFiltered" },
+  { id: "deck", label: "Cards in the deck that match…", pool: "inDeckFiltered" },
+  { id: "cemetery", label: "Cards in the cemetery that match…", pool: "inCemeteryFiltered" },
+  { id: "adjSelf", label: "Units next to this card that match…", pool: "adjacentToSelfIfMeetsCriteria" },
+  { id: "adjTarget", label: "Units next to the picked unit that match…", pool: "adjacentToTargetIfMeetsCriteria" },
+  { id: "any", label: "Not needed for this effect", pool: "any" },
+  { id: "other", label: "Other (advanced)…" }];
+function whoOf(t) { if (t.pool === "allFiltered") return t.max ? "random" : "all"; const w = WHO.find(x => x.pool === t.pool); return w ? w.id : "other"; }
+function setWho(t, id) {
+  const w = WHO.find(x => x.id === id); if (!w || !w.pool) return;          // "other": keep the group, show the full list
+  t.pool = w.pool;
+  if (id === "random") t.max = t.max || 1; else if (id === "all") { t.max = 0; t.select = ""; }
+}
 // foldNote: fold the ticks and filters away with this note (e.g. a chosen-target effect whose pick is said elsewhere)
-function drawTargets(t, title, pools, maxLabel, foldNote) {
+// who: show "Who does it affect?" in plain words (effect targets) instead of the bare group list
+// pick: the player's pick, always "every unit matching the filter": its group row only shows when unusual
+function drawTargets(t, title, pools, maxLabel, foldNote, who, pick) {
   const filtered = !foldNote && /Filtered|Criteria|^target$|lowestHealth/.test(t.pool);
   const adv = TARGET_ADV.some(k => isSet(t[k]));
   const ticks = el("div", { class: "checks", style: "margin-bottom:10px" },
@@ -1101,16 +1214,27 @@ function drawTargets(t, title, pools, maxLabel, foldNote) {
         t.rarity.is ? field("Rarity", sel(schema.rarityValues || [], String(t.rarity.value), v => { t.rarity.value = parseInt(v, 10) || 0; })) : null),
       cardListEditor(t.cards, "Only these cards"),
       cardListEditor(t.notEnchantedBy, "Not already carrying this enchantment", "enchList"));
-  return el("div", { class: "targets" },
-    title ? el("label", { text: title }) : null,
-    el("div", { class: "row" },
+  const leftover = adv || TARGET_BASE.some(k => isSet(t[k]));
+  const fold = filtered ? null : (foldNote ? (ADV ? more(foldKey(t), "Filters (not used here)", false, el("p", { class: "hint", text: foldNote }), ticks, filters, moreFilters) : null)
+    : advOr(leftover) ? more(foldKey(t), "Filters (this group rarely needs them)", leftover,
+      el("p", { class: "hint", text: "Most cards leave these empty for this group; a few official cards set them." }), ticks, filters, moreFilters) : null);
+  let head;
+  if (who) {
+    const w = whoOf(t);
+    head = el("div", { class: "row" },
+      field("Who does it affect?", sel(WHO, w, v => { setWho(t, v); }), true),
+      w === "other" ? field("Group", sel(schema.targetPools, t.pool, v => { t.pool = v; }, true), true) : null,
+      w === "random" ? field("How many", num(t.max, v => { t.max = Math.max(1, v); }, 1, 20))
+        : w !== "all" && advOr(t.max) ? field("At most (0 = all)", num(t.max, v => { t.max = v; }, 0, 20)) : null,
+      advOr(t.select) ? field(w === "random" ? "Which ones (blank = random)" : "If picking some", sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–")) : null);
+  } else if (pick && !advOr(t.pool !== "allFiltered" || t.max || t.select)) head = null;
+  else head = el("div", { class: "row" },
       field("Affects", sel(pools || schema.targetPools, t.pool, v => { t.pool = v; }, true), true),
       field(maxLabel || "At most (0 = all)", num(t.max, v => { t.max = v; }, 0, 20)),
-      field("If picking some", sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–"))),
-    filtered ? ticks : null, filtered ? filters : null, filtered ? moreFilters : null,
-    filtered ? null : more(foldKey(t), foldNote ? "Filters (not used here)" : "Filters (this group rarely needs them)", !foldNote && (adv || TARGET_BASE.some(k => isSet(t[k]))),
-      el("p", { class: "hint", text: foldNote || "Most cards leave these empty for this group; a few official cards set them, and the game reads them." }),
-      ticks, filters, moreFilters));
+      field("If picking some", sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–")));
+  return el("div", { class: "targets" },
+    title ? el("label", { text: title }) : null, head,
+    filtered ? ticks : null, filtered ? filters : null, filtered ? moreFilters : null, fold);
 }
 const ENCH_TYPES = ["enchantment", "singleUseEnchantment", "choiceEnchantment"];
 function drawBuff(b) {
@@ -1151,15 +1275,15 @@ function drawBuff(b) {
         !trait ? field("Number (e.g. an enchantment's value)", num(b.traitValue, v => { b.traitValue = v; }, 0, 20)) : null),
       el("div", { class: "checks", style: "margin-bottom:8px" }, check("Permanent (survives silence)", b, "permanent"), check("Does not stack", b, "doNotStack"), check("Play the enchant animation", b, "enchantAnim")),
       el("div", { class: "row" }, field("Shown as (name)", textInput(b, "effectName", "name shown on the card"), true), field("Shown as (text)", textInput(b, "effectText", "text shown on the card", 200), true)),
-      el("p", { class: "hint", text: "Parts of other kinds of buff (official cards sometimes carry them with this one):" }),
-      el("div", { class: "row" }, ...(stats ? [] : statFields()), cost ? null : field("Cost change", num(b.cost, v => { b.cost = v; }, -12, 12)),
-        trait ? null : field("Keyword", sel(schema.traits, b.trait, v => { b.trait = v; }, true, "none"))),
-      el("div", { class: "row" },
+      advOr(other) ? el("p", { class: "hint", text: "Parts of other kinds of buff (official cards sometimes carry them with this one):" }) : null,
+      advOr(other) ? el("div", { class: "row" }, ...(stats ? [] : statFields()), cost ? null : field("Cost change", num(b.cost, v => { b.cost = v; }, -12, 12)),
+        trait ? null : field("Keyword", sel(schema.traits, b.trait, v => { b.trait = v; }, true, "none"))) : null,
+      advOr(other) ? el("div", { class: "row" },
         type === "markOfChaos" ? null : field("Mark", sel(schema.marks, b.mark, v => { b.mark = v; }, false, "none")),
         type === "daemonHost" ? null : field("Gift", sel(schema.daemonHosts, b.daemonHost, v => { b.daemonHost = v; }, false, "none")),
         field("Mutation", sel(schema.mutations, b.mutation, v => { b.mutation = v; }, false, "none")),
         race ? null : field("Unit type", sel(schema.keywords, b.race, v => { b.race = v; }, false, "none")),
-        ench ? null : field("Enchantment", cardPicker(b, "enchantment", "enchList"), true))));
+        ench ? null : field("Enchantment", cardPicker(b, "enchantment", "enchList"), true)) : null));
 }
 function drawManaBlock(fx) {
   const m = fx.mana;
@@ -1189,7 +1313,8 @@ function drawEffect(ab, fx, i) {
   const def = schema.effects.find(x => x.id === fx.effect) || { fields: ["targets", "note"], uses: [] };
   const has = f => def.fields.includes(f), uses = f => (def.uses || []).includes(f);
   const ench = uses("enchantment");
-  const adv = ["times", "chance", "per", "casterMustBeInPlay", "players", "amountFrom", "damageType", "tgOn"].some(k => isSet(fx[k]))
+  const tgSaid = !has("targets") && fx.tgOn && (fx.targets.pool !== "any" || TARGET_BASE.concat(TARGET_ADV).some(k => isSet(fx.targets[k])) || fx.targets.max);
+  const adv = ["chance", "per", "casterMustBeInPlay", "players", "amountFrom", "damageType"].some(k => isSet(fx[k])) || fx.times > 1 || tgSaid
     || (!def.fields.includes("buff") && (uses("enchantment") && !!fx.buff.type || uses("summon") && !!fx.buff.enchantment))
     || (uses("hand") && isSet(fx.hand)) || (uses("mana") && (fx.mana.resource !== "energy" || fx.mana.player !== "self" || isSet(fx.mana.mode) || fx.mana.untilEndOfTurn))
     || (uses("summon") && isSet(fx.summon));
@@ -1202,8 +1327,8 @@ function drawEffect(ab, fx, i) {
       has("card") ? field(ench ? "Which enchantment" : "Which card", cardPicker(fx, "card", ench ? "enchList" : "cardList"), true) : null,
       el("button", { class: "small danger", text: "Remove", onclick: () => { ab.effects.splice(i, 1); redraw(); } })),
     has("buff") ? drawBuff(fx.buff) : null,
-    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null)
-      : fx.tgOn ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
+    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null, true)
+      : fx.tgOn && advOr(tgSaid) ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
     has("note") ? field("Describe what this should do", el("input", { value: fx.note || "", maxLength: 200,
       oninput: e => { fx.note = e.target.value; redraw(true); } }), true) : null,
     more(fx, "More options", adv,
@@ -1212,12 +1337,12 @@ function drawEffect(ab, fx, i) {
         uses("damage") ? field("Damage type", sel(schema.damageTypes, fx.damageType, v => { fx.damageType = v; }, true, "default")) : null,
         field("Repeat (times)", num(fx.times, v => { fx.times = v; }, 0, 20)),
         field("Chance % (0 = always)", num(fx.chance, v => { fx.chance = v; }, 0, 100)),
-        field("Which player", sel(schema.players, fx.players, v => { fx.players = v; }, false, uses("players") ? "you" : "not set (this effect rarely uses it)")),
+        uses("players") || advOr(fx.players) ? field("Which player", sel(schema.players, fx.players, v => { fx.players = v; }, false, uses("players") ? "you" : "not set (the game does not use it here)")) : null,
         uses("enchantment") && !has("buff") ? field("Buff type written with it", sel(schema.buffTypes, fx.buff.type, v => { fx.buff.type = v; }, true, "none")) : null,
         uses("summon") && !has("buff") ? field("Card whose effect it sets off", cardPicker(fx.buff, "enchantment"), true) : null),
       el("div", { class: "checks", style: "margin-bottom:8px" },
         check("Only while this card is in play", fx, "casterMustBeInPlay"),
-        has("targets") ? null : el("label", {}, el("input", { type: "checkbox", checked: !!fx.tgOn, onchange: e => { fx.tgOn = e.target.checked; if (fx.tgOn) fx.targets = mergeTargets({ pool: "self" }); redraw(); } }), "Set what it works on"),
+        has("targets") || !advOr(tgSaid) ? null : el("label", {}, el("input", { type: "checkbox", checked: !!fx.tgOn, onchange: e => { fx.tgOn = e.target.checked; if (fx.tgOn) fx.targets = mergeTargets({ pool: "self" }); redraw(); } }), "Set what it works on"),
         el("label", {}, el("input", { type: "checkbox", checked: !!fx.per, onchange: e => { fx.per = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Once for each …")),
       fx.per ? drawTargets(fx.per, "Once for each of these") : null,
       uses("hand") ? el("div", { class: "row" }, field("Whose hand", sel(schema.players, fx.hand.players, v => { fx.hand.players = v; }, false, "as the filter says")),
@@ -1271,34 +1396,35 @@ function abilityFor(id) {                       // a keyword was added or change
   if (state.abilities.some(a => sameName ? a.trigger === def.trigger : a.keyword === id)) return;
   state.abilities.push(newAbility(def.trigger, sameName ? "" : id));
 }
-function drawAction() {
-  const box = $("action"); box.textContent = "";
+// The card's action, listed as an Action keyword (Duty, Pray, Oath, Agenda, Ferocity; plain action is advanced).
+function drawActionEntry() {
   const a = state.action;
-  if (!a) { box.append(el("button", { class: "small", text: "+ Add an action", onclick: () => { state.action = newAction(""); redraw(); } })); return; }
-  const kinds = schema.traits.filter(t => t.action);
+  const kind = a.keyword ? traitDef(a.keyword) : {};
   const b = el("div", { class: "box" },
-    el("div", { class: "head" }, el("strong", { text: "Action" }), el("span", { class: "spacer" }),
-      el("button", { class: "small danger", text: "Remove action", onclick: () => { state.action = null; redraw(); } })),
+    el("div", { class: "entryHead" },
+      el("span", { class: "kind action", text: "Action" }),
+      el("button", { class: "small pickBtn", text: (a.keyword ? (kind.label || a.keyword) : "Plain action (no keyword)") + "  ▾", title: "Change the kind of action",
+        onclick: () => openPicker({ title: "Change the kind of action", items: actionItems, onPick: v => { a.keyword = v; redraw(); } }) }),
+      el("span", { class: "spacer" }),
+      kind.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(a.keyword); window.scrollTo(0, 0); } }) : null,
+      el("button", { class: "small danger", text: "Remove", onclick: () => { state.action = null; redraw(); } })),
+    a.keyword && kwDesc(a.keyword) ? el("p", { class: "hint pickDesc", text: kwDesc(a.keyword) }) : null,
     el("div", { class: "row" },
-      field("Kind of action", sel(kinds, a.keyword, v => { a.keyword = v; }, false, "Plain action")),
       field(actionCostLabel(a), num(a.cost, v => { a.cost = v; }, 0, 12)),
-      field("Limits or conditions (optional)", el("input", { value: a.note || "", maxLength: 200, placeholder: "e.g. once per turn",
+      field("Limits or conditions (optional, for the reviewer)", el("input", { value: a.note || "", maxLength: 200, placeholder: "e.g. once per turn",
         oninput: e => { a.note = e.target.value; redraw(true); } }), true)));
   if (actionHint(a)) b.append(el("p", { class: "hint", text: actionHint(a) + (a.keyword === "ferocity" ? " Note: Ferocity could not be activated on the rebuilt Space Wolves cards yet, so treat these as untested." : "") }));
-  const kind = a.keyword && traitDef(a.keyword);
-  if (kind && kind.id) b.append(el("p", { class: "hint" }, `The card is marked ${kind.label} automatically. `,
-    kind.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(a.keyword); window.scrollTo(0, 0); } }) : null));
   b.append(drawPick(a, a.effects, "What the player picks for the action", "+ Say what the player picks for the action"));
   a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
   b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
-  b.append(el("div", { class: "checks" }, check("Play the action animation", a, "playAnim")));
-  box.append(b);
-  drawAlternative(box);
+  if (advOr(a.playAnim)) b.append(el("div", { class: "checks" }, check("Play the action animation", a, "playAnim")));
+  if (advOr(state.alternative)) drawAlternative(b);
+  return b;
 }
 // "Say what the player picks" when no effect aims at the chosen target (official cards whose effects
 // use "the target, if it matches" and similar still name what may be picked).
 function choiceButton(holder, text) {
-  return el("button", { class: "small", text, onclick: () => { holder.choose = mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }); redraw(); } });
+  return el("div", { style: "margin:6px 0" }, el("button", { class: "small", text, onclick: () => { holder.choose = mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }); redraw(); } }));
 }
 // An alternative action: the game uses the card's action while the condition is met, and this one
 // otherwise (Wulfen Pack Leader). Same parts as an action, plus the condition.
@@ -1365,15 +1491,21 @@ function drawAbilityOptions(ab) {
   const w = ab.when;
   const adv = ["context", "priority", "playIcon", "triggerValue", "random", "countEach", "victim"].some(k => isSet(ab[k])) || isSet(w)
     || (!WATCHES.test(ab.trigger) && !!ab.subject);
-  return more(ab, "More options", adv,
+  // values equal to the trigger's usual setting (official designs often store them) count as not set
+  const tdef = schema.triggers.find(x => x.id === ab.trigger) || {};
+  const ctxSet = !!ab.context && ab.context !== (tdef.context || "Play"), prioSet = !!ab.priority && ab.priority !== "Instant";
+  const iconSet = !!ab.playIcon && ab.playIcon !== (tdef.playIcon ? "yes" : "no");
+  const open = ctxSet || prioSet || iconSet || ["triggerValue", "random", "countEach", "victim"].some(k => isSet(ab[k])) || isSet(w)
+    || (!WATCHES.test(ab.trigger) && !!ab.subject);
+  return more(ab, "More options", open,
     el("div", { class: "row" },
-      field("Works while the card is", sel(schema.contexts, ab.context, v => { ab.context = v; }, true, "in play (or as official cards do)")),
-      field("Timing", sel(schema.priorities, ab.priority, v => { ab.priority = v; }, true, "instant")),
-      field("Icon on the card", sel([{ id: "yes", label: "Yes" }, { id: "no", label: "No" }], ab.playIcon, v => { ab.playIcon = v; }, false, "as official cards do")),
-      field("Costs points (faith, spirit stones)", num(ab.triggerValue, v => { ab.triggerValue = v; }, 0, 20))),
+      advOr(ctxSet) ? field("Works while the card is", sel(schema.contexts, ab.context, v => { ab.context = v; }, true, "in play (or as official cards do)")) : null,
+      advOr(prioSet) ? field("Timing", sel(schema.priorities, ab.priority, v => { ab.priority = v; }, true, "instant")) : null,
+      advOr(iconSet) ? field("Icon on the card", sel([{ id: "yes", label: "Yes" }, { id: "no", label: "No" }], ab.playIcon, v => { ab.playIcon = v; }, false, "as official cards do")) : null,
+      tdef.value || advOr(ab.triggerValue) ? field("Costs points (faith, spirit stones)", num(ab.triggerValue, v => { ab.triggerValue = v; }, 0, 20)) : null),
     drawWhen(w),
     el("div", { class: "checks", style: "margin-bottom:8px" },
-      check("Pick one of the effects at random", ab, "random"),
+      advOr(ab.random) ? check("Pick one of the effects at random", ab, "random") : null,
       el("label", {}, el("input", { type: "checkbox", checked: !!ab.countEach, onchange: e => { ab.countEach = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Repeat the effects once for each …"),
       WATCHES.test(ab.trigger) ? null : el("label", {}, el("input", { type: "checkbox", checked: !!ab.subject, onchange: e => { ab.subject = e.target.checked ? newSubject() : null; redraw(); } }), "Only when set off by certain cards (“Triggered by”) …"),
       el("label", {}, el("input", { type: "checkbox", checked: !!ab.victim, onchange: e => { ab.victim = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Only when the event hit certain units …")),
@@ -1392,10 +1524,10 @@ function drawChoice(holder, title, effects) {
   const mode = holder.choose === false ? "none" : "filter";
   const usesTarget = effects.some(fx => fx.targets && /^(target|targetIfMeetsCriteria)$/.test(fx.targets.pool));
   const out = el("div", { style: "margin:8px 0" },
-    el("div", { class: "row" }, field(title, sel(CHOICE_MODES, mode, v => {
-      holder.choose = v === "none" ? false : mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }); }), true),
+    el("div", { class: "row" }, advOr(holder.choose === false) ? field(title, sel(CHOICE_MODES, mode, v => {
+      holder.choose = v === "none" ? false : mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }); }), true) : el("strong", { text: title }),
       usesTarget ? null : el("button", { class: "small danger", text: "Remove", onclick: () => { holder.choose = null; redraw(); } })));
-  if (holder.choose) out.append(el("div", { class: "box" }, drawTargets(holder.choose, "Pick one of these")));
+  if (holder.choose) out.append(drawTargets(holder.choose, "Pick one of these", null, null, null, false, true));
   if (holder.choose === false) out.append(el("p", { class: "hint", text: "Nothing is picked when the card is played; effects aimed at \"the chosen target\" act on the unit the trigger is about." }));
   return out;
 }
@@ -1418,31 +1550,51 @@ function ensurePick(holder, effects) {
 // as the compiler does) use the card's pick. On the others "the chosen target" is what the event is about.
 function choosesTrigger(trigger) { const t = schema.triggers.find(x => x.id === trigger); return t && t.chooses != null ? !!t.chooses : trigger === "ThisCardPlayed"; }
 function cardPickEffects() { return state.abilities.filter(a => choosesTrigger(a.trigger)).flatMap(a => a.effects); }
-function drawChoose() {
-  const box = $("choose"); box.textContent = "";
-  box.append(drawPick(state, cardPickEffects(), "When the card is played", "+ Say what the player picks when playing the card"));
+// The card's pick is shown inside the first ability that uses it (on a trigger where the player picks);
+// a second ability that uses it says so. One pick per card, as in the game.
+const usesPick = ab => ab.effects.some(fx => fx.targets && /^(target|targetIfMeetsCriteria)$/.test(fx.targets.pool));
+function pickOwner() {
+  const ch = state.abilities.filter(a => choosesTrigger(a.trigger));
+  return ch.find(usesPick) || (state.choose != null ? ch[0] : null) || null;
 }
-function drawAbilities() {
-  const box = $("abilities"); box.textContent = "";
-  let n = 0;
-  state.abilities.forEach((ab, i) => {
-    if (keywordOf(ab)) return;                  // edited under its keyword
-    n++;
-    const troopPlay = val("f_kind") === "troop" && ab.trigger === "ThisCardPlayed" && schema.traits.some(t => t.id === "rally");
-    const b = el("div", { class: "box" },
-      el("div", { class: "head" }, el("strong", { text: "Ability " + n }), el("span", { class: "spacer" }),
-        el("button", { class: "small danger", text: "Remove ability", onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
-      el("div", { class: "row" }, field("When", sel(schema.triggers, ab.trigger, v => { if (WATCHES.test(ab.trigger) && !WATCHES.test(v)) ab.subject = null; if (!WATCHES.test(ab.trigger) && WATCHES.test(v) && !ab.subject) ab.subject = newSubject();
-        ab.trigger = v; ab.keyword = ""; keywordFor(ab); }, true), true)));
-    if (ab.condition) b.append(el("p", { class: "hint", text: `This ability still has an old free-text condition the game never read ("${ab.condition}"). It is dropped when the card is saved; use the ability's "when" settings for a real condition.` }));
-    if (ab.keyword) b.append(el("p", { class: "hint", text: `Also shown as ${lab(schema.traits, ab.keyword)} (a second ability under the same keyword).` }));
-    else if (troopPlay) b.append(el("p", { class: "hint", text: "On official troops a \"when played\" ability is always a Rally ability. To make this one Rally, add the Rally keyword above and set it up there." }));
-    const subj = drawSubject(ab); if (subj) b.append(subj);
-    b.append(drawAbilityOptions(ab));
-    ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
-    b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
-    box.append(b);
-  });
+function abilityTitle(ab) { const k = keywordOf(ab); return k ? lab(schema.traits, k) : "the custom ability " + lab(schema.triggers, ab.trigger).toLowerCase(); }
+function drawAbilityPick(ab) {
+  if (!choosesTrigger(ab.trigger)) return null;
+  const owner = pickOwner();
+  if (owner === ab) return el("div", { class: "box" }, drawPick(state, cardPickEffects(), "What the player picks when playing the card", "+ Say what the player picks when playing the card"),
+    el("p", { class: "hint", text: "Effects aimed at \u201ca unit the player picks\u201d act on this unit; \u201cthe picked unit, only if it also matches\u201d narrows it further." }));
+  if (owner && usesPick(ab)) return el("p", { class: "hint", text: "Uses the same pick as " + abilityTitle(owner) + " (one pick per card)." });
+  return null;
+}
+// A pick with no ability to show it in (a few official cards): shown under Card settings.
+function orphanPick() { return state.choose != null && !pickOwner(); }
+// A custom ability: no keyword, the author picks the trigger.
+function setTrigger(ab, v) {
+  if (WATCHES.test(ab.trigger) && !WATCHES.test(v)) ab.subject = null;
+  ab.trigger = v; ab.keyword = ""; keywordFor(ab);
+}
+function drawCustomEntry(ab, i) {
+  const st = trigStatus(ab.trigger);
+  const troopPlay = val("f_kind") === "troop" && ab.trigger === "ThisCardPlayed" && schema.traits.some(t => t.id === "rally");
+  const b = el("div", { class: "box" },
+    el("div", { class: "entryHead" },
+      el("span", { class: "kind custom", text: "Custom" }),
+      el("button", { class: "small pickBtn", text: "When: " + lab(schema.triggers, ab.trigger) + "  ▾", title: "Change when it happens",
+        onclick: () => openPicker({ title: "When does it happen?", items: triggerItems, onPick: v => { setTrigger(ab, v); redraw(); } }) }),
+      st === "untested" ? el("span", { class: "hint", style: "color:var(--warn)", text: "untested: no official card uses this trigger" }) : null,
+      st === "dead" ? el("span", { class: "hint", style: "color:var(--bad)", text: "this trigger never fires in the game" }) : null,
+      el("span", { class: "spacer" }),
+      el("button", { class: "small danger", text: "Remove", onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
+    trigDesc(ab.trigger) ? el("p", { class: "hint pickDesc", text: trigDesc(ab.trigger) }) : null);
+  if (ab.condition) b.append(el("p", { class: "hint", text: `This ability still has an old free-text condition the game never read ("${ab.condition}"). It is dropped when the card is saved; use the ability's "when" settings for a real condition.` }));
+  if (ab.keyword) b.append(el("p", { class: "hint", text: `Also shown as ${lab(schema.traits, ab.keyword)} (a second ability under the same keyword).` }));
+  else if (troopPlay) b.append(el("p", { class: "hint", text: "On official troops a \"when played\" ability is always a Rally ability. To make this one Rally, add the Rally keyword instead." }));
+  const pk = drawAbilityPick(ab); if (pk) b.append(pk);
+  const subj = drawSubject(ab); if (subj) b.append(subj);
+  b.append(drawAbilityOptions(ab));
+  ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
+  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
+  return b;
 }
 
 /* ---------- card settings (rarely needed) ---------- */
@@ -1462,6 +1614,9 @@ function drawCardMore() {
   const m = state.more, kind = val("f_kind");
   const set = !!(m.inventory || m.randomCreation || m.attackDamageType || m.blockActions || m.hintsOn || m.related.length || m.counter || m.choices
     || m.startingCard || m.goSecondCard || m.unitStats);
+  $("cardMoreSection").classList.toggle("hidden", !advOr(set || orphanPick()));
+  if (orphanPick()) box.append(el("div", { class: "box" }, drawPick(state, cardPickEffects(), "What the player picks when playing the card", ""),
+    el("p", { class: "hint", text: "This card names a pick, but none of its abilities aims at the picked unit (as a few official cards)." })));
   box.append(more(m, "More card settings", set,
     el("p", { class: "hint", text: "Rarely needed: settings a few official cards use. Left blank, the usual rule applies." }),
     el("div", { class: "row" },
@@ -1870,7 +2025,7 @@ function redraw(light) {
     ensurePick(state, cardPickEffects());
     if (state.action) ensurePick(state.action, state.action.effects);
     if (state.alternative) ensurePick(state.alternative, state.alternative.effects);
-    drawTraits(); drawAbilities(); drawAction(); drawChoose(); drawCardMore();
+    drawEntries(); drawCardMore();
   }
   preview();
 }
@@ -3065,6 +3220,15 @@ async function start() {
     const [s, cards] = await Promise.all([fetch(FILES + "creator-schema.json", { cache: "no-store" }).then(r => r.json()),
                                           fetch(FILES + "creator-cards.json", { cache: "no-store" }).then(r => r.json())]);
     schema = s;
+    // our own wording for triggers and keywords (creator-help.json) and the keyword cheat sheet's texts
+    try {
+      const [h, k] = await Promise.all([fetch(FILES + "creator-help.json", { cache: "no-store" }).then(r => r.json()),
+                                        fetch(FILES + "keywords.json", { cache: "no-store" }).then(r => r.json())]);
+      help = h;
+      for (const x of k.keywords || []) if (x.id) kwText[x.id] = x.text;
+      for (const t of schema.triggers) if (help.triggers[t.id]) t.label = help.triggers[t.id].name;
+      for (const t of schema.traits) if (help.keywords[t.id]) t.label = help.keywords[t.id].name;
+    } catch (e) { /* descriptions are optional */ }
     const dl = $("cardList");
     for (const c of cards.cards) {
       const shown = `${c.name} (${c.id})`;
@@ -3099,8 +3263,9 @@ async function start() {
   $("loginSwitch").onclick = e => { e.preventDefault(); loginMode(!creating); $("author").focus(); };
   for (const id of ["f_name", "f_kind", "f_army", "f_rarity", "f_cost", "f_melee", "f_ranged", "f_health", "f_armour", "f_keyword", "f_stratagemType", "f_art", "f_text", "f_lore", "f_designNotes", "f_token", "f_enchantment"])
     $(id).addEventListener("input", () => redraw(id !== "f_army" && id !== "f_kind"));
-  $("addTrait").onclick = () => { const first = (schema.traits.find(t => !t.needsAbility && !state.traits.some(x => x.name === t.id)) || schema.traits[0]).id; state.traits.push({ name: first, value: 0 }); abilityFor(first); redraw(); };
-  $("addAbility").onclick = () => { state.abilities.push(newAbility("ThisCardPlayed", "")); redraw(); };
+  $("addEntry").onclick = openAdd;
+  $("advToggle").checked = ADV;
+  $("advToggle").onchange = e => { ADV = e.target.checked; try { localStorage.setItem("creator.advanced", ADV ? "1" : "0"); } catch (x) {} redraw(); };
   $("artPick").onclick = () => $("artFile").click();
   $("artFile").onchange = e => artOpen(e.target.files[0]);
   $("maskPick").onclick = () => $("maskFile").click(); $("maskFile").onchange = e => maskOpen(e.target.files[0]); $("maskRemove").onclick = maskRemove;

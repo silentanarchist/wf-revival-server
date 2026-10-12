@@ -1,0 +1,518 @@
+{
+ "note": "The card creator's own wording for triggers and keywords (Revival, not game text). status: official = used by official cards; untested = fires in the game's code but no official card uses it; dead = never fires (hidden). check = wording still to be confirmed.",
+ "triggers": {
+  "ThisCardPlayed": {
+   "name": "When this card is played",
+   "text": "When you play this card from your hand. On troops this is Rally; on stratagems, their main effect.",
+   "status": "official"
+  },
+  "Talent": {
+   "name": "Talent (warlords)",
+   "text": "A warlord's Talent: at the start of your turn it puts the warlord's Talent stratagem (Ephemeral) in your hand.",
+   "status": "official",
+   "check": true
+  },
+  "Codex": {
+   "name": "Codex",
+   "text": "Ultramarines. Triggers when your energy reaches 0.",
+   "status": "official"
+  },
+  "WhileInPlayVariable": {
+   "name": "While in play (amount follows a count)",
+   "text": "A lasting effect while this card is in play, whose size follows a count (e.g. for each friendly troop).",
+   "status": "official"
+  },
+  "WhileInPlay": {
+   "name": "While in play",
+   "text": "A lasting effect while this card is in play: auras such as \"other units have ...\" or \"your stratagems cost 1 less\".",
+   "status": "official"
+  },
+  "Strike": {
+   "name": "Strike",
+   "text": "After this unit attacks, if it survives. \"The chosen target\" is the unit it attacked.",
+   "status": "official"
+  },
+  "FollowUpResolution": {
+   "name": "Then, after this card's effects",
+   "text": "Right after this card's own effects have resolved: used for follow-ups such as \"if the target dies, ...\" or \"if it has a Hunt Mark, ...\" (narrow it with \"event hit\").",
+   "status": "official"
+  },
+  "OtherUnitDeath": {
+   "name": "When another unit dies",
+   "text": "When a unit dies. \"Event hit\" says whose death counts (e.g. a friendly troop); with \"Triggered by: this card\" it means units this card destroyed.",
+   "status": "official"
+  },
+  "UseFaith": {
+   "name": "Faith (Sororitas)",
+   "text": "When your total Faith reaches the amount set in \"Costs points\": the \"6 Faith: ...\" abilities.",
+   "status": "official"
+  },
+  "UseSpiritStone": {
+   "name": "Spirit Stone (Aeldari)",
+   "text": "Spends collected Spirit Stones (the amount in \"Costs points\") for this ability: Waystone units' \"Spirit Stone: ...\" effects.",
+   "status": "official",
+   "check": true
+  },
+  "TurnEnd": {
+   "name": "At the end of a turn",
+   "text": "At the end of a turn. Pick whose turn under \"Whose turn\".",
+   "status": "official"
+  },
+  "TurnStart": {
+   "name": "At the start of a turn",
+   "text": "At the start of a turn. Pick whose turn under \"Whose turn\".",
+   "status": "official"
+  },
+  "TurnStartPlayer": {
+   "name": "At the start of your turn",
+   "text": "At the start of its owner's turn (\"has Flying during your turn\", \"at the start of your turn, return to your hand\").",
+   "status": "official"
+  },
+  "TurnBeforeEnd": {
+   "name": "Just before the end of a turn",
+   "text": "Just before the end-of-turn effects run (Chronomancer reanimates a Remnant here).",
+   "status": "official"
+  },
+  "Pray": {
+   "name": "Pray",
+   "text": "When this unit prays (uses its Pray action). Every official Pray card gives the praying state with it.",
+   "status": "official"
+  },
+  "Slay": {
+   "name": "Slay",
+   "text": "After this unit attacks and destroys a unit, if it survives.",
+   "status": "official"
+  },
+  "Artifice": {
+   "name": "Artifice",
+   "text": "Each time you play a stratagem.",
+   "status": "official"
+  },
+  "OtherUnitSummoned": {
+   "name": "When another unit enters play",
+   "text": "When another unit is deployed or summoned. \"Triggered by\" says which ones (e.g. friendly Vehicles).",
+   "status": "official"
+  },
+  "ThisUnitSummoned": {
+   "name": "When this unit enters play",
+   "text": "When this unit is deployed or summoned, also when another card puts it into play (unlike \"when this card is played\").",
+   "status": "official"
+  },
+  "Unstable": {
+   "name": "Unstable",
+   "text": "Goff. When this unit dies: official cards deal 1-3 damage to a random unit.",
+   "status": "official"
+  },
+  "Mob": {
+   "name": "Mob",
+   "text": "After a friendly troop makes a melee attack.",
+   "status": "official"
+  },
+  "EarnedSkull": {
+   "name": "When a skull is earned",
+   "text": "When a player earns a Skull. Official cards using it are environment cards (storms, eclipses).",
+   "status": "official"
+  },
+  "OtherCardPlayed": {
+   "name": "When another card is played",
+   "text": "When another card is played. \"Triggered by\" says which (e.g. your stratagems, your Secrets).",
+   "status": "official"
+  },
+  "UnitAttack": {
+   "name": "When a unit attacks",
+   "text": "When a unit attacks: this unit unless \"Triggered by\" says otherwise. \"The chosen target\" is the unit being attacked.",
+   "status": "official"
+  },
+  "AboutToAttack": {
+   "name": "Just before a unit attacks",
+   "text": "Just before a unit attacks, so the attack can still be changed (Vargard Obyron takes attacks aimed at your warlord).",
+   "status": "official"
+  },
+  "Regiment": {
+   "name": "Regiment",
+   "text": "Astra Militarum. When another friendly unit makes a ranged attack.",
+   "status": "official"
+  },
+  "Ambush": {
+   "name": "Ambush",
+   "text": "Genestealer Cults. Played face down; if it is not damaged before your next turn, it is revealed and this triggers.",
+   "status": "official"
+  },
+  "ThisUnitDeath": {
+   "name": "When this unit dies (Backlash)",
+   "text": "When this unit dies.",
+   "status": "official"
+  },
+  "Ecstasy": {
+   "name": "Ecstasy",
+   "text": "Emperor's Children. When this unit's health drops to the number or less without it dying.",
+   "status": "official"
+  },
+  "Stimulation": {
+   "name": "Stimulation",
+   "text": "Emperor's Children. When this unit is targeted by a stratagem, before the stratagem resolves.",
+   "status": "official"
+  },
+  "Cruelty": {
+   "name": "Cruelty",
+   "text": "Emperor's Children. When an enemy unit is damaged but not destroyed during your turn.",
+   "status": "official"
+  },
+  "Uprising": {
+   "name": "Uprising",
+   "text": "Genestealer Cults. Each time another troop is deployed after this one, on the turn this one was deployed.",
+   "status": "official"
+  },
+  "Teleport": {
+   "name": "Teleport",
+   "text": "Dark Angels. If this card is played on the same turn it was drawn.",
+   "status": "official"
+  },
+  "Rage": {
+   "name": "Penitence",
+   "text": "Sororitas. When this unit is damaged but not destroyed. (The game calls the trigger Rage; card text says Penitence.)",
+   "status": "official"
+  },
+  "Reanimated": {
+   "name": "When a Remnant is reanimated",
+   "text": "Necrons. When a Remnant comes back to life: this one, or the ones \"event hit\" names.",
+   "status": "official"
+  },
+  "UnitReceivesMarkOfChaos": {
+   "name": "When a unit receives a Dark Pact",
+   "text": "Black Legion. When a unit receives a Dark Pact (Mark of Chaos).",
+   "status": "official"
+  },
+  "TriggerEnchantment": {
+   "name": "Enchantment's effect",
+   "text": "The ability of an enchantment card: it runs on the unit the enchantment is attached to (the Dark Pacts).",
+   "status": "official"
+  },
+  "OnCollectSpiritStone": {
+   "name": "When you collect a Spirit Stone",
+   "text": "Aeldari. When you collect a Spirit Stone.",
+   "status": "official"
+  },
+  "QuestTriggered": {
+   "name": "When a quest completes",
+   "text": "Dark Angels. When a Quest is completed (every 3 Quest points add a Secret to your deck).",
+   "status": "official",
+   "check": true
+  },
+  "OnCollectQuestPoints": {
+   "name": "When you gain Quest points",
+   "text": "Dark Angels. When you or a friendly unit gains Quest points.",
+   "status": "official"
+  },
+  "UnitDeathByAbility": {
+   "name": "When a unit dies to this ability",
+   "text": "When a unit dies from this card's ability: the \"if the target dies, ...\" part of damage abilities.",
+   "status": "official"
+  },
+  "PlayedThirdCardInTurn": {
+   "name": "When the third card of a turn is played",
+   "text": "When a player plays their third card in a turn.",
+   "status": "official"
+  },
+  "TriggeredFerocity": {
+   "name": "When a friendly unit uses Ferocity",
+   "text": "Space Wolves. When a friendly unit uses its Ferocity action.",
+   "status": "official"
+  },
+  "TriggeredPray": {
+   "name": "When a friendly unit prays",
+   "text": "Sororitas. When a friendly unit uses its Pray action.",
+   "status": "official"
+  },
+  "TriggeredSynapse": {
+   "name": "When a friendly unit triggers Synapse",
+   "text": "Tyranids. When a friendly unit's Synapse repeats a stratagem.",
+   "status": "official"
+  },
+  "TriggeredSwarm": {
+   "name": "When a friendly unit triggers Swarm",
+   "text": "Tyranids. When a friendly unit combines through Swarm.",
+   "status": "official"
+  },
+  "TriggeredCodex": {
+   "name": "When a friendly card triggers Codex",
+   "text": "Ultramarines. When a friendly troop or stratagem triggers Codex (Avenging Zeal works from your hand).",
+   "status": "official"
+  },
+  "TriggeredDuty": {
+   "name": "When a friendly unit uses Duty",
+   "text": "Astra Militarum. When a friendly unit uses its Duty action.",
+   "status": "official"
+  },
+  "UnitDamaged": {
+   "name": "When a unit is damaged",
+   "text": "When a unit takes damage from anything. \"Event hit\" says which units count (e.g. your warlord).",
+   "status": "official"
+  },
+  "OnSecretCreated": {
+   "name": "When you create a Secret",
+   "text": "When a Secret is created.",
+   "status": "official"
+  },
+  "OnSabotageCreated": {
+   "name": "When you create a Sabotage",
+   "text": "When a Sabotage card is created.",
+   "status": "official"
+  },
+  "OtherCardDrawn": {
+   "name": "When you draw a card",
+   "text": "When a card is drawn.",
+   "status": "official"
+  },
+  "SpentAllMana": {
+   "name": "When a player spends all their energy",
+   "text": "When a player has spent all their energy.",
+   "status": "official"
+  },
+  "UnitReceivesHuntMark": {
+   "name": "When a unit gets a Hunt Mark",
+   "text": "Space Wolves. When a unit gets a Hunt Mark.",
+   "status": "official"
+  },
+  "UnitReceivesMarkerlight": {
+   "name": "When a unit gets Markerlight",
+   "text": "T'au. When a unit gets Markerlight.",
+   "status": "official"
+  },
+  "UnitStunned": {
+   "name": "When a unit is stunned",
+   "text": "When a unit is stunned. \"The chosen target\" is the stunned unit.",
+   "status": "official"
+  },
+  "UnitLoseStealth": {
+   "name": "When a unit loses Stealth",
+   "text": "When a unit loses Stealth.",
+   "status": "official"
+  },
+  "OnCollectFaith": {
+   "name": "When you gain Faith",
+   "text": "Sororitas. When you gain Faith.",
+   "status": "official"
+  },
+  "OtherCardMob": {
+   "name": "When another unit triggers Mob",
+   "text": "Goff. When a friendly unit triggers Mob.",
+   "status": "official"
+  },
+  "OtherCardSpiritStone": {
+   "name": "When another card uses Spirit Stones",
+   "text": "Aeldari. When another card triggers a Spirit Stone ability.",
+   "status": "official"
+  },
+  "Agenda": {
+   "name": "Reacts when this unit uses Agenda",
+   "text": "A separate ability that reacts when this unit uses its Agenda action (the Agenda action itself is set up as an Action keyword; official Agenda cards put everything in the action).",
+   "status": "untested"
+  },
+  "Duty": {
+   "name": "Reacts when this unit uses Duty",
+   "text": "A separate ability that reacts when this unit uses its Duty action (the Duty action itself is set up as an Action keyword; official Duty cards put everything in the action).",
+   "status": "untested"
+  },
+  "Ferocity": {
+   "name": "Reacts when this unit uses Ferocity",
+   "text": "A separate ability that reacts when this unit uses its Ferocity action (the Ferocity action itself is set up as an Action keyword; official Ferocity cards put everything in the action).",
+   "status": "untested"
+  },
+  "Courtesy": {
+   "name": "Courtesy",
+   "text": "At the end of a turn, under a condition read from the card.",
+   "status": "untested",
+   "check": true
+  },
+  "Resolution": {
+   "name": "Resolution",
+   "text": "At the end of a turn, for cards with the Resolution keyword.",
+   "status": "untested",
+   "check": true
+  },
+  "Relentless": {
+   "name": "Relentless",
+   "text": "At the start of a turn (and when another card sets off Relentless).",
+   "status": "untested"
+  },
+  "Landing": {
+   "name": "Landing",
+   "text": "At the start of a turn, after units arriving by Reactor or Transient have landed.",
+   "status": "untested",
+   "check": true
+  },
+  "OtherCardLanding": {
+   "name": "When another unit lands",
+   "text": "When another unit lands.",
+   "status": "untested"
+  },
+  "OtherCardRequiem": {
+   "name": "When another unit's Requiem triggers",
+   "text": "When another unit's Requiem triggers.",
+   "status": "untested"
+  },
+  "OtherCardRegiment": {
+   "name": "When another unit's Regiment triggers",
+   "text": "When another unit's Regiment triggers.",
+   "status": "untested"
+  },
+  "Requiem": {
+   "name": "Requiem",
+   "text": "When this unit dies, for cards with the Requiem keyword.",
+   "status": "untested"
+  },
+  "Sacrifice": {
+   "name": "Sacrifice",
+   "text": "When a unit with the Sacrifice keyword is sacrificed.",
+   "status": "untested"
+  },
+  "Survivor": {
+   "name": "Survivor",
+   "text": "When the Survivor keyword saves this unit from dying.",
+   "status": "untested"
+  },
+  "UnitHealed": {
+   "name": "When a unit is healed",
+   "text": "When a unit is healed.",
+   "status": "untested"
+  },
+  "UnitDamagedByAbility": {
+   "name": "When a unit is damaged by an ability",
+   "text": "When a unit takes damage from an ability (not an attack).",
+   "status": "untested"
+  },
+  "UnitDamagedByAttack": {
+   "name": "When a unit is damaged by an attack",
+   "text": "When a unit takes damage from an attack.",
+   "status": "untested"
+  },
+  "TurnSetup": {
+   "name": "At the set-up of a turn",
+   "text": "At the set-up step of a turn, before \"at the start of a turn\".",
+   "status": "untested"
+  },
+  "Mutated": {
+   "name": "When this unit mutates",
+   "text": "When a mutation buff lands on this unit.",
+   "status": "untested"
+  },
+  "Support": {
+   "name": "Support",
+   "text": "When a unit is deployed next to this one, for cards with the Support keyword.",
+   "status": "untested"
+  },
+  "TriggerOnceIfBoardCriteria": {
+   "name": "Once, when the condition becomes true",
+   "text": "Fires once, at the moment the ability's \"Only if\" condition becomes true.",
+   "status": "untested"
+  },
+  "Growth": {
+   "name": "Growth",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "HeroDefenseBonus": {
+   "name": "Hero Defense Bonus",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "TurnStarted": {
+   "name": "Turn Started",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "UnitDeathByPoison": {
+   "name": "Unit Death By Poison",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "UnitDeathAttacking": {
+   "name": "Unit Death Attacking",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "CardCreatedInHand": {
+   "name": "Card Created In Hand",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "OtherCardSacrifice": {
+   "name": "Other Card Sacrifice",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "Pack": {
+   "name": "Pack",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "ThisCardDrawnAsTrap": {
+   "name": "This Card Drawn As Trap",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "TrapResolved": {
+   "name": "Trap Resolved",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "UnitPoisoned": {
+   "name": "Unit Poisoned",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "ThisUnitAbilityUsed": {
+   "name": "This Unit Ability Used",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "SurvivorSpent": {
+   "name": "Survivor Spent",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "CardReturnedToHand": {
+   "name": "Card Returned To Hand",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "CardReturnedToDeck": {
+   "name": "Card Returned To Deck",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "Combo": {
+   "name": "Combo",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  },
+  "Oath": {
+   "name": "Oath",
+   "text": "Never fires: no code in the game sets this trigger off, so an ability on it does nothing.",
+   "status": "dead"
+  }
+ },
+ "keywords": {
+  "frenzied": {
+   "name": "Destroyer",
+   "text": "Always attacks a unit it can destroy before any other unit. (Keyword 680, frenzied in the game's list; the game's attack code checks it as the Destroyer rule.)"
+  },
+  "rage": {
+   "name": "Penitence",
+   "text": "Sororitas. Triggers an effect when this unit is damaged but not destroyed (the game's name is Rage)."
+  },
+  "oathDouble": {
+   "name": "Oath twice",
+   "text": "Friendly Oath abilities apply an additional time (Chaplain Cassius)."
+  },
+  "unstoppable": {
+   "name": "Ignores Vanguard",
+   "text": "This troop can ignore enemy units with Vanguard when attacking (Canoptek Wraith, where it is hidden and written in the card text)."
+  },
+  "none": {
+   "name": "(empty keyword slot)",
+   "text": "An empty entry in the card's keyword list, as on one official card. Does nothing by itself."
+  }
+ }
+}
