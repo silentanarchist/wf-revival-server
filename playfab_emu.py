@@ -1743,9 +1743,9 @@ class PlayFabEmulator:
         passphrase = str(req.get("passphrase") or "")
         if req.get("create"):       # the rules apply to new accounts; existing ones sign in as they were made
             if not re.fullmatch(r"[\w.'-]{5,30}", name):
-                return err("InvalidParams", "account names are 5 to 30 letters, digits, . ' - or _, without spaces")
+                return err("InvalidParams", "usernames are 5 to 30 letters, digits, . ' - or _, without spaces")
             if self._word_filter().found(name):
-                return err("InvalidParams", "that name contains a word that is not allowed here")
+                return err("InvalidParams", "that username contains a word that is not allowed here")
             if not 6 <= len(passphrase) <= 200:
                 return err("InvalidParams", "the password must be at least 6 characters")
             if any(ch.isspace() for ch in passphrase):
@@ -1753,7 +1753,7 @@ class PlayFabEmulator:
             if self._terms_version() and req.get("agreeTerms") is not True:
                 return err("TermsNotAgreed", "tick the box to agree to the Terms and Privacy notice first", 1002, 403)
         elif not name or not passphrase:
-            return err("InvalidParams", "enter a name and a password")
+            return err("InvalidParams", "enter a username and a password")
         where = self._address(headers)
         slow = err("TooManyAttempts", "too many attempts - wait a few minutes and try again", 1199, 429)
         if not self._allow("signin-fail", where, 20, 900, count=False):
@@ -1775,7 +1775,7 @@ class PlayFabEmulator:
                                               "access": "approved" if self._creator_auto_approve() else "requested"}
                 self._terms_agree(user)
             elif req.get("create"):
-                return err("NameNotAvailable", "that name is taken - sign in instead, or pick another name")
+                return err("NameNotAvailable", "that username is taken - sign in instead, or pick another username")
             elif not hmac.compare_digest(user["hash"], self._creator_hash(passphrase, user["salt"])):
                 self._count_wrong_password(name, where)
                 return err("InvalidPassword", "wrong password")
@@ -3181,9 +3181,9 @@ class PlayFabEmulator:
         """Changes the account's username (the current passphrase is asked again). Cards follow the new name."""
         new = " ".join(str(req.get("name") or "").split())
         if not re.fullmatch(r"[\w.'-]{5,30}", new):
-            return err("InvalidParams", "account names are 5 to 30 letters, digits, . ' - or _, without spaces")
+            return err("InvalidParams", "usernames are 5 to 30 letters, digits, . ' - or _, without spaces")
         if self._word_filter().found(new):
-            return err("InvalidParams", "that name contains a word that is not allowed here")
+            return err("InvalidParams", "that username contains a word that is not allowed here")
         with self.store.lock:
             me = self._creator_account(req)
             if not me or self._creator_perms(me)["access"] == "banned":
@@ -3193,7 +3193,7 @@ class PlayFabEmulator:
             users = self._creator_users()
             old_key, new_key = me["name"].lower(), new.lower()
             if new_key != old_key and new_key in users:
-                return err("NameNotAvailable", "that name is taken")
+                return err("NameNotAvailable", "that username is taken")
             if new == me["name"]:
                 return err("InvalidParams", "that is already your name")
             was_founder = old_key in self._creator_founders()
@@ -3379,7 +3379,7 @@ class PlayFabEmulator:
             if not own and not given:
                 self._allow("recover-fail", where, 10, 900)
                 self._allow("recover-fail-name", name.lower(), 5, 900)
-                return err("InvalidPassword", "that name and recovery code do not match")
+                return err("InvalidPassword", "that username and code do not match")
             if self._creator_perms(user)["access"] == "banned":
                 return err("AccountBanned", "this account has been banned")
             if user.get("deleteSticks") and user.get("deleteAt"):
