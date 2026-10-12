@@ -417,6 +417,7 @@ class CardCompiler:
     SUMMON_FLAGS = {"forEnemy": "isForEnemy", "allTargets": "summonAllTargets", "chooseInPlay": "chooseCardInPlay",
                     "keepEffects": "keepEffects", "removeFromCemetery": "shouldRemoveFromCemetery"}
     PLAYERS = {"both": 0, "self": 10, "enemy": 20}
+    INVENTORY = {"InInventory": 0, "CantAddToDeck": 5, "NotInInventory": 10}     # CardInventoryOptions
     # the Pray ability every official Pray card carries (same on all 23): the praying state
     PRAY_ABILITY = {"trigger": "Pray", "context": "Play", "priority": "Instant", "playIcon": True,
                     "effects": [{"effect": "buffSelf", "targets": {"pool": "self"},
@@ -434,9 +435,14 @@ class CardCompiler:
     def _new(self, what):
         return copy.deepcopy(self.n[what])
 
+    # value options official cards use that the game's list has no name for
+    EXTRA_ENUMS = {("ChooseValueOptions", "unmultiplied"): 17}     # 4 official buffs: the number as written, never multiplied
+
     def _enum(self, table, name, what):
         if name in (None, "", 0):
             return 0
+        if (table, name) in self.EXTRA_ENUMS:
+            return self.EXTRA_ENUMS[(table, name)]
         value = self.e.get(table, {}).get(name)
         if value is None:
             self.notes.append(f"{what} '{name}' is not known to the game - left empty")
@@ -712,6 +718,41 @@ class CardCompiler:
                     chosen = wants
         return logics, chosen
 
+    def board(self, bc, when, turn=None):
+        """A condition on the state of the game (BoardCriteria): whose turn, and/or a count compared
+        with a number, or a random roll. Used by abilities ("when") and by the alternative action."""
+        turn = when.get("turn") or turn
+        if turn:
+            bc["playerTurn"] = self.PLAYERS.get(turn, 0)
+        if when.get("count") is not None or when.get("is"):
+            bc["countCriteria"] = self.targets(when.get("count") or {}, (when.get("count") or {}).get("pool") or "allFiltered")
+            bc["triggerIf"] = self._enum("StatFilterOptions", when.get("is") or "EqualOrHigher", "comparison")
+            bc["referenceValue"] = self._int(when.get("value"))
+            if when.get("minusAllies"):
+                bc["countOptions"] = self.e["CountOptions"]["EnemiesMinusAllies"]
+        elif when.get("chance"):
+            bc["triggerIf"] = self.e["StatFilterOptions"]["RandomChance"]
+            bc["referenceValue"] = self._int(when["chance"])
+
+    def active(self, aa, action, kw=""):
+        """An action the player uses by hand (ActiveAbility): its effects, cost and what the player picks.
+        Used by the card's action and by its alternative action."""
+        self.explicit_choice = "choose" in action
+        effects = list(action.get("effects") or [])
+        if kw == "pray" and not any(fx.get("effect") == "triggerPray" for fx in effects):
+            # every official Pray action ends by setting off Pray (what cards that react to a prayer listen for)
+            effects.append({"effect": "triggerPray", "targets": {"pool": "self"}})
+        logics, wants = self.effects(effects, "the action")
+        aa["activeAbilityLogic"] = logics
+        aa["manaCost"] = int(action.get("cost") or 0)
+        if action.get("playAnim"):
+            aa["playAnim"] = 1
+        if self.explicit_choice:
+            wants = action["choose"] or None
+        if wants is not None:
+            aa["targeted"] = 1
+            aa["targetCriteria"] = self.targets(wants, wants.get("pool") if self.explicit_choice and wants.get("pool") else "allFiltered")
+
     # ------------------------------------------------------------------ one ability
     def ability(self, ab, i):
         """One triggered ability. Returns (the game's ability, the chosen-target filter or None)."""
@@ -742,19 +783,7 @@ class CardCompiler:
             a["targetCriteria"] = self.targets(ab["victim"], ab["victim"].get("pool") or "allFiltered")
 
         # a condition on the state of the game: whose turn, and/or a count compared with a number
-        when = ab.get("when") or {}
-        turn = when.get("turn") or ab.get("turn") or info.get("turn")
-        if turn:
-            a["boardCriteria"]["playerTurn"] = self.PLAYERS.get(turn, 0)
-        if when.get("count") is not None or when.get("is"):
-            a["boardCriteria"]["countCriteria"] = self.targets(when.get("count") or {}, (when.get("count") or {}).get("pool") or "allFiltered")
-            a["boardCriteria"]["triggerIf"] = self._enum("StatFilterOptions", when.get("is") or "EqualOrHigher", "comparison")
-            a["boardCriteria"]["referenceValue"] = self._int(when.get("value"))
-            if when.get("minusAllies"):
-                a["boardCriteria"]["countOptions"] = self.e["CountOptions"]["EnemiesMinusAllies"]
-        elif when.get("chance"):
-            a["boardCriteria"]["triggerIf"] = self.e["StatFilterOptions"]["RandomChance"]
-            a["boardCriteria"]["referenceValue"] = self._int(when["chance"])
+        self.board(a["boardCriteria"], ab.get("when") or {}, ab.get("turn") or info.get("turn"))
         if ab.get("countEach"):
             a["multiCountCriteria"] = self.targets(ab["countEach"], ab["countEach"].get("pool") or "allFiltered")
         if ab.get("condition"):
@@ -771,10 +800,13 @@ class CardCompiler:
         d.update(m_Enabled=1, m_Script=copy.deepcopy(self.n["script"]), uniqueId=card.get("id") or "", cardName=card["name"],
                  cardArmy=self._enum("CardArmy", card.get("army") or "Neutral", "faction"),
                  cardRarity=self._enum("CardRarity", card["rarity"], "rarity"), cardType=self.KINDS[kind],
-                 manaCost=card["cost"], attackDamageType=4, initiative=20, showInCollectionOptions=5,
+                 # attacks deal "Attack" damage; 56 of 66 official warlords say "Normal" instead
+                 manaCost=card["cost"], attackDamageType=0 if kind == "hero" else 4, initiative=20, showInCollectionOptions=5,
                  useOverDraw=0 if kind == "tactic" else 1)
         tag = self.n["armyTags"].get(card.get("army") or "", card.get("army") or "Neutral")
         d["m_Name"] = "%s %s-%s" % ("war" if kind == "hero" else ("T" if kind == "tactic" else "") + "C", tag, card["name"])
+        if card.get("attackDamageType"):
+            d["attackDamageType"] = self._enum("DamageType", card["attackDamageType"], "attack damage type")
         if card.get("token") or card.get("enchantment"):
             # how the game marks cards created by other cards (seen on every such official card):
             # not shown in the collection, not part of the inventory, never picked by "random card" effects
@@ -793,9 +825,35 @@ class CardCompiler:
             d["spellType"] = self._enum("SpellType", card.get("stratagemType") or "Normal", "stratagem type")
             if d["spellType"]:
                 d["cantBeRandomlyCreated"] = 1
-        else:
-            d.update(meleeAttack=card.get("melee", 0), rangeAttack=card.get("ranged", 0), maxHealth=card.get("health", 1),
+        if card.get("randomCreation") is not None:
+            # whether "a random card" effects may create this card, when it differs from the usual rule
+            # (35 official cards: tokens that may, or ordinary cards that may not)
+            d["cantBeRandomlyCreated"] = 0 if card["randomCreation"] else 1
+        if card.get("inventory") in self.INVENTORY:
+            # collection and decks: in the inventory, owned but never in a deck, or not in the inventory
+            d["inventoryOptions"] = self.INVENTORY[card["inventory"]]
+        if card.get("blockActions"):
+            d["blockActionsWhileResolving"] = 1      # the player cannot act until the card has resolved
+        for k, field in (("startingCard", "startingCardInHand"), ("goSecondCard", "goSecondCardInHand")):
+            if card.get(k):
+                # a warlord's own cards: in the starting hand, and given to the player who goes second
+                d[field] = {"$ref": card[k]}
+        for n, rid in enumerate((card.get("related") or [])[:4], 1):
+            if rid:
+                d["relatedCard%d" % n] = {"$ref": rid}          # shown next to the card when it is looked at
+        if card.get("choices"):
+            # the "choose one of these" window: where the options come from and how many are offered
+            ch = card["choices"]
+            d["choicesDefinition"] = self.targets(ch, ch.get("pool") or "choiceResolution")
+        if card.get("targetsCounter"):
+            # the number shown on the card in hand: how many targets it has right now
+            tcn = card["targetsCounter"]
+            d["targetsAvailableCounter"] = self.targets(tcn, tcn.get("pool") or "any")
+        if kind != "tactic" or any(card.get(k) for k in ("melee", "ranged", "health", "armour", "keyword")):
+            # units always; a few official stratagems carry unit stats too (Crushing Claws, Deffkopta ...)
+            d.update(meleeAttack=card.get("melee", 0), rangeAttack=card.get("ranged", 0), maxHealth=card.get("health", 0 if kind == "tactic" else 1),
                      armour=card.get("armour", 0), keyword=self._enum("Keyword", card.get("keyword"), "unit type"))
+        if kind != "tactic":
             if kind == "troop" and card.get("ranged", 0) > 0:
                 d["customRangedAttackParticles"] = {"m_AssetGUID": self.n["rangedParticles"].get(card.get("keyword") or "", self.n["rangedParticles"][""]),
                                                     "m_SubObjectName": "", "m_SubObjectType": ""}
@@ -806,7 +864,7 @@ class CardCompiler:
             self.notes.append("no artwork chosen")
         for t in card.get("traits") or []:
             entry = dict(self.n["trait"], name=t.get("name") or "", _trait=self._enum("DefinedTrait", t.get("name"), "keyword"),
-                         _traitValue=int(t.get("value") or 0))
+                         _traitValue=int(t.get("value") or 0), _hide=1 if t.get("hidden") else 0)
             d["CardTraits"].append(entry)
         own = {t.get("name") for t in card.get("traits") or []}
         given = set()
@@ -825,8 +883,9 @@ class CardCompiler:
                 d["CardTraits"].append(dict(self.n["trait"], name=ab["keyword"],
                                             _trait=self._enum("DefinedTrait", ab["keyword"], "keyword")))
             for fx in ab.get("effects") or []:
-                if (fx.get("buff") or {}).get("trait"):
-                    given.add(fx["buff"]["trait"])
+                b = fx.get("buff") or (fx.get("hand") or {}).get("buff") or {}      # a hand buff counts too
+                if b.get("trait"):
+                    given.add(b["trait"])
             d["cardAbilities"].append(a)
         if self.explicit_choice:
             chosen = card["choose"] or None
@@ -839,16 +898,9 @@ class CardCompiler:
             if kind == "tactic":
                 self.notes.append("stratagems cannot have an action - it was left out")
             else:
-                self.explicit_choice = "choose" in action
                 kw = action.get("keyword") or ""
-                effects = list(action.get("effects") or [])
-                if kw == "pray" and not any(fx.get("effect") == "triggerPray" for fx in effects):
-                    # every official Pray action ends by setting off Pray (what cards that react to a prayer listen for)
-                    effects.append({"effect": "triggerPray", "targets": {"pool": "self"}})
-                logics, wants = self.effects(effects, "the action")
                 d["hasActiveAbility"] = 1
-                d["activeAbility"]["activeAbilityLogic"] = logics
-                d["activeAbility"]["manaCost"] = int(action.get("cost") or 0)
+                self.active(d["activeAbility"], action, kw)
                 if kw == "oath":
                     # "Oath N": official cards keep N on the keyword and leave the action's own cost at 0
                     d["activeAbility"]["manaCost"] = 0
@@ -862,14 +914,10 @@ class CardCompiler:
                     # ...and comes with the same Pray ability on every official card: the unit takes the praying state
                     a, _, _ = self.ability(self.PRAY_ABILITY, len(d["cardAbilities"]) + 1)
                     d["cardAbilities"].insert(0, a)
-                if self.explicit_choice:
-                    wants = action["choose"] or None
-                if wants is not None:
-                    d["activeAbility"]["targeted"] = 1
-                    d["activeAbility"]["targetCriteria"] = self.targets(wants, wants.get("pool") if self.explicit_choice and wants.get("pool") else "allFiltered")
                 if action.get("keyword") and action["keyword"] not in own:
                     d["CardTraits"].append(dict(self.n["trait"], name=action["keyword"],
                                                 _trait=self._enum("DefinedTrait", action["keyword"], "keyword")))
+                    own.add(action["keyword"])     # the card has it, so it needs no hint (official Pray cards have none)
                 if action.get("keyword") == "ferocity":
                     self.notes.append("Ferocity: written like the rebuilt Space Wolves cards, which could not be activated in a match yet")
                 if action.get("note"):
@@ -877,8 +925,19 @@ class CardCompiler:
                 for fx in action.get("effects") or []:
                     if (fx.get("buff") or {}).get("trait"):
                         given.add(fx["buff"]["trait"])
-        for name in sorted(given - own):          # keywords the card hands out get a hint on the card
-            d["ShowTraits"].append(dict(self.n["trait"], name=name, _trait=self._enum("DefinedTrait", name, "keyword")))
+        alt = card.get("alternative")
+        if alt and kind != "tactic":
+            # a second action used instead of the first while the condition is NOT met (Wulfen Pack Leader)
+            d["hasAlternativeAbility"] = 1
+            self.board(d["normalAbilityBoardCriteria"], alt.get("when") or {})
+            self.active(d["alternativeAbility"], alt)
+        hints = card.get("showTraits")
+        if hints is None:                         # keywords the card hands out get a hint on the card
+            hints = sorted(given - own)
+        for t in hints:                           # ... or exactly the hints the design lists
+            name = t.get("name") if isinstance(t, dict) else t
+            d["ShowTraits"].append(dict(self.n["trait"], name=name, _trait=self._enum("DefinedTrait", name, "keyword"),
+                                        _traitValue=int((t.get("value") if isinstance(t, dict) else 0) or 0)))
         return d, list(dict.fromkeys(self.notes))
 
 
@@ -2492,42 +2551,74 @@ class PlayFabEmulator:
         if kind not in self.CREATOR_KINDS:
             raise ValueError("unknown card kind")
         rarity = card.get("rarity")
-        if rarity not in ("Common", "Rare", "Epic", "Legendary"):
+        if rarity not in ("Common", "Rare", "Epic", "Legendary", "Special", "None"):      # Special/None: tokens and created cards
             raise ValueError("unknown rarity")
         out = {"name": name, "kind": kind, "rarity": rarity, "army": str(card.get("army") or "")[:40],
-               "cost": self._creator_int(card.get("cost", 0), 0, 12, "cost"),
+               # -1: official token stratagems ("no cost"); 14: the most an official card costs
+               "cost": self._creator_int(card.get("cost", 0), -1, 14, "cost"),
                "text": str(card.get("text") or "")[:300], "art": str(card.get("art") or "")[:40],
                "lore": str(card.get("lore") or "").strip()[:300],      # flavour text (story, not rules)
                "designNotes": str(card.get("designNotes") or "")[:1000],
                # a card that only exists when another card creates it: not in the collection, not for decks
-               "token": card.get("token") is True and card.get("kind") != "hero"}
+               # (warlords too: 10 official ones are only created by other cards)
+               "token": card.get("token") is True}
         if card.get("enchantment") is True and kind != "hero":
             # a hidden card other cards attach with an enchantment buff (always a token)
             out["enchantment"] = True
             out["token"] = True
-        if kind != "tactic":
+        if kind != "tactic" or any(k in card for k in ("melee", "ranged", "health", "armour", "keyword")):
+            # units always; a stratagem only when it carries unit stats (as 5 official ones)
             out["melee"] = self._creator_int(card.get("melee", 0), 0, 30, "melee")
             out["ranged"] = self._creator_int(card.get("ranged", 0), 0, 30, "ranged")
-            out["health"] = self._creator_int(card.get("health", 1), 1, 60, "health")
+            out["health"] = self._creator_int(card.get("health", 1), 0 if kind == "tactic" else 1, 60, "health")
             out["armour"] = self._creator_int(card.get("armour", 0), 0, 30, "armour")
             out["keyword"] = str(card.get("keyword") or "")[:30]
-        else:
+        if kind == "tactic":
             out["stratagemType"] = str(card.get("stratagemType") or "Normal")[:30]
         for field, limit in (("traits", 8), ("abilities", 6)):
             value = card.get(field) or []
             if not isinstance(value, list) or len(value) > limit or not all(isinstance(x, dict) for x in value):
                 raise ValueError(f"{field} must be a list of at most {limit} entries")
             out[field] = value
-        action = card.get("action")
-        if isinstance(action, dict):          # an ability the player activates by hand (Duty, Ferocity)
+        for ab in out["abilities"]:
+            effects = ab.get("effects") or []
+            if not isinstance(effects, list) or len(effects) > 8:      # 8: Tyrannofex
+                raise ValueError("an ability can have at most 8 effects")
+        for key in ("action", "alternative"):
+            action = card.get(key)
+            if not isinstance(action, dict):
+                continue
+            # action: an ability the player activates by hand (Duty, Ferocity); alternative: a second action used
+            # instead while a condition is not met (Wulfen Pack Leader)
             effects = action.get("effects") or []
-            if not isinstance(effects, list) or len(effects) > 6 or not all(isinstance(x, dict) for x in effects):
-                raise ValueError("the action must have at most 6 effects")
-            out["action"] = {"keyword": str(action.get("keyword") or "")[:30],
-                             "cost": self._creator_int(action.get("cost", 0), 0, 12, "action cost"),
-                             "note": str(action.get("note") or "")[:200], "effects": effects}
+            if not isinstance(effects, list) or len(effects) > 8 or not all(isinstance(x, dict) for x in effects):
+                raise ValueError(f"the {key} must have at most 8 effects")
+            out[key] = {"cost": self._creator_int(action.get("cost", 0), 0, 12, key + " cost"), "effects": effects}
+            if key == "action":
+                out[key].update(keyword=str(action.get("keyword") or "")[:30], note=str(action.get("note") or "")[:200])
             if isinstance(action.get("choose"), dict) or action.get("choose") is False:
-                out["action"]["choose"] = action["choose"]
+                out[key]["choose"] = action["choose"]
+            if action.get("playAnim") is True:
+                out[key]["playAnim"] = True
+            if key == "alternative" and isinstance(action.get("when"), dict):
+                out[key]["when"] = action["when"]
+        # the card's own settings beyond its abilities (all optional; the compiler checks the names)
+        for k in ("choices", "targetsCounter"):
+            if isinstance(card.get(k), dict):
+                out[k] = card[k]
+        for k in ("inventory", "attackDamageType", "startingCard", "goSecondCard"):
+            if card.get(k):
+                out[k] = str(card[k])[:40]
+        for k in ("randomCreation", "blockActions"):
+            if isinstance(card.get(k), bool):
+                out[k] = card[k]
+        related = card.get("related")
+        if isinstance(related, list):
+            out["related"] = [str(x)[:40] for x in related[:4] if isinstance(x, str) and x]
+        hints = card.get("showTraits")
+        if isinstance(hints, list):
+            out["showTraits"] = [h[:40] if isinstance(h, str) else {"name": str(h.get("name") or "")[:40], "value": self._creator_int(h.get("value", 0), 0, 99, "hint value")}
+                                 for h in hints[:8] if isinstance(h, str) or isinstance(h, dict)]
         if card.get("needsTarget") is not None:
             out["needsTarget"] = card.get("needsTarget")
         # what the player picks when playing the card (a filter), or False for "nothing is picked";
