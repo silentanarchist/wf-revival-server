@@ -2497,6 +2497,7 @@ class PlayFabEmulator:
         out = {"name": name, "kind": kind, "rarity": rarity, "army": str(card.get("army") or "")[:40],
                "cost": self._creator_int(card.get("cost", 0), 0, 12, "cost"),
                "text": str(card.get("text") or "")[:300], "art": str(card.get("art") or "")[:40],
+               "lore": str(card.get("lore") or "").strip()[:300],      # flavour text (story, not rules)
                "designNotes": str(card.get("designNotes") or "")[:1000],
                # a card that only exists when another card creates it: not in the collection, not for decks
                "token": card.get("token") is True and card.get("kind") != "hero"}

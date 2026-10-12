@@ -368,6 +368,8 @@
         <h2>Card text</h2>
         <textarea id="f_text" maxlength="300" placeholder="What the card says"></textarea>
         <div class="row"><button class="small" id="suggest">Suggest text from the abilities</button></div>
+        <label>Flavour text (optional)</label>
+        <textarea id="f_lore" maxlength="300" placeholder="A line of story or a quote, like the lore on official cards. Not rules."></textarea>
         <label>Notes for the reviewer (not shown on the card)</label>
         <textarea id="f_designNotes" maxlength="1000" placeholder="Anything the abilities above cannot express, balance thoughts, art ideas…"></textarea>
       </section>
@@ -1289,9 +1291,8 @@ function drawAbilities() {
     const b = el("div", { class: "box" },
       el("div", { class: "head" }, el("strong", { text: "Ability " + n }), el("span", { class: "spacer" }),
         el("button", { class: "small danger", text: "Remove ability", onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
-      el("div", { class: "row" }, field("When", sel(schema.triggers, ab.trigger, v => { ab.trigger = v; ab.keyword = ""; keywordFor(ab); }, true), true),
-        field("Extra condition (optional)", el("input", { value: ab.condition || "", maxLength: 200, placeholder: "e.g. only if you control 3+ troops",
-          oninput: e => { ab.condition = e.target.value; redraw(true); } }), true)));
+      el("div", { class: "row" }, field("When", sel(schema.triggers, ab.trigger, v => { ab.trigger = v; ab.keyword = ""; keywordFor(ab); }, true), true)));
+    if (ab.condition) b.append(el("p", { class: "hint", text: `This ability still has an old free-text condition the game never read ("${ab.condition}"). It is dropped when the card is saved; use the ability's "when" settings for a real condition.` }));
     if (ab.keyword) b.append(el("p", { class: "hint", text: `Also shown as ${lab(schema.traits, ab.keyword)} (a second ability under the same keyword).` }));
     else if (troopPlay) b.append(el("p", { class: "hint", text: "On official troops a \"when played\" ability is always a Rally ability. To make this one Rally, add the Rally keyword above and set it up there." }));
     const subj = drawSubject(ab); if (subj) b.append(subj);
@@ -1345,7 +1346,7 @@ function trimEffect(fx) {
   return out;
 }
 function trimAbility(a) {
-  const out = { trigger: a.trigger, keyword: a.keyword || "", condition: a.condition || "", effects: a.effects.map(trimEffect) };
+  const out = { trigger: a.trigger, keyword: a.keyword || "", effects: a.effects.map(trimEffect) };
   if (WATCHES.test(a.trigger) && a.subject) out.subject = Object.assign({}, a.subject);
   for (const k of ["context", "priority", "triggerValue", "random"]) if (a[k]) out[k] = a[k];
   if (a.playIcon === "yes") out.playIcon = true; else if (a.playIcon === "no") out.playIcon = false;
@@ -1362,7 +1363,7 @@ function collect() {
   const kind = val("f_kind");
   const ench = $("f_enchantment").checked;
   const c = { name: val("f_name").trim(), kind, army: val("f_army"), rarity: val("f_rarity"), cost: ival("f_cost"),
-              text: val("f_text"), art: cardIds[val("f_art")] || val("f_art"), designNotes: val("f_designNotes"), token: $("f_token").checked || ench,
+              text: val("f_text"), art: cardIds[val("f_art")] || val("f_art"), lore: val("f_lore").trim(), designNotes: val("f_designNotes"), token: $("f_token").checked || ench,
               traits: state.traits.map(t => ({ name: t.name, value: t.value || 0 })),
               abilities: state.abilities.map(trimAbility) };
   if (ench) c.enchantment = true;
@@ -1422,7 +1423,7 @@ function suggestText() {
     const special = { UnitAttack: `Whenever a ${who} attacks, `, AboutToAttack: `Before a ${who} attacks, `, OtherUnitDeath: `Whenever a ${who} dies, `,
                       OtherUnitSummoned: `Whenever a ${who} enters play, `, UnitDamaged: `Whenever a ${who} is damaged, ` }[a.trigger];
     const when = a.keyword ? lab(schema.traits, a.keyword) + ": " : a.trigger === "ThisCardPlayed" ? "" : special || lab(schema.triggers, a.trigger) + ": ";
-    lines.push(when + what + (a.condition ? ` (${a.condition})` : "") + ".");
+    lines.push(when + what + ".");
   }
   if (state.action) {
     const a = state.action, head = a.keyword ? lab(schema.traits, a.keyword) : "Action";
@@ -1659,7 +1660,7 @@ function fill(c) {
   $("f_rarity").value = c.rarity || "Common"; $("f_cost").value = c.cost ?? 1; $("f_melee").value = c.melee ?? 1; $("f_ranged").value = c.ranged ?? 0;
   $("f_health").value = c.health ?? 1; $("f_armour").value = c.armour ?? 0; $("f_keyword").value = c.keyword || "";
   $("f_stratagemType").value = c.stratagemType || "Normal"; $("f_art").value = cardNames[c.art] || c.art || "";
-  $("f_text").value = c.text || ""; $("f_designNotes").value = c.designNotes || ""; $("f_token").checked = !!c.token && !c.enchantment; $("f_enchantment").checked = !!c.enchantment;
+  $("f_text").value = c.text || ""; $("f_lore").value = c.lore || ""; $("f_designNotes").value = c.designNotes || ""; $("f_token").checked = !!c.token && !c.enchantment; $("f_enchantment").checked = !!c.enchantment;
   state.traits = (c.traits || []).map(t => ({ name: t.name, value: t.value || 0 }));
   fillAction(c);
   state.abilities = (c.abilities || []).map(mergeAbility);
@@ -2203,7 +2204,7 @@ async function loadUnreleased() {
   }
   drawUnreleased();
 }
-function richText(text) {             // **Keyword** in bold with its explanation on hover; everything as text, never HTML
+function unrelText(text) {            // **Keyword** in bold with its explanation on hover; everything as text, never HTML
   const out = el("div", { class: "text" });
   String(text || "").split(/\*\*(.+?)\*\*/).forEach((part, i) => {
     if (i % 2) out.append(el("b", { text: part, title: unrelGloss[part] || "" }));
@@ -2225,7 +2226,7 @@ function drawUnreleased() {
       el("div", { class: "head" }, el("strong", { text: c.name }), el("span", { class: "spacer" }),
         el("span", { class: "badge " + (c.status.startsWith("Old") ? "draft" : "pending"), text: c.status.startsWith("Old") ? "Old version" : "Unreleased" })),
       el("div", { class: "hint", text: (c.army && c.army !== "?" ? c.army : "Army unknown") + (stats ? " · " + stats : "") }),
-      c.text ? richText(c.text) : el("p", { class: "hint", text: "No rules text in the game, only the name." }),
+      c.text ? unrelText(c.text) : el("p", { class: "hint", text: "No rules text in the game, only the name." }),
       c.lore ? el("details", {}, el("summary", { text: "Lore" }), el("p", { text: c.lore })) : null));
   }
 }
@@ -2783,7 +2784,7 @@ async function start() {
   $("recoverBack").onclick = e => { e.preventDefault(); recoverMode(false); $("author").focus(); };
   $("loginForm").addEventListener("submit", e => { e.preventDefault(); sign(); });
   $("loginSwitch").onclick = e => { e.preventDefault(); loginMode(!creating); $("author").focus(); };
-  for (const id of ["f_name", "f_kind", "f_army", "f_rarity", "f_cost", "f_melee", "f_ranged", "f_health", "f_armour", "f_keyword", "f_stratagemType", "f_art", "f_text", "f_designNotes", "f_token", "f_enchantment"])
+  for (const id of ["f_name", "f_kind", "f_army", "f_rarity", "f_cost", "f_melee", "f_ranged", "f_health", "f_armour", "f_keyword", "f_stratagemType", "f_art", "f_text", "f_lore", "f_designNotes", "f_token", "f_enchantment"])
     $(id).addEventListener("input", () => redraw(id !== "f_army" && id !== "f_kind"));
   $("addTrait").onclick = () => { const first = (schema.traits.find(t => !t.needsAbility && !state.traits.some(x => x.name === t.id)) || schema.traits[0]).id; state.traits.push({ name: first, value: 0 }); abilityFor(first); redraw(); };
   $("addAbility").onclick = () => { state.abilities.push(newAbility("ThisCardPlayed", "")); redraw(); };
