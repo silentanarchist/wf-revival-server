@@ -3144,8 +3144,66 @@ class PlayFabEmulator:
             self._creator_users_save(users)
         return ok({"recoveryCode": code, "name": user["name"], "at": user["recoveryAt"]})
 
+    # ---- reset code from an admin: for someone who forgot the password and has no recovery code
+    # Made on Admin > People by someone ranked above the account (never for one's own account),
+    # shown once to that admin to pass on privately. Same form as a recovery code and used the same
+    # way (sign-in page > Forgot your password?), but it works once and only for RESET_CODE_HOURS;
+    # the server keeps only a fingerprint and who made it. The account's own recovery code, if it
+    # has one, is left alone. Making another replaces the waiting one; "remove" cancels it.
+    RESET_CODE_HOURS = 24
+
+    def _reset_code_live(self, user):
+        """The account's admin reset code fingerprint while it is still valid, else None (an expired one is dropped)."""
+        if not user.get("adminResetHash"):
+            return None
+        try:
+            until = datetime.fromisoformat(str(user.get("adminResetUntil") or "").replace("Z", "+00:00"))
+        except ValueError:
+            until = None
+        if until is None or until.tzinfo is None or until <= datetime.now(timezone.utc):
+            for k in ("adminResetHash", "adminResetUntil", "adminResetBy", "adminResetAt"):
+                user.pop(k, None)
+            return None
+        return user["adminResetHash"]
+
+    def api_Revival_CreatorResetCode(self, req, headers):
+        """Admins: a one-time password reset code for another account ({"name"}), or {"name", "remove": true}."""
+        name = " ".join(str(req.get("name") or "").split())[:30].lower()
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me or self._creator_role(req) < 2:
+                return err("NotAuthorized", "only admins can make reset codes")
+            users = self._creator_users()
+            user = users.get(name)
+            if user is None:
+                return err("InvalidParams", "no account with that name")
+            if name == me["name"].lower():
+                return err("InvalidParams", "for your own account, make a recovery code on your Profile page")
+            if self._creator_rank(self._creator_perms(user)) >= self._creator_rank(self._creator_perms(me)):
+                return err("NotAuthorized", f"{user['name']} can only be given a reset code by someone ranked above")
+            if req.get("remove"):
+                had = bool(self._reset_code_live(user))
+                for k in ("adminResetHash", "adminResetUntil", "adminResetBy", "adminResetAt"):
+                    user.pop(k, None)
+                self._creator_users_save(users)
+                log.info("account %s: reset code cancelled by %s", user["name"], me["name"])
+                return ok({"removed": had})
+            if self._creator_perms(user)["access"] == "banned":
+                return err("AccountBanned", f"{user['name']} is banned")
+            if user.get("deleteSticks") and user.get("deleteAt"):
+                return err("AccountBeingDeleted", f"{user['name']} was banned and is being deleted")
+            code = self._recovery_new()
+            until = datetime.fromtimestamp(time.time() + self.RESET_CODE_HOURS * 3600, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            user["adminResetHash"], user["adminResetUntil"] = self._recovery_hash(code), until
+            user["adminResetBy"], user["adminResetAt"] = me["name"], now_iso()
+            self._creator_users_save(users)
+        log.info("account %s: reset code made by %s (valid until %s)", user["name"], me["name"], until)
+        # "recoveryCode" is a key the request log never writes out
+        return ok({"name": user["name"], "recoveryCode": code, "until": until, "hours": self.RESET_CODE_HOURS})
+
     def api_Revival_CreatorRecover(self, req, headers):
-        """Forgotten password: name + recovery code + new password. Signs in on success."""
+        """Forgotten password: name + recovery code (the account's own, or a reset code from an admin)
+        + new password. Signs in on success."""
         name = " ".join(str(req.get("name") or "").split())[:30]
         new = str(req.get("newPassphrase") or "")
         digest = self._recovery_hash(req.get("recoveryCode"))
@@ -3161,7 +3219,10 @@ class PlayFabEmulator:
         with self.store.lock:
             users = self._creator_users()
             user = users.get(name.lower())
-            if user is None or not digest or not user.get("recoveryHash") or not hmac.compare_digest(user["recoveryHash"], digest):
+            own = bool(user and digest and user.get("recoveryHash") and hmac.compare_digest(user["recoveryHash"], digest))
+            given = user and digest and not own and self._reset_code_live(user)
+            given = bool(given and hmac.compare_digest(given, digest))
+            if not own and not given:
                 self._allow("recover-fail", where, 10, 900)
                 self._allow("recover-fail-name", name.lower(), 5, 900)
                 return err("InvalidPassword", "that name and recovery code do not match")
@@ -3175,14 +3236,19 @@ class PlayFabEmulator:
             user["sessions"] = [hashlib.sha256(token.encode("utf-8")).hexdigest()]
             cancelled = self._account_delete_cancel(user)     # a reset is a sign-in too: a waiting deletion stops
             user["passphraseChangedAt"] = user["recoveredAt"] = now_iso()
-            user.pop("recoveryHash", None)                  # used up
-            user.pop("recoveryAt", None)
+            by = user.get("adminResetBy")
+            if own:
+                user.pop("recoveryHash", None)              # used up
+                user.pop("recoveryAt", None)
+            for k in ("adminResetHash", "adminResetUntil", "adminResetBy", "adminResetAt"):
+                user.pop(k, None)                           # an admin's reset code goes too, used or not
             user.pop("gameLoginHash", None)                 # every computer and phone signs in again
             user.pop("gameLogins", None)
             self._end_play(user.get("player"), "The password of this account was reset. Start the game again and sign in.")
             self._creator_users_save(users)
-        log.info("account %s: password reset with its recovery code", user["name"])
-        return ok({"name": user["name"], "session": token, "account": self._creator_perms(user), "deletionCancelled": cancelled})
+        log.info("account %s: password reset with %s", user["name"], "its recovery code" if own else f"a reset code from {by}")
+        return ok({"name": user["name"], "session": token, "account": self._creator_perms(user), "deletionCancelled": cancelled,
+                   "usedResetCode": not own})
 
     # A game login lets the game sign in as the account's game player, with or without Steam. It
     # is a long secret kept by the mod in UserData/WarpforgeRevival/game-login.txt: written there
@@ -3479,7 +3545,9 @@ class PlayFabEmulator:
         skip = req.get("skipRequested") is True
         people = [dict(self._creator_perms(u), name=u["name"], created=u.get("created", ""), cards=counts.get(key, 0),
                        playerName=game_name(u.get("player")), deleteAt=u.get("deleteAt") or "",
-                       terms=u.get("termsAgreed") or "") for key, u in users.items()
+                       terms=u.get("termsAgreed") or "",
+                       resetUntil=u.get("adminResetUntil") or "" if self._reset_code_live(u) else "",
+                       resetBy=u.get("adminResetBy") or "" if self._reset_code_live(u) else "") for key, u in users.items()
                   if not (skip and self._creator_perms(u)["access"] == "requested")]
         people.sort(key=lambda p: (p["access"] != "requested", not p["fixed"], not p["owner"], not p["admin"], p["name"].lower()))
         # who is on now: in a match room ("playing"), or their game asked for chat lately ("online")
