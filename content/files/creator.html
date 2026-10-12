@@ -1773,7 +1773,7 @@ function describeEffect(fx) {
   const t = describeTargets(fx.targets), b = fx.buff || {};
   const stats = [["Melee", b.melee], ["Ranged", b.ranged], ["Health", b.health], ["Armour", b.armour]].filter(x => x[1])
     .map(x => (x[1] > 0 ? "+" : "") + x[1] + " " + x[0]);
-  const gift = [stats.join(", "), b.trait && lab(schema.traits, b.trait) + (b.traitValue ? " " + b.traitValue : ""), b.cost && `cost ${b.cost > 0 ? "+" : ""}${b.cost}`].filter(Boolean).join(" and ");
+  const gift = [stats.join(", "), b.trait && bold(lab(schema.traits, b.trait)) + (b.traitValue ? " " + b.traitValue : ""), b.cost && `cost ${b.cost > 0 ? "+" : ""}${b.cost}`].filter(Boolean).join(" and ");
   const lasts = { turn: " this turn", nextTurn: " until your next turn", aura: "" }[b.duration] || "";
   const card = cardNames[fx.card] || fx.card || "a card";
   switch (fx.effect) {
@@ -1793,10 +1793,16 @@ function describeEffect(fx) {
     default: return fx.note || lab(schema.effects, fx.effect);
   }
 }
+// keywords are written **Like This**, as on the official cards (the game shows them in bold)
+function bold(s) { return s ? "**" + s + "**" : s; }
+function trigHead(id) {
+  const kw = schema.traits.find(x => x.id.toLowerCase() === id.toLowerCase());
+  return kw ? bold(kw.label) : lab(schema.triggers, id);
+}
 function suggestText() {
   const labelled = new Set(state.abilities.map(a => a.keyword || (schema.traits.find(x => x.id.toLowerCase() === a.trigger.toLowerCase()) || {}).id).filter(Boolean));
   if (state.action && state.action.keyword) labelled.add(state.action.keyword);
-  const parts = state.traits.filter(t => !labelled.has(t.name)).map(t => lab(schema.traits, t.name) + (t.value ? " " + t.value : ""));
+  const parts = state.traits.filter(t => !labelled.has(t.name)).map(t => bold(lab(schema.traits, t.name)) + (t.value ? " " + t.value : ""));
   const lines = parts.length ? [parts.join(". ") + "."] : [];
   for (const a of state.abilities) {
     const what = a.effects.map(describeEffect).join(". ");
@@ -1804,11 +1810,11 @@ function suggestText() {
       ([sj.troops && "troop", sj.warlords && "warlord"].filter(Boolean).join(" or ") || "unit") : "";
     const special = { UnitAttack: `Whenever a ${who} attacks, `, AboutToAttack: `Before a ${who} attacks, `, OtherUnitDeath: `Whenever a ${who} dies, `,
                       OtherUnitSummoned: `Whenever a ${who} enters play, `, UnitDamaged: `Whenever a ${who} is damaged, ` }[a.trigger];
-    const when = a.keyword ? lab(schema.traits, a.keyword) + ": " : a.trigger === "ThisCardPlayed" ? "" : special || lab(schema.triggers, a.trigger) + ": ";
+    const when = a.keyword ? bold(lab(schema.traits, a.keyword)) + ": " : a.trigger === "ThisCardPlayed" ? "" : special || trigHead(a.trigger) + ": ";
     lines.push(when + what + ".");
   }
   if (state.action) {
-    const a = state.action, head = a.keyword ? lab(schema.traits, a.keyword) : "Action";
+    const a = state.action, head = a.keyword ? bold(lab(schema.traits, a.keyword)) : "Action";
     lines.push(`${head}${a.cost ? ` (${a.cost})` : ""}: ${a.effects.map(describeEffect).join(". ")}${a.note ? ` (${a.note})` : ""}.`);
   }
   return lines.join(" ");
