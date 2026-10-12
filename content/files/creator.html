@@ -1329,15 +1329,26 @@ function whoMode(ab) {
   return EVENT_UNIT_TRIGGERS.includes(ab.trigger) || tmpl().ench ? "nopick" : "noevent";
 }
 function whoOf(t) { if (t.pool === "allFiltered") return t.max ? "random" : "all"; const w = WHO.find(x => x.pool === t.pool); return w ? w.id : "other"; }
+// Groups the game fills in directly, without checking any filter (GetTargets adds this card or the warlord
+// as it is): their ticks and filters do nothing.
+const NO_FILTER_POOLS = ["self", "friendlyHero", "enemyHero"];
+const NO_FILTER_NOTE = "The game takes this card (or the warlord) directly and never checks these filters, so they do nothing here. They are only kept because some official cards carry them.";
 function setWho(t, id) {
   const w = WHO.find(x => x.id === id); if (!w || !w.pool) return;          // "other": keep the group, show the full list
   t.pool = w.pool;
+  if (NO_FILTER_POOLS.includes(w.pool)) {                                   // clear leftovers, as most official cards have none
+    const n = newTargets();
+    for (const k of TARGET_BASE.concat(TARGET_ADV)) t[k] = typeof n[k] === "boolean" ? false : n[k];
+    for (const k of ["attack", "health", "cost", "rarity"]) t[k] = STAT();
+    t.cards = []; t.notEnchantedBy = []; t.max = 0; t.select = "";
+  }
   if (id === "random") t.max = t.max || 1; else if (id === "all") { t.max = 0; t.select = ""; }
 }
 // foldNote: fold the ticks and filters away with this note (e.g. a chosen-target effect whose pick is said elsewhere)
 // who: show "Who does it affect?" in plain words (effect targets) instead of the bare group list
 // pick: the player's pick, always "every unit matching the filter": its group row only shows when unusual
 function drawTargets(t, title, pools, maxLabel, foldNote, who, pick) {
+  if (!foldNote && NO_FILTER_POOLS.includes(t.pool)) foldNote = NO_FILTER_NOTE;
   const filtered = !foldNote && /Filtered|Criteria|^target$|lowestHealth/.test(t.pool);
   const adv = TARGET_ADV.some(k => isSet(t[k]));
   const ticks = el("div", { class: "checks", style: "margin-bottom:10px" },
