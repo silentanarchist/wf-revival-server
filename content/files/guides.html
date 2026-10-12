@@ -139,7 +139,7 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <h3>3. Patch</h3>
 <ol>
 <li>Leave <strong>Fix black menu after loading</strong> as the app set it. It is ticked on Pixels (6 and later) and on Samsungs with an Exynos chip and Mali graphics, where the opening video can leave the menu black. It then shows a still picture instead of the video.</li>
-<li>Press <strong>Patch and install</strong>. Have a backup file of the game instead? Press <strong>Patch from a backup file</strong> and pick it.</li>
+<li>Press <strong>Patch and install</strong>. Patching from a backup file of the game instead? See <em>Patching from a backup file</em> below.</li>
 <li>If the game has to be removed first, the app asks before it starts: press <strong>Continue</strong>. The game's downloaded files go with it; the server hands them out again.</li>
 <li>Stay in the app while it works. The big data file takes a few minutes.</li>
 <li>Android asks you to confirm removing the old game, then installing the new one. Confirm both.</li>
@@ -149,6 +149,16 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <li><strong>Patch and install</strong> (<strong>Patch again and install</strong> once the game is patched): puts the mod loader into the game, installs the patched game and puts the current mod in place. Use it the first time and whenever a new loader comes out. Patched by this app before, it installs over the game and keeps everything.</li>
 <li><strong>Update the mod only</strong>: downloads the current mod from the server and puts it in place without touching the game. Use it after a connection error at the title screen, or to get a new mod straight away.</li>
 </ul>
+<h3>Patching from a backup file</h3>
+<p>Use <strong>Patch from a backup file (.apks / .xapk)</strong> when the game is not installed on this phone, or to patch from your own backup of it. The game does not need to be installed for this.</p>
+<ol>
+<li><strong>Put the backup on the phone</strong>, for example in <strong>Download</strong>. It is one file of about 780 MB ending in <code>.apks</code> or <code>.xapk</code>, game version 1.35.0. From a PC, copy it over by USB; in MuMu, drag it onto the window.</li>
+<li><strong>Check the free space.</strong> While it works the app needs about twice the backup's size plus 400 MB (about 2 GB). It tells you if there is not enough.</li>
+<li>In Warpforge Patcher, leave <strong>Fix black menu after loading</strong> as the app set it and press <strong>Patch from a backup file (.apks / .xapk)</strong>. The button works once both permissions are allowed.</li>
+<li><strong>Pick the backup</strong> in Android's file picker. The app unpacks it and checks that it holds the game's main file, its arm64 code file and the data pack, and that it is version 1.35.0.</li>
+<li>From here it is the same as <strong>Patch and install</strong>: if a copy of the game that this app did not patch is installed, the app asks before removing it (press <strong>Continue</strong>). Stay in the app while it works, then confirm Android's prompts.</li>
+</ol>
+<p>If the app says the backup is missing the arm64 code file or the data pack, the backup was made without all its parts: make it again with every part included. "This is game version …" means the backup is not version 1.35.0.</p>
 <h3>4. Play</h3>
 <ol>
 <li>Start Warpforge from your home screen. If it asks for <strong>"All files access"</strong>, allow it.</li>
