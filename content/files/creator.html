@@ -317,7 +317,8 @@
         <h2>Basics</h2>
         <div class="row">
           <div class="field grow"><label>Name</label><input id="f_name" maxlength="40"></div>
-          <div class="field"><label>Kind</label><select id="f_kind"></select></div>
+          <div class="field"><label>Card template</label><select id="f_template"></select></div>
+          <div class="field hidden"><label>Kind</label><select id="f_kind"></select></div>
           <div class="field"><label>Faction</label><select id="f_army"></select></div>
           <div class="field"><label>Rarity</label><select id="f_rarity"></select></div>
           <div class="field"><label>Cost</label><input id="f_cost" type="number" min="-1" max="14" value="1"></div>
@@ -329,12 +330,13 @@
           <div class="field"><label>Armour</label><input id="f_armour" type="number" min="0" max="30" value="0"></div>
           <div class="field"><label>Unit type</label><select id="f_keyword"></select></div>
         </div>
+        <p class="hint" id="tmplHint" style="margin:-4px 0 10px"></p>
         <label class="agree" id="tokenRow" style="margin:0 0 10px"><input type="checkbox" id="f_token">
           <span>Created by another card only – not in the collection and cannot be put in a deck. Tick this for a stratagem or troop that another card adds to your hand or summons.</span></label>
         <label class="agree" id="enchRow" style="margin:0 0 10px"><input type="checkbox" id="f_enchantment">
           <span>This card is an enchantment: a hidden card that other cards attach with an "Attach an enchantment" buff. It is never played itself; its abilities act on the card it is attached to (its cost, stats and text are not used). Official enchantments are stratagems.</span></label>
         <div class="row hidden" id="stratRow">
-          <div class="field"><label>Stratagem type</label><select id="f_stratagemType"></select></div>
+          <div class="field"><label>Stratagem type (a family other cards can name)</label><select id="f_stratagemType"></select></div>
         </div>
         <div class="row">
           <div class="field grow"><label>Artwork – borrow from an existing card</label>
@@ -970,9 +972,11 @@ function drawKeywordAbility(t, def) {           // the box under a keyword that 
 function drawEntries() {
   const box = $("entries"); box.textContent = "";
   linkKeywords();
+  const lockedAb = state.abilities.find(a => a.locked);
+  if (lockedAb) box.append(drawCustomEntry(lockedAb, state.abilities.indexOf(lockedAb)));
   state.traits.forEach((t, i) => box.append(drawKeywordEntry(t, i)));
   if (state.action) box.append(drawActionEntry());
-  state.abilities.forEach((ab, i) => { if (!keywordOf(ab)) box.append(drawCustomEntry(ab, i)); });
+  state.abilities.forEach((ab, i) => { if (!keywordOf(ab) && !ab.locked) box.append(drawCustomEntry(ab, i)); });
   if (!box.children.length) box.append(el("p", { class: "hint", text: "No keywords or abilities yet." }));
 }
 function drawKeywordEntry(t, i) {
@@ -989,7 +993,8 @@ function drawKeywordEntry(t, i) {
     def.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(t.name); window.scrollTo(0, 0); } }) : null,
     ADV && ab ? el("button", { class: "small", text: "Remove keyword only", title: "The ability stays, as a custom ability; a few official cards have the ability without the keyword",
       onclick: () => { if (ab.keyword === t.name) ab.keyword = ""; state.traits.splice(i, 1); redraw(); } }) : null,
-    el("button", { class: "small danger", text: "Remove", onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }));
+    tmpl().ephemeral && t.name === "ephemeral" && !ADV ? el("span", { class: "hint", text: "always on a talent card" })
+      : el("button", { class: "small danger", text: "Remove", onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }));
   const b = el("div", { class: "box" }, head,
     kwDesc(t.name) ? el("p", { class: "hint pickDesc", text: kwDesc(t.name) }) : null,
     def.onlyOn && def.onlyOn !== val("f_kind") ? el("p", { class: "hint", style: "color:var(--warn)", text: `Official cards only have this on ${lab(schema.kinds, def.onlyOn).toLowerCase()}s.` }) : null,
@@ -998,6 +1003,112 @@ function drawKeywordEntry(t, i) {
       el("div", { class: "checks" }, check("Hidden on the card", t, "hidden"))) : null);
   if (owns) b.append(drawKeywordAbility(t, def));
   return b;
+}
+
+/* ---------- card templates ----------
+   A template is the editor's own idea (the game has no such field): it sets the card's kind, the hidden
+   ticks (created by a card, enchantment), the game's stratagem type and Ephemeral, and decides which
+   triggers, keywords and effects are offered. It is worked out again from those fields when a card is
+   loaded. Only things the game rules out for that kind of card are hidden; advanced options show everything.
+   Why: a stratagem goes to the graveyard as it is played, so it can only react when played, straight
+   after (from the graveyard: follow-ups, Faith, Spirit Stone, "for each one that dies"), or while it sits
+   in a hand. Unit keywords (Strike, Slay, Mob ...) are only resolved for cards on the board. */
+const SPECIAL_TYPES = ["OffensiveCard", "DefensiveCard", "Sabotage"];
+const TEMPLATES = [
+  { id: "troop", label: "Troop", kind: "troop", text: "A unit that is deployed to the battlefield." },
+  { id: "hero", label: "Warlord", kind: "hero", text: "The warlord a deck is built around." },
+  { id: "stratagem", label: "Stratagem", kind: "tactic", played: true, types: "family",
+    text: "A card the player puts in a deck and plays. It always has a \u201cWhen this is played\u201d ability; more can follow it (follow-ups, Faith, Oath ...)." },
+  { id: "talent", label: "Talent card", kind: "tactic", played: true, token: true, ephemeral: true, types: "family",
+    text: "A card a warlord's Talent adds to the hand. Created by a card, always Ephemeral (all 92 official ones are). Give your warlord a Talent ability that adds this card." },
+  { id: "defence", label: "Defence card", kind: "tactic", played: true, token: false, type: "DefensiveCard",
+    text: "The card a deck uses when it goes second, picked in the deck editor's own slot." },
+  { id: "offence", label: "Offence card", kind: "tactic", played: true, token: true, type: "OffensiveCard",
+    text: "A card the player going first can pick at the start of a battle. Effects that last all battle (weather, turn start or end, skulls) go on an Enchantment card that this one attaches." },
+  { id: "enchantment", label: "Enchantment", kind: "tactic", keepKind: true, token: true, ench: true, types: "ench",
+    text: "A hidden card another card attaches with an \u201cAttach an enchantment\u201d buff. Its abilities act for the card it is attached to; its cost, stats and text are not used. Battlefield effects (turn start or end, earning a skull) are enchantments." },
+  { id: "sabotage", label: "Sabotage card", kind: "tactic", played: true, token: true, type: "Sabotage", hand: true,
+    text: "A card another card puts into the enemy's hand. Its abilities work while it sits in that hand (e.g. at the end of the turn), like Poisoned Supplies." }
+];
+function tmpl() { return TEMPLATES.find(t => t.id === state.template) || TEMPLATES[0]; }
+function stratLike() { const t = tmpl(); return t.kind === "tactic" && !t.ench; }
+function templateOf(c) {
+  if (c.enchantment) return "enchantment";          // usually a stratagem; two official ones are troops
+  if (c.kind === "hero") return "hero";
+  if (c.kind !== "tactic") return "troop";
+  const st = c.stratagemType || "Normal";
+  if (st === "DefensiveCard") return "defence";
+  if (st === "OffensiveCard") return "offence";
+  if (st === "Sabotage") return "sabotage";
+  if (c.token && (c.traits || []).some(t => t.name === "ephemeral")) return "talent";
+  return "stratagem";
+}
+function typeAllowed(id) {
+  const t = tmpl();
+  if (t.type) return id === t.type;
+  return t.types === "ench" ? id !== "DefensiveCard" && id !== "Sabotage" : !SPECIAL_TYPES.includes(id);
+}
+function setTemplate(id) {                      // the author picked a template
+  const was = tmpl();
+  state.template = id; state.lockedRemoved = false;
+  const t = tmpl();
+  $("f_kind").value = t.kind;
+  if (t.token !== undefined) $("f_token").checked = t.token; else if (was.token !== undefined) $("f_token").checked = false;
+  if (t.type) $("f_stratagemType").value = t.type; else if (!typeAllowed(val("f_stratagemType"))) $("f_stratagemType").value = "Normal";
+  if (was.ephemeral && !t.ephemeral) state.traits = state.traits.filter(x => x.name !== "ephemeral");
+  if (!t.played) for (const ab of state.abilities) delete ab.locked;
+  if (was.hand && !t.hand) for (const ab of state.abilities) if (ab.context === "Hand") ab.context = "";
+  $("f_kind").dispatchEvent(new Event("change"));
+  redraw();
+}
+// Keeps the card in line with its template (called on every redraw). "full" also changes the abilities.
+function enforceTemplate(full) {
+  const t = tmpl();
+  $("f_template").value = t.id; if (!t.keepKind || val("f_kind") === "hero") $("f_kind").value = t.kind; $("tmplHint").textContent = t.text;
+  if (t.token !== undefined) $("f_token").checked = t.token;
+  $("f_enchantment").checked = !!t.ench;
+  if (t.type) $("f_stratagemType").value = t.type;
+  for (const o of $("f_stratagemType").options) o.hidden = !typeAllowed(o.value);
+  if (!typeAllowed(val("f_stratagemType"))) $("f_stratagemType").value = "Normal";
+  if (!full) return;
+  if (t.ephemeral && !ADV && !state.traits.some(x => x.name === "ephemeral")) state.traits.unshift({ name: "ephemeral", value: 0 });
+  if (t.played) {
+    let ab = state.abilities.find(a => a.locked);
+    if (!ab) ab = state.abilities.find(a => a.trigger === "ThisCardPlayed" && !a.keyword && !keywordOf(a));
+    if (ab) ab.locked = true;
+    else if (!state.lockedRemoved || !ADV) { ab = newAbility("ThisCardPlayed", ""); ab.effects = []; ab.locked = true; state.abilities.unshift(ab); state.lockedRemoved = false; }
+    if (ab && t.hand) ab.context = "Hand";
+  }
+  if (t.hand && !ADV) for (const ab of state.abilities) ab.context = "Hand";
+}
+// Triggers a custom ability can use on stratagem-type cards, and where the ability then listens.
+const STRAT_TRIGGERS = [
+  { group: "When played", rank: 0, ctx: "", ids: ["ThisCardPlayed"] },
+  { group: "Straight after it is played (it waits in the graveyard)", rank: 1, ctx: "InPlayOrCementery",
+    ids: ["FollowUpResolution", "UseFaith", "UseSpiritStone", "Codex", "OtherUnitDeath"] },
+  { group: "While it is in your hand", rank: 2, ctx: "Hand",
+    ids: ["WhileInPlayVariable", "OtherUnitSummoned", "OtherUnitDeath", "TurnStart", "TurnEnd", "OtherCardPlayed", "TriggeredCodex"],
+    labels: { WhileInPlayVariable: "Its cost follows a count while in hand" },
+    texts: { WhileInPlayVariable: "A cost that changes with a count while the card waits in your hand, e.g. \u201ccosts 1 less if you control a unit with Stealth\u201d." } }];
+const SABOTAGE_TRIGGERS = [{ group: "While it is in the enemy's hand", rank: 0, ctx: "Hand",
+  ids: ["ThisCardPlayed", "TurnStart", "TurnEnd", "OtherCardPlayed", "OtherUnitSummoned", "OtherUnitDeath", "OtherCardDrawn"] }];
+const ONLY_ENCH_TRIGGERS = ["TriggerEnchantment"];
+// Effects that need this card itself on the board (or to be an enchantment).
+const SELF_ON_BOARD = ["scriptedSelfAttack", "scriptedSelfCardAttackDontCount", "stealMinionSelf", "doDamageAndDestroySelf"];
+function effectAllowed(id) {
+  if (ADV) return true;
+  const t = tmpl();
+  if (id === "removeThisEnchantment") return !!t.ench;
+  return !(stratLike() && SELF_ON_BOARD.includes(id));
+}
+function effectList(current) { return schema.effects.filter(e => e.id === current || effectAllowed(e.id)); }
+function keywordAllowed(id, type) {
+  if (ADV) return true;
+  const t = tmpl();
+  if (t.ench) return true;
+  if (t.kind !== "tactic") return traitDef(id).onlyOn !== "tactic";
+  if (t.id === "stratagem" || t.id === "talent") return type === "action" ? id === "oath" : id === "ephemeral";
+  return false;
 }
 
 /* ---------- keyword types, descriptions and the searchable picker ---------- */
@@ -1047,6 +1158,7 @@ function closePicker() { const p = $("picker"); if (p) p.remove(); }
 function keywordItems(type) {
   return schema.traits.filter(t => kwType(t.id) === type && t.id !== "none" || (type === "static" && t.id === "none" && ADV))
     .filter(t => t.official || ADV || type !== "static" || kwDesc(t.id))
+    .filter(t => keywordAllowed(t.id, type))
     .map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card",
                  off: state.traits.some(x => x.name === t.id) }));
 }
@@ -1055,17 +1167,23 @@ function keywordItems(type) {
 function keywordTrigger(id) { return schema.traits.some(k => k.trigger === id && k.id.toLowerCase() === id.toLowerCase() && kwType(k.id) === "ability"); }
 // Two groups: triggers official cards use, then (advanced options only) the untested ones the game can fire.
 function triggerItems() {
-  return schema.triggers.filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)) && (ADV || t.official))
+  const t = tmpl(), sets = ADV ? null : t.hand ? SABOTAGE_TRIGGERS : stratLike() ? STRAT_TRIGGERS : null;
+  if (sets) return sets.flatMap(g => g.ids.filter(id => schema.triggers.some(x => x.id === id)).map(id => {
+    const d = schema.triggers.find(x => x.id === id);
+    return { id: id + "@" + g.ctx, label: (g.labels || {})[id] || d.label, text: (g.texts || {})[id] || trigDesc(id), note: d.official ? d.official + " official" : "untested", rank: g.rank, group: g.group };
+  }));
+  return schema.triggers.filter(x => ADV || t.ench || !ONLY_ENCH_TRIGGERS.includes(x.id)).filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)) && (ADV || t.official))
     .map(t => t.official ? { id: t.id, label: t.label, text: trigDesc(t.id), note: t.official + " official", rank: 0, group: "Used by official cards" }
                          : { id: t.id, label: t.label, text: trigDesc(t.id), note: "untested", rank: 1, group: "Untested – the game can fire these, but no official card uses them" });
 }
 function actionItems() {
-  const items = schema.traits.filter(t => t.action).map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official + " official" }));
-  if (ADV) items.push({ id: "", label: "Plain action (no keyword)", text: "An action without a keyword, as on one official card (Armorium Cherub).", note: "advanced" });
+  const items = schema.traits.filter(t => t.action && keywordAllowed(t.id, "action")).map(t => ({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official + " official" }));
+  if (ADV && tmpl().kind !== "tactic") items.push({ id: "", label: "Plain action (no keyword)", text: "An action without a keyword, as on one official card (Armorium Cherub).", note: "advanced" });
   return items;
 }
+function splitTrig(v) { const [id, ctx] = String(v).split("@"); return { id, ctx: ctx || "" }; }
 function addEntry(id, tab) {
-  if (tab === "custom") { const ab = newAbility(id, ""); if (WATCHES.test(id)) ab.subject = null; state.abilities.push(ab); keywordFor(ab); }
+  if (tab === "custom") { const tc = splitTrig(id); id = tc.id; const ab = newAbility(id, ""); if (tc.ctx) ab.context = tc.ctx; if (WATCHES.test(id)) ab.subject = null; state.abilities.push(ab); keywordFor(ab); }
   else if (tab === "action") { if (state.action) return say("A card has only one action. Remove the current one first.", "bad"); state.action = newAction(id); }
   else { state.traits.push({ name: id, value: 0 }); abilityFor(id); }
   redraw();
@@ -1329,7 +1447,7 @@ function drawEffect(ab, fx, i) {
     || (uses("summon") && isSet(fx.summon));
   return el("div", { class: "effect" },
     el("div", { class: "row" },
-      field("Effect " + (i + 1), sel(schema.effects, fx.effect, v => { fx.effect = v; }, true), true),
+      field("Effect " + (i + 1), sel(effectList(fx.effect), fx.effect, v => { fx.effect = v; }, true), true),
       has("amount") ? field("Amount", num(fx.amount, v => { fx.amount = v; }, -30, 60)) : null,
       has("amountMax") || uses("damage") || uses("heal") ? field("Up to (0 = fixed)", num(fx.amountMax, v => { fx.amountMax = v; }, 0, 60)) : null,
       has("count") ? field("How many", num(fx.count, v => { fx.count = v; }, 1, 10)) : null,
@@ -1579,12 +1697,14 @@ function drawAbilityPick(ab) {
 function orphanPick() { return state.choose != null && !pickOwner(); }
 // A custom ability: no keyword, the author picks the trigger.
 function setTrigger(ab, v) {
+  const tc = splitTrig(v); v = tc.id; if (tc.ctx || stratLike()) ab.context = tc.ctx;
   if (WATCHES.test(ab.trigger) && !WATCHES.test(v)) ab.subject = null;
   ab.trigger = v; ab.keyword = ""; keywordFor(ab);
 }
 function drawCustomEntry(ab, i) {
   const st = trigStatus(ab.trigger);
   const troopPlay = val("f_kind") === "troop" && ab.trigger === "ThisCardPlayed" && schema.traits.some(t => t.id === "rally");
+  if (ab.locked) return drawLockedEntry(ab, i);
   const b = el("div", { class: "box" },
     el("div", { class: "entryHead" },
       el("span", { class: "kind custom", text: "Custom" }),
@@ -1598,6 +1718,25 @@ function drawCustomEntry(ab, i) {
   if (ab.condition) b.append(el("p", { class: "hint", text: `This ability still has an old free-text condition the game never read ("${ab.condition}"). It is dropped when the card is saved; use the ability's "when" settings for a real condition.` }));
   if (ab.keyword) b.append(el("p", { class: "hint", text: `Also shown as ${lab(schema.traits, ab.keyword)} (a second ability under the same keyword).` }));
   else if (troopPlay) b.append(el("p", { class: "hint", text: "On official troops a \"when played\" ability is always a Rally ability. To make this one Rally, add the Rally keyword instead." }));
+  const pk = drawAbilityPick(ab); if (pk) b.append(pk);
+  const subj = drawSubject(ab); if (subj) b.append(subj);
+  b.append(drawAbilityOptions(ab));
+  ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
+  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
+  return b;
+}
+
+// The "When this is played" ability every played stratagem has: always first, trigger fixed.
+function drawLockedEntry(ab, i) {
+  const t = tmpl();
+  const b = el("div", { class: "box" },
+    el("div", { class: "entryHead" },
+      el("span", { class: "kind ability", text: "Always" }),
+      el("strong", { text: t.hand ? "When this is played (it works from the enemy's hand)" : "When this is played" }),
+      el("span", { class: "spacer" }),
+      ADV ? el("button", { class: "small danger", text: "Remove", title: "Only a few hidden official cards have no \u201cwhen played\u201d ability",
+        onclick: () => { state.abilities.splice(i, 1); state.lockedRemoved = true; redraw(); } }) : null),
+    el("p", { class: "hint pickDesc", text: `Every ${t.label.toLowerCase()} has this ability. Leave it without effects if the card should do nothing when played; add more abilities below for follow-ups, Faith and the like.` }));
   const pk = drawAbilityPick(ab); if (pk) b.append(pk);
   const subj = drawSubject(ab); if (subj) b.append(subj);
   b.append(drawAbilityOptions(ab));
@@ -1726,7 +1865,7 @@ function collect() {
   const c = { name: val("f_name").trim(), kind, army: val("f_army"), rarity: val("f_rarity"), cost: ival("f_cost"),
               text: val("f_text"), art: cardIds[val("f_art")] || val("f_art"), lore: val("f_lore").trim(), designNotes: val("f_designNotes"), token: $("f_token").checked || ench,
               traits: state.traits.map(t => Object.assign({ name: t.name, value: t.value || 0 }, t.hidden ? { hidden: true } : {})),
-              abilities: state.abilities.map(trimAbility) };
+              abilities: state.abilities.filter(a => !(a.locked && !a.effects.length)).map(trimAbility) };
   if (ench) c.enchantment = true;
   if (state.choose) c.choose = cleanTargets(state.choose); else if (state.choose === false) c.choose = false;
   if (state.action) {
@@ -2030,12 +2169,14 @@ function drawNative() {
   $("native").textContent = JSON.stringify(showAllFields ? c.native : compact(c.native), null, 1);
 }
 function redraw(light) {
-  const tactic = val("f_kind") === "tactic";
-  $("statRow").classList.toggle("hidden", tactic && !state.more.unitStats); $("stratRow").classList.toggle("hidden", !tactic);
-  // warlords can be tokens too (10 official ones are only created by other cards), but never enchantments
-  const hero = val("f_kind") === "hero"; $("enchRow").classList.toggle("hidden", hero);
-  if (hero) $("f_enchantment").checked = false;
-  if ($("f_enchantment").checked) { $("f_token").checked = true; $("f_token").disabled = true; } else $("f_token").disabled = false;
+  enforceTemplate(!light);
+  const t = tmpl(), tactic = val("f_kind") === "tactic";
+  $("statRow").classList.toggle("hidden", tactic && !state.more.unitStats);
+  // the game's stratagem type: fixed by some templates, a family label (advanced) for the others
+  $("stratRow").classList.toggle("hidden", !tactic || !!t.type || !(ADV || val("f_stratagemType") !== "Normal"));
+  // the template sets the enchantment tick; the "created by a card" tick is the author's for troops, warlords and stratagems
+  $("enchRow").classList.add("hidden");
+  $("tokenRow").classList.toggle("hidden", t.token !== undefined); $("f_token").disabled = t.token !== undefined;
   if (!light) {
     ensurePick(state, cardPickEffects());
     if (state.action) ensurePick(state.action, state.action.effects);
@@ -2056,6 +2197,7 @@ function fill(c) {
   $("f_stratagemType").value = c.stratagemType || "Normal"; $("f_art").value = cardNames[c.art] || c.art || "";
   $("f_text").value = c.text || ""; $("f_lore").value = c.lore || ""; $("f_designNotes").value = c.designNotes || ""; $("f_token").checked = !!c.token && !c.enchantment; $("f_enchantment").checked = !!c.enchantment;
   state.traits = (c.traits || []).map(t => ({ name: t.name, value: t.value || 0, hidden: !!t.hidden }));
+  state.template = templateOf(c); state.lockedRemoved = false;
   fillAction(c);
   state.abilities = (c.abilities || []).map(mergeAbility);
   state.choose = c.choose === false ? false : c.choose && typeof c.choose === "object" ? mergeTargets(c.choose) : null;
@@ -3252,6 +3394,7 @@ async function start() {
       if (c.enchantment) $("enchList").append(el("option", { value: shown }));
     }
   } catch (e) { return say("The creator could not load its menus from the server: " + e.message, "bad"); }
+  options($("f_template"), TEMPLATES); $("f_template").addEventListener("change", e => setTemplate(e.target.value));
   options($("f_kind"), schema.kinds); options($("f_army"), schema.armies); options($("f_rarity"), schema.rarities);
   options($("f_keyword"), schema.keywords, false, "none"); options($("f_stratagemType"), schema.stratagemTypes);
   try { localStorage.removeItem("creator.key"); } catch (x) {}      // staff keys are gone; roles belong to accounts now
