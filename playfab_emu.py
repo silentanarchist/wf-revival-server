@@ -1004,6 +1004,54 @@ def _site_patch_running_server():
 _site_patch_running_server()
 
 
+def _server_log_setup():
+    """Keeps everything the server prints in logs/server.log as well (a new file each night, two weeks
+    kept, like photon.log, whose own lines stay out of it), so errors can be read after the window has
+    scrolled. Also answers the request errors Python prints in the window by itself: a client that hangs
+    up mid-request (an https connection dropped, often a scanner sending something that is not a web
+    request) is noted in one line; anything else goes to the log with its full traceback. Done in this
+    file, which reloads itself, so no restart is needed; each step is done once per server process."""
+    import socketserver
+    import ssl
+    import sys
+    from logging.handlers import TimedRotatingFileHandler
+    root = logging.getLogger()
+    if not root.handlers:
+        # loaded before warpforge_server.py set up its console log: set it up the same way now,
+        # since its basicConfig does nothing once the root logger has a handler
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if not any(getattr(h, "_revival_server_log", False) for h in root.handlers):
+        try:
+            main = sys.modules.get("__main__")
+            base = os.path.dirname(os.path.abspath(getattr(main, "__file__", None) or __file__))
+            folder = os.path.join(base, "logs")
+            os.makedirs(folder, exist_ok=True)
+            handler = TimedRotatingFileHandler(os.path.join(folder, "server.log"), when="midnight", backupCount=14, encoding="utf-8")
+            handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+            handler.addFilter(lambda record: not record.name.startswith("photon"))
+            handler._revival_server_log = True
+            root.addHandler(handler)
+            log.info("server log: also written to %s", os.path.join(folder, "server.log"))
+        except OSError as e:
+            log.warning("server log: could not open logs/server.log: %s", e)
+    if not getattr(socketserver.BaseServer, "_revival_quiet_errors", False):
+        def handle_error(self, request, client_address):
+            kind, value = sys.exc_info()[:2]
+            where = client_address[0] if isinstance(client_address, tuple) and client_address else "?"
+            if kind is not None and issubclass(kind, (ssl.SSLError, ConnectionError, TimeoutError)):
+                logging.getLogger("warpforge").info("%s hung up mid-request (%s: %s)", where, kind.__name__, value)
+            else:
+                logging.getLogger("warpforge").error("request from %s failed", where, exc_info=True)
+        socketserver.BaseServer.handle_error = handle_error
+        socketserver.BaseServer._revival_quiet_errors = True
+
+
+try:
+    _server_log_setup()
+except Exception:                         # never let the log setup stop the game API from loading
+    log.exception("server log setup failed")
+
+
 class PlayFabEmulator:
     def __init__(self, data_root, content_root, log_dir):
         self.content_root = content_root
