@@ -160,7 +160,13 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <h3>Keep the app's signing key</h3>
 <p>The first patch makes a signing key inside the app. Every later patch has to use the same key, or the game has to be removed again. Press <strong>Save a copy of the signing key</strong> and keep the file somewhere private. If you ever reinstall the app, <strong>Load a saved signing key</strong> puts it back. Never share that file.</p>
 <h3>If something goes wrong</h3>
-<p>Press <strong>Share logs</strong> in the app and send the file to whoever is helping you. It holds the app's log, the loader's log and the mod's settings, never your game login. It can still contain your player id and the server address, so do not post it publicly.</p>
+<p>Send the logs: they show whoever is helping you what happened.</p>
+<ol>
+<li>Right after the problem, open <strong>Warpforge Patcher</strong>. Do it before you start the game again: every start of the game replaces the loader's log.</li>
+<li>Press <strong>Share logs</strong>. Android's share menu opens with one zip file.</li>
+<li>Pick Discord (or email) and send it in a direct message to whoever is helping you, with a line on what happened and your phone model.</li>
+</ol>
+<p>The zip holds the app's log, the loader's log and the mod's settings, never your game login. It can still contain your player id and the server address, so do not post it in a public channel.</p>
 <ul>
 <li><strong>Not enough free space:</strong> the app says how much it needs. Free some space and press the button again.</li>
 <li><strong>"The data pack is missing":</strong> start the original game once so Android finishes downloading it, then try again.</li>
@@ -286,7 +292,7 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <li><strong>MuMu did not install the <code>.xapk</code> when you dropped it:</strong> open Warpforge Patcher, press <strong>Patch from a backup file</strong> and pick the <code>.xapk</code> (MuMu puts dropped files in its shared folder or in Download).</li>
 <li><strong>Connection error at the title screen:</strong> press <strong>Update the mod only</strong> in the app, or check the server is up.</li>
 <li><strong>Black screen during a match:</strong> turn on the game's <strong>Settings &gt; Graphics &gt; Extended compatibility</strong> and restart it.</li>
-<li><strong>Anything else:</strong> press <strong>Share logs</strong> in the app and send the file to whoever is helping you. It never includes your game login, but it can contain your player id, so do not post it publicly.</li>
+<li><strong>Anything else:</strong> right after the problem, before you start the game again, open Warpforge Patcher and press <strong>Share logs</strong>. Send the zip in a direct message to whoever is helping you, with a line on what happened. It never includes your game login, but it can contain your player id, so do not post it in a public channel.</li>
 </ul>
 <p>Prefer the old way with adb and the PC scripts? The <a href="#android">Android phone: with a PC</a> guide still works for MuMu: connect with <code>adb connect 127.0.0.1:16384</code> and run the scripts as for a phone.</p>
 </section>

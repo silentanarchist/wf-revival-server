@@ -892,7 +892,7 @@ SITE_PAGES = {
     "/terms": "terms.html",                       # Terms and Privacy: open to everyone, no account needed
     **{p: "creator.html" for p in (
         "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
-        "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads",
+        "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/unreleased",
         "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu")},
 }
 # Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
@@ -3445,6 +3445,22 @@ class PlayFabEmulator:
                 return err("NotFound", "no official card has that id")
             return ok(dict(one, id=str(card_id)))
         return ok({"cards": self._official.get("cards") or []})
+
+    def api_Revival_CreatorUnreleased(self, req, headers):
+        """Admin > Unreleased cards: the cards that only exist as text in the game (names and rules text
+        Everguild wrote but never turned into card data), from content/unreleased-cards.json. Admins only."""
+        if self._creator_role(req) < 2:
+            return err("NotAuthorized", "only admins can see the unreleased cards")
+        path = os.path.join(self.content_root, "unreleased-cards.json")
+        try:
+            stamp = os.path.getmtime(path)
+            if getattr(self, "_unreleased_stamp", None) != stamp:
+                with open(path, encoding="utf-8") as f:
+                    self._unreleased = json.load(f)
+                self._unreleased_stamp = stamp
+        except (OSError, ValueError):
+            return err("NotFound", "the unreleased card list is not on this server")
+        return ok({"cards": self._unreleased.get("cards") or [], "keywords": self._unreleased.get("keywords") or {}})
 
     def api_Revival_CreatorPeople(self, req, headers):
         """Every account with its permissions and number of cards (admins only)."""

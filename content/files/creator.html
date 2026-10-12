@@ -111,6 +111,8 @@
   #msg.ok { display: flex; background: #1f3d22; color: var(--ok); } #msg.bad { display: flex; background: #45211c; color: var(--bad); }
   #msg.info { display: flex; background: #1c2f40; color: var(--accent2); }
   /* Guides page: the text comes from content/files/guides.html (Revival/Guides) */
+  .unrel { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .unrelCard .text { white-space: pre-line; margin: 6px 0; } .unrelCard .text b { color: var(--accent); cursor: help; }
   .list.slim .item { padding: 6px 0; } .list.slim .item .actions { gap: 8px; }
   .guides { max-width: 860px; line-height: 1.6; }
   .guides h1 { font: 600 24px/1.2 Georgia, serif; margin: 6px 0; }
@@ -260,6 +262,7 @@
   <a id="tabUploads" href="/uploads" class="hidden">Uploaded artwork</a>
   <a id="tabList" href="/review" class="hidden">Review queue</a>
   <a id="tabCards" href="/cards" class="hidden">Card viewer</a>
+  <a id="tabUnreleased" href="/unreleased" class="hidden">Unreleased cards</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
 </nav>
 <nav id="guideTabs" class="sub hidden">
@@ -541,6 +544,17 @@
       <p class="hint">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
       <p class="hint" id="peopleHint"></p>
       <div class="list" id="people"></div>
+    </section>
+  </div>
+
+  <div id="viewUnreleased" class="hidden">
+    <section>
+      <h2>Unreleased cards</h2>
+      <p class="hint">Cards that only exist as text in the game: names and rules text Everguild wrote but never turned into card data, so they were never playable. <strong>Unreleased</strong> ones were still being made (mostly Emperor's Children and Goff Orks); <strong>old versions</strong> are earlier wordings of cards that changed. Taken from the game's own English text. Ideas for custom cards.</p>
+      <div class="row"><div class="field grow"><label>Search</label><input id="unrelQuery" placeholder="name, rules text or army"></div>
+        <div class="field"><label>Show</label><select id="unrelShow"><option value="">All</option><option value="Unreleased (text only)">Unreleased</option><option value="Old version (text only)">Old versions</option></select></div></div>
+      <p class="hint" id="unrelCount"></p>
+      <div class="unrel" id="unrelList"></div>
     </section>
   </div>
 
@@ -1734,7 +1748,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -2177,6 +2191,41 @@ async function setAccount(name, change, done) {
   catch (x) { say("Not changed: " + x.message, "bad"); }
   loadPeople(); loadList();
 }
+// Unreleased cards (admins): text-only cards from the game's own English text, read-only.
+let unrel = null, unrelGloss = {};
+async function loadUnreleased() {
+  if (!unrel) {
+    try { const d = await call("CreatorUnreleased"); unrel = d.cards; unrelGloss = d.keywords || {}; }
+    catch (e) { return say("Could not load the unreleased cards: " + e.message, "bad"); }
+  }
+  drawUnreleased();
+}
+function richText(text) {             // **Keyword** in bold with its explanation on hover; everything as text, never HTML
+  const out = el("div", { class: "text" });
+  String(text || "").split(/\*\*(.+?)\*\*/).forEach((part, i) => {
+    if (i % 2) out.append(el("b", { text: part, title: unrelGloss[part] || "" }));
+    else if (part) out.append(document.createTextNode(part));
+  });
+  return out;
+}
+function drawUnreleased() {
+  if (!unrel) return;
+  const q = val("unrelQuery").trim().toLowerCase(), show = val("unrelShow");
+  const list = unrel.filter(c => (!show || c.status === show) &&
+    (!q || [c.name, c.text, c.army, c.lore].some(x => String(x || "").toLowerCase().includes(q))));
+  list.sort((a, b) => a.status.startsWith("Old") - b.status.startsWith("Old"));   // unreleased first, old versions after
+  $("unrelCount").textContent = `${list.length} of ${unrel.length} cards`;
+  const box = $("unrelList"); box.textContent = "";
+  for (const c of list) {
+    const stats = [c.type, c.cost != null ? c.cost + " energy" : "", c.melee != null ? `${c.melee} melee / ${c.ranged} ranged / ${c.hp} health` : "", c.rarity].filter(Boolean).join(" · ");
+    box.append(el("div", { class: "box unrelCard" + (c.status.startsWith("Old") ? " old" : "") },
+      el("div", { class: "head" }, el("strong", { text: c.name }), el("span", { class: "spacer" }),
+        el("span", { class: "badge " + (c.status.startsWith("Old") ? "draft" : "pending"), text: c.status.startsWith("Old") ? "Old version" : "Unreleased" })),
+      el("div", { class: "hint", text: (c.army && c.army !== "?" ? c.army : "Army unknown") + (stats ? " · " + stats : "") }),
+      c.text ? richText(c.text) : el("p", { class: "hint", text: "No rules text in the game, only the name." }),
+      c.lore ? el("details", {}, el("summary", { text: "Lore" }), el("p", { text: c.lore })) : null));
+  }
+}
 // Requests: accounts waiting for access, a page at a time (the server sends only names and dates).
 const REQ_PAGE = 50;
 let reqOffset = 0, reqTimer = 0, reqShown = [];
@@ -2584,7 +2633,7 @@ async function loadList() {
     if (!me && session()) setSession("");
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
-    for (const t of ["People", "Requests", "Moderation", "Uploads", "Cards"]) $("tab" + t).classList.toggle("hidden", role < 2);
+    for (const t of ["People", "Requests", "Moderation", "Uploads", "Cards", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
     $("tabAdmin").classList.toggle("hidden", !role);              // reviewers: Admin holds only the review queue
     $("tabAdmin").href = role >= 2 ? "/people" : "/review";
     if (role >= 2) loadRequestCount();
@@ -2594,7 +2643,7 @@ async function loadList() {
     const founder = !!(d.account && d.account.fixed);
     $("tabServer").classList.toggle("hidden", !founder);
     if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
-    if (role < 2 && ["People", "Requests", "Moderation", "Uploads"].some(v => !$("view" + v).classList.contains("hidden"))) show(role ? "List" : "Mine");
+    if (role < 2 && ["People", "Requests", "Moderation", "Uploads", "Unreleased"].some(v => !$("view" + v).classList.contains("hidden"))) show(role ? "List" : "Mine");
     $("tabList").classList.toggle("hidden", !role);
     if (role < 2 && !$("viewCards").classList.contains("hidden")) show(role ? "List" : "Create");   // card viewer: admins for now
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
@@ -2610,9 +2659,9 @@ async function loadList() {
 const CREATOR_GROUP = ["Create", "Mine", "Examples", "Keywords", "Artwork", "Rules"];
 let lastCreatorPage = "Create";
 // The Admin tab opens its own ribbon: admins see every page, reviewers only the review queue.
-const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Cards", "Server"];
+const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Cards", "Unreleased", "Server"];
 let lastAdminPage = "";
-const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
 const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu" };
@@ -2646,8 +2695,8 @@ function show(which, replace) {                // a page name from PAGES
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   const inAdmin = ADMIN_GROUP.includes(which);
@@ -2669,6 +2718,7 @@ function show(which, replace) {                // a page name from PAGES
   if (which === "Requests") loadRequests();
   if (which === "Moderation") { loadReports(); loadBans(val("banQuery").trim()); loadWords(); }
   if (which === "Uploads") loadUploads();
+  if (which === "Unreleased") loadUnreleased();
   if (which === "Rules") loadRules();
   if (which === "Bugs") loadBugs();
   if (which === "Server") loadServer();
@@ -2740,6 +2790,7 @@ async function start() {
   $("reqPrev").onclick = () => { reqOffset = Math.max(0, reqOffset - REQ_PAGE); loadRequests(); };
   $("reqNext").onclick = () => { reqOffset += REQ_PAGE; loadRequests(); };
   $("reqApproveAll").onclick = approveShown;
+  $("unrelQuery").addEventListener("input", drawUnreleased); $("unrelShow").onchange = drawUnreleased;
   $("tabGuides").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGuidePage); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's

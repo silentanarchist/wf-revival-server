@@ -23,6 +23,7 @@ content/files/card-art.zip
 content/files/card-frames/
 content/files/card-masks.zip
 content/creator-official.json
+content/unreleased-cards.json
 # python
 __pycache__/
 *.pyc
