@@ -1674,6 +1674,8 @@ class PlayFabEmulator:
                 return err("InvalidPassword", "wrong password")
             if self._creator_perms(user)["access"] == "banned":
                 return err("AccountBanned", "this account has been banned")
+            if user.get("deleteSticks") and user.get("deleteAt"):
+                return err("AccountBeingDeleted", "this account was banned and is being deleted", 1002, 403)
             if self._terms_missing(user):
                 if req.get("agreeTerms") is not True:
                     return err("TermsNotAgreed", "the Terms and Privacy notice have changed - read them and agree to carry on", 1002, 403)
@@ -1749,6 +1751,10 @@ class PlayFabEmulator:
         """Marks the account for deletion and signs it out everywhere (the caller saves)."""
         user["deleteAt"] = self._iso_in(self.DELETE_DAYS * 86400)
         user["deleteAsked"], user["deleteBy"] = now_iso(), by
+        # owner's rule (2026-10-11, in the Terms): deleting an account that is banned at the time
+        # cannot be undone by the account itself, not even after an unban; only staff ("Keep account")
+        if self._creator_perms(user)["access"] == "banned":
+            user["deleteSticks"] = True
         user["sessions"] = []
         for k in ("gameLoginHash", "gameLoginAt", "gameLogins"):
             user.pop(k, None)
@@ -1756,11 +1762,12 @@ class PlayFabEmulator:
             self.store.sign_out(pfid, "This account is being deleted. Sign in again with your password within %d days to keep it." % self.DELETE_DAYS)
 
     @staticmethod
-    def _account_delete_cancel(user):
-        """True when a deletion was waiting and is now cancelled."""
-        if not user.get("deleteAt"):
+    def _account_delete_cancel(user, by_staff=False):
+        """True when a deletion was waiting and is now cancelled. A sticking deletion (the account was
+        banned when it was asked for) is cancelled only by staff."""
+        if not user.get("deleteAt") or (user.get("deleteSticks") and not by_staff):
             return False
-        for k in ("deleteAt", "deleteAsked", "deleteBy"):
+        for k in ("deleteAt", "deleteAsked", "deleteBy", "deleteSticks"):
             user.pop(k, None)
         return True
 
@@ -1818,6 +1825,10 @@ class PlayFabEmulator:
                     log.exception("could not finish deleting the account %s", key)
             if done:
                 self._creator_users_save(users)
+            try:
+                self._bugs_prune_closed()
+            except Exception:
+                log.exception("could not tidy the attachments of closed bug reports")
         return done
 
     def _account_erase(self, users, key):
@@ -2257,6 +2268,45 @@ class PlayFabEmulator:
             r["history"] = r["history"][-100:]
             self._bug_save(r)
         return ok({"id": r["id"], "status": r["status"]})
+
+    # Attachments of closed reports (log, screenshot, crash dump) are removed 30 days after the report
+    # was closed; the report itself stays. Owner's decision 2026-10-11 (security review #24), in the Terms.
+    BUG_CLOSED = ("verified", "cantrepro", "wontfix", "duplicate")
+    BUG_ATTACHMENT_DAYS = 30
+
+    def _bug_closed_since(self, r):
+        """When the report entered its current closed state (ISO time), or None while it is open."""
+        if r.get("status") not in self.BUG_CLOSED:
+            return None
+        since = None
+        for h in r.get("history") or []:
+            st = h.get("status")
+            if st in self.BUG_CLOSED:
+                since = since or h.get("at")
+            elif st:
+                since = None
+        return since or r.get("updated")
+
+    def _bugs_prune_closed(self):
+        """Removes the attachments of reports closed for 30 days or more (the caller holds the store lock)."""
+        cutoff = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - self.BUG_ATTACHMENT_DAYS * 86400))
+        d = self._bugs_dir()
+        for e in self._bugs_index():
+            r = self._bug_load(str(e.get("id") or ""))
+            if not r or not r.get("files"):
+                continue
+            since = self._bug_closed_since(r)
+            if not since or str(since)[:19] > cutoff:
+                continue
+            for name in os.listdir(os.path.join(d, r["id"])):
+                if name != "report.json":
+                    try:
+                        os.remove(os.path.join(d, r["id"], name))
+                    except OSError:
+                        pass
+            r["files"], r["attachmentsRemoved"] = {}, now_iso()
+            self._bug_save(r)
+            log.info("bug report %s: attachments removed (closed since %s)", r["id"], since)
 
     def _bugs_forget_author(self, names):
         """Account deletion: the author's attachments go, the reports stay as from "deleted account"."""
@@ -2786,6 +2836,8 @@ class PlayFabEmulator:
                     return err("InvalidPassword", "wrong username or password")
                 if self._creator_perms(user)["access"] == "banned":
                     return err("AccountBanned", "this account has been banned")
+                if user.get("deleteSticks") and user.get("deleteAt"):
+                    return err("AccountBeingDeleted", "this account was banned and is being deleted", 1002, 403)
                 if user.get("player") and user["player"] != pfid:
                     return err("InvalidParams", f"{user['name']} is already linked to another game account")
                 user["player"], user["playerLinkedAt"] = pfid, now_iso()
@@ -3114,6 +3166,8 @@ class PlayFabEmulator:
                 return err("InvalidPassword", "that name and recovery code do not match")
             if self._creator_perms(user)["access"] == "banned":
                 return err("AccountBanned", "this account has been banned")
+            if user.get("deleteSticks") and user.get("deleteAt"):
+                return err("AccountBeingDeleted", "this account was banned and is being deleted", 1002, 403)
             token = uuid.uuid4().hex + uuid.uuid4().hex
             user["salt"] = os.urandom(16).hex()
             user["hash"] = self._creator_hash(new, user["salt"])
@@ -3497,7 +3551,7 @@ class PlayFabEmulator:
             if delete is True and not user.get("deleteAt"):
                 self._account_delete_start(user, me["name"])
                 log.info("account %s will be deleted on %s (asked by %s)", user["name"], user["deleteAt"], me["name"])
-            elif delete is False and self._account_delete_cancel(user):
+            elif delete is False and self._account_delete_cancel(user, by_staff=True):
                 log.info("deletion of the account %s cancelled by %s", user["name"], me["name"])
             user["changedBy"], user["changedAt"] = me["name"], now_iso()
             self._creator_users_save(users)

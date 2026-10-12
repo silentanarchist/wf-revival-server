@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- The server reads this date: changing it asks every account to agree again at its next password sign-in. -->
-<meta name="terms-version" content="2026-10-11">
+<meta name="terms-version" content="2026-10-11.2">
 <title>Terms and Privacy - Warpforge Revival</title>
 <style>
   :root { --bg: #14161a; --panel: #1d2026; --line: #343a45; --text: #e6e3da; --dim: #9aa0aa; --accent: #c9a24a; }
@@ -30,7 +30,7 @@
 <header><a href="/">Warpforge Revival</a></header>
 <main>
 <h1>Terms and Privacy notice</h1>
-<p class="dim">Last changed 11 October 2026. When these change, you are asked to agree again the next time you sign in with your password.</p>
+<p class="dim">Last changed 11 October 2026 (evening: bug report attachments are now removed 30 days after a report is closed; deleting a banned account cannot be cancelled). When these change, you are asked to agree again the next time you sign in with your password.</p>
 
 <div class="box">
 <p><strong>In short:</strong> Warpforge Revival is a free fan project run by volunteers. You need to be 16 or older. Be decent in chat
@@ -87,7 +87,7 @@ for any loss that causes. We will try to give notice on Discord before anything 
 <tr><td>Chat reports (who reported whom, and the message)</td><td>Moderation</td><td>The newest 500 reports on the whole server</td></tr>
 <tr><td>Connection logs: your IP address, time, and what was asked for. Device ids are stored only as a fingerprint.</td><td>Keeping the server working and safe</td><td>14 days</td></tr>
 <tr><td>Fingerprints of the addresses you signed in from (not the addresses themselves)</td><td>Stopping password guessing without locking you out</td><td>Your 10 most recent, until you delete your account</td></tr>
-<tr><td>Bug reports you send as a tester: what you type, your device and game details, the game's recent log lines, and (if you leave them ticked) a screenshot and, after a crash, the game's crash dump</td><td>Finding and fixing bugs</td><td>The report as long as the project runs; the log, screenshot and crash dump are seen only by you and the admins (crash dumps only by admins)</td></tr>
+<tr><td>Bug reports you send as a tester: what you type, your device and game details, the game's recent log lines, and (if you leave them ticked) a screenshot and, after a crash, the game's crash dump</td><td>Finding and fixing bugs</td><td>The report as long as the project runs. The log, screenshot and crash dump are removed 30 days after the report is closed (verified fixed, can't reproduce, won't fix or duplicate); until then they are seen only by you and the admins (crash dumps only by admins)</td></tr>
 <tr><td>Backups of the above</td><td>Recovering from mistakes or failures</td><td>The newest 10 nightly backups</td></tr>
 </table>
 
@@ -110,12 +110,13 @@ for any loss that causes. We will try to give notice on Discord before anything 
 <p>On the website, open your <strong>Profile</strong> and choose <strong>Delete my account</strong>. You confirm with your password and your account name.</p>
 <ul>
   <li>Your account is signed out everywhere at once and is deleted after <strong>7 days</strong>. Signing in again within those 7 days cancels the deletion.</li>
+  <li><strong>Exception for banned accounts:</strong> if an account is banned when it is set to be deleted, the deletion cannot be cancelled by signing in or resetting the password, even if the ban is lifted afterwards. Only an admin can stop it.</li>
   <li><strong>Deleted:</strong> your account, your game player (with its decks, collection, progress, friends list and recordings), your drafts and rejected cards and their artwork.</li>
   <li><strong>Changed, not deleted:</strong> your approved cards stay in the game credited to "deleted account"; your chat messages still kept are emptied and shown as from "deleted account"; bug reports you sent stay, without their log, screenshot and crash dump, as from "deleted account".</li>
   <li><strong>Kept:</strong> matches you played against other people stay in their match history. Chat reports and bans stay as moderation records.</li>
   <li>Connection logs and backups that still contain your data are removed as they age out (14 days for logs, about 10 days for backups).</li>
 </ul>
-<p>Admins can also delete an account, following the same steps.</p>
+<p>Admins can also delete an account, following the same steps (and the same exception for banned accounts).</p>
 
 <h2>9. Changes</h2>
 <p>When these terms change, the date at the top changes and you are asked to agree again the next time you sign in with your password.

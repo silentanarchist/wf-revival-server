@@ -1971,7 +1971,8 @@ async function showBug(id) {
   if (files.dump) box.append(el("p", {}, el("button", { class: "small", type: "button", text: "Download crash dump (admins)", onclick: async () => {
     try { const f = await bugFile(r.id, "dump"); const bin = Uint8Array.from(atob(f.data), c => c.charCodeAt(0));
       el("a", { href: URL.createObjectURL(new Blob([bin], { type: f.type })), download: f.name }).click(); } catch (e) { say(sentence(e), "bad"); } } })));
-  if (!files.log && !files.screen && (r.mine || r.admin)) box.append(el("p", { class: "hint", text: "No screenshot or log was sent with this report." }));
+  if (r.attachmentsRemoved) box.append(el("p", { class: "hint", text: "The log, screenshot and crash dump were removed " + r.attachmentsRemoved.slice(0, 10) + ", 30 days after this report was closed." }));
+  else if (!files.log && !files.screen && (r.mine || r.admin)) box.append(el("p", { class: "hint", text: "No screenshot or log was sent with this report." }));
   if (r.admin) {
     const status = el("select", {}); for (const [v, t] of Object.entries(BUG_STATUSES)) status.append(el("option", { value: v, text: t })); status.value = r.status;
     const sev = el("select", {}); for (const [v, t] of Object.entries(BUG_SEVERITIES)) sev.append(el("option", { value: v, text: t })); sev.value = r.severity;
