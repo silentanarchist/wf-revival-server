@@ -304,6 +304,7 @@
   <a id="tabGuideAndroid" href="/guides/android-pc">Android phone: with a PC</a>
   <a id="tabGuideMumu" href="/guides/mumu">MuMu Player</a>
   <a id="tabGuideCreator" href="/guides/creator">Card Creator</a>
+  <a id="tabGuideCardArt" href="/guides/card-art">Card art</a>
 </nav>
 <nav id="creatorTabs" class="sub">
   <a id="tabCreate" href="/creator">Create a card</a>
@@ -500,7 +501,7 @@
     <section id="p_cardArt" class="localArt">
       <h2>Card art from your game</h2>
       <p><span id="laStatus">Checking…</span></p>
-      <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded. The Card viewer and other pages draw official cards with it; without it they show cards without pictures.</p>
+      <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded. The Card viewer and other pages draw official cards with it; without it they show cards without pictures. Step by step for Windows and Android: <a href="/guides/card-art">the card art guide</a>.</p>
         <div class="row" style="align-items:center; gap:10px">
           <label class="button small" style="cursor:pointer">Pick card-art-export.zip<input type="file" id="laFile" accept=".zip,application/zip" style="display:none"></label>
           <button class="small hidden" id="laRemove" type="button">Remove from this browser</button>
@@ -2442,7 +2443,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", GuideCardArt: "/guides/card-art", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -3593,10 +3594,10 @@ let lastCreatorPage = "Create";
 // The Admin tab opens its own ribbon: admins see every page, reviewers only the review queue.
 const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Unreleased", "Server"];
 let lastAdminPage = "";
-const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", GuideCardArt: "Guide: Card art from your game", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
-const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu", GuideCreator: "creator" };
+const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu", GuideCreator: "creator", GuideCardArt: "card-art" };
 let lastGuidePage = "GuideHome", guideParts = null, guideAsk = null;
 async function showGuide(which) {
   if (!guideParts) {
@@ -3628,7 +3629,7 @@ function show(which, replace) {                // a page name from PAGES
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
   for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   const inAdmin = ADMIN_GROUP.includes(which);

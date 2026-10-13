@@ -6,7 +6,7 @@
 <title>Guides - Warpforge Revival</title>
 <!-- Install guides. Not served as a page: the site's Guides tab (signed-in accounts only) asks for it
      through Revival/Guides and shows each <section id> as its own page (/guides, /guides/pc, /guides/phone,
-     /guides/android-pc, /guides/mumu, /guides/creator). The install guides were made from the Discord forum
+     /guides/android-pc, /guides/mumu, /guides/creator, /guides/card-art). The install guides were made from the Discord forum
      guides (the "Warpforge Discord Guides" page): keep the two in step when a guide changes. The Card Creator
      guide (#creator) is made from the "Card Creator guide" doc. -->
 <style>
@@ -40,6 +40,7 @@
   <a href="#android">Android phone (with a PC)</a>
   <a href="#mumu">Android on PC (MuMu Player)</a>
   <a href="#creator">Card Creator</a>
+  <a href="#card-art">Card art</a>
 </nav>
 <main>
 <h1>Install guides</h1>
@@ -52,6 +53,7 @@ Stuck? Ask on our <a href="https://discord.gg/f4N6RU2sYy" rel="noopener">Discord
 <li>Playing on an Android phone: <a href="#phone-app">the patcher app</a> is the easiest; <a href="#android">with a PC</a> is the older way and still works.</li>
 <li>Playing the Android version on a PC through an emulator: <a href="#mumu">MuMu Player</a> (uses the Patcher app too).</li>
 <li>Designing your own cards: <a href="#creator">the Card Creator guide</a>.</li>
+<li>Seeing official card art on this site: <a href="#card-art">export it from your game</a>.</li>
 </ul>
 The same account works everywhere and keeps your decks and progress.
 </div>
@@ -311,150 +313,392 @@ Mods\WarpforgeRevival\manifest.json</pre>
 </section>
 <section id="creator">
 <h2>Card Creator</h2>
-<p>The <a href="/creator">Card Creator</a> is where you design a troop, stratagem or warlord for Warpforge Revival. Reviewers check every card before it goes anywhere near a match.</p>
-
+<p>The <a href="/creator">Card Creator</a> is where you design your own cards for Warpforge Revival. Reviewers check every card before it goes anywhere near a match.</p>
 <h3>Before you start</h3>
 <p>A card moves through these stages:</p>
 <ol>
 <li><strong>Draft:</strong> saved with <strong>Save draft</strong>. Only you can see it.</li>
 <li><strong>Waiting for review:</strong> sent with <strong>Submit for review</strong>.</li>
-<li><strong>Approved</strong> or <strong>Rejected:</strong> a reviewer decides and can leave a note, which you see on the card. A rejected card can be fixed and sent again.</li>
+<li><strong>Approved</strong> or <strong>Rejected:</strong> a reviewer decides and can leave a note, which you see on the card. A rejected card can be fixed and sent again. An approved card can only be changed by an admin.</li>
 <li><strong>Testing, then release:</strong> approved cards go to testers first (the Custom Test mode), then to everyone in the custom mode once they pass. This part is still being set up.</li>
 </ol>
-<p>The Card Creator has six tabs along the top:</p>
+<p>The Card Creator has seven tabs along the top:</p>
 <table>
-<tr><th>Tab</th><th>What it is for</th></tr>
-<tr><td><a href="/creator">Create a card</a></td><td>The editor. Everything below.</td></tr>
-<tr><td><a href="/my-cards">My cards</a></td><td>Your drafts and submitted cards, with their status. Open one to edit it; drafts and rejected cards can be discarded.</td></tr>
-<tr><td><a href="/examples">Examples</a></td><td>Pick a keyword to see official cards that use it, exactly as the game stores them.</td></tr>
-<tr><td><a href="/keywords">Keywords</a></td><td>The keyword cheat sheet (what each keyword does, by faction) and the stratagem type cheat sheet.</td></tr>
-<tr><td><a href="/artwork">Artwork</a></td><td>Sizes, templates, the pop-out mask and a downloadable art kit.</td></tr>
-<tr><td><a href="/rules">Rules</a></td><td>What a card and its artwork must follow. You confirm them before submitting.</td></tr>
+<thead>
+<tr>
+<th>Tab</th>
+<th>What it is for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="/creator">Create a card</a></td>
+<td>The editor. Everything below.</td>
+</tr>
+<tr>
+<td><a href="/my-cards">My cards</a></td>
+<td>Your drafts and submitted cards, with their status. Open one to edit it; drafts and rejected cards can be discarded.</td>
+</tr>
+<tr>
+<td><a href="/examples">Examples</a></td>
+<td>Pick a keyword to see official cards that use it. <strong>Load in editor</strong> puts a copy in the editor as a new card; nothing is saved until you save.</td>
+</tr>
+<tr>
+<td><a href="/cards">Card viewer</a></td>
+<td>Every official card, with how the game builds it. Its pictures come from your own game (see <em>Card art</em> below).</td>
+</tr>
+<tr>
+<td><a href="/keywords">Keywords</a></td>
+<td>The keyword cheat sheet (what each keyword does, by faction) and the stratagem type cheat sheet.</td>
+</tr>
+<tr>
+<td><a href="/artwork">Artwork</a></td>
+<td>Sizes, templates, the pop-out mask and a downloadable art kit.</td>
+</tr>
+<tr>
+<td><a href="/rules">Rules</a></td>
+<td>What a card and its artwork must follow. You confirm them before submitting.</td>
+</tr>
+</tbody>
 </table>
 <p>Limits: a name holds up to 40 characters, the card text and the flavour text up to 300 each, and the notes for the reviewer up to 1,000.</p>
-
 <h3>The Create a card page</h3>
-<p>The page has two columns. On the left you build the card in five sections, top to bottom: <strong>Basics</strong>, <strong>Action</strong>, <strong>Keywords</strong>, <strong>Abilities</strong> and <strong>Card text</strong>. On the right the <strong>Preview</strong> redraws the card as you type and holds the save buttons. Work down the left column in order; the card text comes last because it describes what you built above it.</p>
-
-<h3>Basics</h3>
+<p>The page has two columns. On the left you build the card from top to bottom: <strong>Basics</strong>, the <strong>Show advanced options</strong> switch, <strong>Keywords and abilities</strong>, <strong>Card settings</strong> (advanced options only) and <strong>Card text</strong>. On the right the <strong>Preview</strong> redraws it as you type and holds the save buttons. Work down the left column in order; the card text comes last because it describes what you built above it.</p>
+<h4>Basics</h4>
 <table>
-<tr><th>Field</th><th>What it does</th></tr>
-<tr><td>Name</td><td>The card's name, up to 40 characters.</td></tr>
-<tr><td>Kind</td><td>Troop, Stratagem or Warlord. Choosing Stratagem hides the stat row and shows <strong>Stratagem type</strong>.</td></tr>
-<tr><td>Faction</td><td>One of the 13 factions, or Neutral. Sets the card frame.</td></tr>
-<tr><td>Rarity</td><td>Common, Rare, Epic or Legendary. Sets the frame's tier.</td></tr>
-<tr><td>Cost</td><td>Energy to play it, 0 to 12.</td></tr>
-<tr><td>Melee, Ranged, Health, Armour</td><td>Troops and warlords only. Melee and Ranged 0 to 30, Health 1 to 60, Armour 0 to 30.</td></tr>
-<tr><td>Unit type</td><td>Infantry, Vehicle, Monster, Building, Battlesuit, Drone, Beast or Daemon. Other cards can target by it.</td></tr>
-<tr><td>Created by another card only</td><td>Tick it for a troop or stratagem that another card summons or adds to your hand. It is then left out of the collection and decks.</td></tr>
-<tr><td>This card is an enchantment</td><td>A hidden card that other cards attach with an "Attach an enchantment" buff. It is never played; its abilities act on the card it is attached to.</td></tr>
-<tr><td>Stratagem type</td><td>Stratagems only. A label other cards use to find a family of stratagems. <strong>Use Normal</strong> unless your card belongs to one of the families in the <a href="/keywords">stratagem type cheat sheet</a>.</td></tr>
-<tr><td>Artwork – borrow from an existing card</td><td>Type an official card's name to use its art while you work.</td></tr>
-<tr><td>…or upload your own artwork</td><td>Opens <strong>Place the artwork</strong>: drag to move, the mouse wheel or the <strong>Zoom</strong> slider to scale, <strong>Fit</strong>, <strong>Fill</strong> and <strong>Centre</strong> to snap it. <strong>Use this artwork</strong> saves it at 1024 × 1024.</td></tr>
-<tr><td>Add a pop-out mask</td><td>Troops and warlords only, optional. Lets part of the picture break out over the frame. See the <a href="/artwork">Artwork</a> tab.</td></tr>
+<thead>
+<tr>
+<th>Field</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td>The card's name, up to 40 characters.</td>
+</tr>
+<tr>
+<td>Card template</td>
+<td>What kind of card it is, and what the editor offers for it. A line under the menus describes the template you chose. See the table below.</td>
+</tr>
+<tr>
+<td>Faction</td>
+<td>One of the 13 factions, or Neutral. Sets the card frame.</td>
+</tr>
+<tr>
+<td>Rarity</td>
+<td>Common, Rare, Epic or Legendary. Sets the frame's tier. (Special and None exist for created cards.)</td>
+</tr>
+<tr>
+<td>Cost</td>
+<td>Energy to play it, -1 to 14.</td>
+</tr>
+<tr>
+<td>Melee, Ranged, Health, Armour</td>
+<td>Troops and warlords only.</td>
+</tr>
+<tr>
+<td>Unit type</td>
+<td>Infantry, Vehicle, Monster, Building, Battlesuit, Drone, Beast or Daemon. Other cards can target by it.</td>
+</tr>
+<tr>
+<td>Created by another card only</td>
+<td>Tick it for a troop, warlord or stratagem that another card summons or adds to a hand; it is then kept out of the collection and decks. Shown only for the Troop, Warlord and Stratagem templates; the others set it themselves.</td>
+</tr>
+<tr>
+<td>Artwork – borrow from an existing card</td>
+<td>Type an official card's name to use its art.</td>
+</tr>
+<tr>
+<td>…or upload your own artwork</td>
+<td>Your own picture. Save the card once first. See <em>Card art</em> below.</td>
+</tr>
+<tr>
+<td>Artwork credit</td>
+<td>Appears once you have uploaded a picture: who made it, and an optional link.</td>
+</tr>
+<tr>
+<td>Add a pop-out mask (optional)</td>
+<td>Troops and warlords only. Lets part of the picture break out over the frame.</td>
+</tr>
+</tbody>
 </table>
-
-<h3>Action</h3>
-<p>Something the player chooses to do during their turn. A card has at most one. Press <strong>+ Add an action</strong> to open its box:</p>
+<p><strong>Card template</strong> decides what kind of card it is:</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>What it is</th>
+<th>What the template sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Troop</td>
+<td>A unit deployed to the battlefield.</td>
+<td>Nothing.</td>
+</tr>
+<tr>
+<td>Warlord</td>
+<td>The warlord a deck is built around.</td>
+<td>Nothing.</td>
+</tr>
+<tr>
+<td>Stratagem</td>
+<td>A card you put in a deck and play.</td>
+<td>A locked "When this is played" ability first.</td>
+</tr>
+<tr>
+<td>Talent card</td>
+<td>A card a warlord's Talent adds to the hand.</td>
+<td>Created by a card, always Ephemeral, locked "When this is played". Give your warlord a Talent ability that adds this card.</td>
+</tr>
+<tr>
+<td>Defence card</td>
+<td>The card a deck uses when going second (picked in the deck editor's own slot).</td>
+<td>A locked "When this is played".</td>
+</tr>
+<tr>
+<td>Offence card</td>
+<td>A card the player going first can pick at the start of a battle.</td>
+<td>Created by a card, locked "When this is played". Effects that last all battle (weather, turn start or end, skulls) go on an Enchantment card this one attaches.</td>
+</tr>
+<tr>
+<td>Enchantment</td>
+<td>A hidden card other cards attach with an "Attach an enchantment" buff. Its abilities act for the card it is attached to; its cost, stats and text are not used. Battlefield effects are enchantments.</td>
+<td>Created by a card. Can use field triggers (turn start or end, skull earned) and unit keywords.</td>
+</tr>
+<tr>
+<td>Sabotage card</td>
+<td>A card another card puts into the enemy's hand, which works while it sits there, like Poisoned Supplies.</td>
+<td>Created by a card. Every ability listens from the hand.</td>
+</tr>
+</tbody>
+</table>
+<p>The template also limits the lists to what the game can do for that kind of card. A played stratagem goes to the graveyard at once, so it cannot use unit keywords like Strike or Slay; its extra abilities happen either straight after it is played or while it is in your hand.</p>
+<h4>Show advanced options</h4>
+<p>A switch between Basics and the keywords. Only the tick box itself switches it, and the browser remembers it.</p>
 <ul>
-<li><strong>Kind of action:</strong> Duty, Ferocity, Pray, Agenda, Oath, or a plain action. The card gets that keyword by itself.</li>
-<li><strong>Energy cost to use</strong> (for Oath: <strong>Oath number</strong>, the energy the Oath costs).</li>
-<li><strong>Limits or conditions:</strong> free text for limits the fields cannot express, for example "once per turn".</li>
-<li><strong>Effects:</strong> what the action does. <strong>+ Add effect</strong> adds more, resolved in order.</li>
-<li><strong>What the player picks for the action:</strong> appears once an effect aims at "the chosen target".</li>
+<li><strong>Off (the default):</strong> the editor shows only what official cards use for your choices.</li>
+<li><strong>On:</strong> it also shows rarely used settings (timing, "works while the card is …"), the <strong>Card settings</strong> section, and keywords and triggers no official card uses, at the bottom of each list under "Untested – no official card uses it".</li>
 </ul>
-<p>The box also explains what the game adds for you. For example, a Ferocity troop returns to the deck by itself, so you add only the effect.</p>
-
-<h3>Keywords</h3>
-<p>Press <strong>+ Add keyword</strong> and pick one. The number after each name is how many official cards use it. Each keyword row has:</p>
+<h4>Keywords and abilities</h4>
+<p>One list for everything the card does. <strong>+ Add a keyword or ability</strong> opens a searchable picker. Each entry has a one-line description and how many official cards use it.</p>
+<table>
+<thead>
+<tr>
+<th>Picker tab</th>
+<th>What it holds</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Static</td>
+<td>Keywords that work by themselves. Some take a number.</td>
+<td>Flying, Stealth, Vanguard, Armour 1, Blood Thirst</td>
+</tr>
+<tr>
+<td>Ability</td>
+<td>Keywords that say <em>when</em> something happens. Each opens a box under it for <em>what</em> happens.</td>
+<td>Rally, Strike, Slay, Talent, Codex, Mob</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>Something the player uses during their turn, with its own cost and effects. A card has at most one, and actions only come from this tab.</td>
+<td>Duty, Pray, Oath, Agenda, Ferocity</td>
+</tr>
+<tr>
+<td>Custom (pick a trigger)</td>
+<td>An ability without a keyword: you pick when it happens. Keyword triggers are never here.</td>
+<td>When a unit attacks; at the end of a turn; when another unit dies; Faith; Spirit Stone; "then, after this card's effects"</td>
+</tr>
+</tbody>
+</table>
+<p>Every entry has <strong>Remove</strong>; keywords also have <strong>Official examples</strong>, which opens the Examples tab on that keyword.</p>
+<p>Inside an ability or action:</p>
 <ul>
-<li><strong>Value</strong>, for keywords that carry a number (Blast, and so on).</li>
-<li><strong>works by itself</strong>, for keywords that need nothing else (Flying, Stealth, Vanguard, Ephemeral).</li>
-<li><strong>A box under it</strong>, for keywords that say <em>when</em> something happens (Rally, Talent, Strike, Artifice): fill in <em>what</em> happens there, the same way as an ability.</li>
-<li><strong>Official examples</strong>, which opens the Examples tab on that keyword.</li>
-<li><strong>A warning</strong> when official cards only have that keyword on another kind of card.</li>
+<li><strong>What the player picks:</strong> only on abilities where the player really chooses a unit (when played, Codex, Faith, Spirit Stone, the follow-up, and actions). Its filter decides what can be clicked: Friendly or Enemy, Troops or Warlords, a keyword, a unit type, "only if …". The pick is made once, when the card is played; later abilities on the card reuse it.</li>
+<li><strong>Effects</strong> ("Effect 1", <strong>+ Add effect</strong>, up to 8): the effect, its numbers, and <strong>Who does it affect?</strong> (below).</li>
+<li><strong>More options:</strong> folded extras. Most cards never need them.</li>
+<li><strong>Pray cards:</strong> the "praying state" every official Pray card has shows as one line inside the Pray action.</li>
 </ul>
-
-<h3>Abilities</h3>
-<p>For abilities that belong to no keyword. Press <strong>+ Add ability</strong>. An ability is one trigger followed by one or more effects, resolved in order.</p>
+<p><strong>Who does it affect?</strong> offers different choices depending on the trigger:</p>
+<table>
+<thead>
+<tr>
+<th>The ability is …</th>
+<th>Choose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One where the player picks</td>
+<td>"A unit the player picks" (filter it in the pick box above), or "The picked unit, only if it also matches …" for an extra condition on one effect ("if it is a Vehicle, also stun it").</td>
+</tr>
+<tr>
+<td>Set off by an event about a unit (attacks, Strike, stuns, deaths, Swarm)</td>
+<td>"The unit the event is about (e.g. the unit attacked)", or "That unit, only if it also matches …". Like Venomthrope: destroy any troop attacked.</td>
+</tr>
+<tr>
+<td>Any other trigger (Slay, turn start or end …)</td>
+<td>"Every unit that matches …" or "Random unit(s) that match …", with the filter set there. The player cannot pick here; for a real choice, have the ability add a card (for example an Ephemeral stratagem) whose "When played" has a pick.</td>
+</tr>
+</tbody>
+</table>
+<p>On every ability you can also choose "This card", "Your warlord" or "The enemy warlord" (no filters), the unit that set it off, cards in hand, deck or cemetery that match, and units next to this card or to the picked unit.</p>
+<h4>Card settings (advanced options only)</h4>
+<p>Rare card-level settings a few official cards use: a "Choose one of these" window when played; the player waiting until it has resolved; whether "a random card" effects can create it; collection and decks; attack damage type; keyword hints on the card; a count of its targets on the card in hand; for warlords, a card in the starting hand and a card given when going second. <strong>+ Add an alternative action</strong> is for cards with an action: it is used instead when the action's condition fails, like Wulfen Pack Leader.</p>
+<h4>Card text</h4>
 <ul>
-<li><strong>When:</strong> the trigger. Choices used by many official cards are the safest; ones marked 0 exist in the game but no official card uses them.</li>
-<li><strong>Triggered by which units or cards:</strong> for triggers about another unit ("whenever a friendly troop dies"). Tick Friendly, Enemy, Troops, Warlords, and narrow it by keyword or unit type.</li>
-<li><strong>More options:</strong> where the card must be for it to work, whose turn, timing, whether the play icon shows, a cost in points (faith, spirit stones), "only if" a count or a random roll, "pick one effect at random", and "repeat once for each …".</li>
+<li><strong>Card text:</strong> the rules text printed on the card, up to 300 characters.</li>
+<li><strong>Suggest text from the abilities:</strong> writes a first draft from what you built, with keywords in bold as on official cards, for example <code>**Flying**. **Strike**: Deal 1 damage to the unit it hit.</code> It is a starting point to edit, not a final text.</li>
+<li><strong>Flavour text (optional):</strong> a line of lore, up to 300 characters. Not rules.</li>
+<li><strong>Notes for the reviewer:</strong> never shown on the card, up to 1,000 characters. Anything the editor cannot express, balance thoughts, art ideas.</li>
 </ul>
-<p>Each <strong>effect</strong> has:</p>
+<h4>Preview and saving</h4>
 <ul>
-<li><strong>Effect:</strong> what happens, for example deal damage, heal, buff, summon, draw.</li>
-<li><strong>Amount</strong>, <strong>Up to</strong> (a random range), <strong>How many</strong> and <strong>Which card</strong>, depending on the effect.</li>
-<li><strong>Affects:</strong> who it hits. Pick a group, then <strong>At most</strong> and <strong>If picking some</strong>, the Friendly, Enemy, Troops, Warlords and Stratagems tick boxes, and filters by keyword, unit type or condition. <strong>More filters</strong> has the rarer ones.</li>
-<li><strong>Describe what this should do:</strong> for an effect the fields cannot express. The reviewer reads it.</li>
-<li><strong>More options:</strong> where the amount comes from, damage type, repeat, chance, which player, "only while this card is in play", and "once for each …".</li>
-</ul>
-<p>When any effect aims at "the chosen target", <strong>What the player picks when playing the card</strong> appears under the abilities. Leave it as it is to take the first chosen-target effect's filter, say exactly what may be picked, or let the trigger decide.</p>
-
-<h3>Card text</h3>
-<ul>
-<li><strong>Card text:</strong> the rules text printed on the card, up to 300 characters. How to make keywords bold is under <em>Keywords in card descriptions</em> below.</li>
-<li><strong>Suggest text from the abilities:</strong> writes a first draft of the text from what you built. Check it and add the bold marks yourself.</li>
-<li><strong>Flavour text (optional):</strong> a line of story or a quote, like the lore on official cards, up to 300 characters. Not rules.</li>
-<li><strong>Notes for the reviewer:</strong> never shown on the card. Balance thoughts, art ideas, anything the fields could not express.</li>
-</ul>
-
-<h3>Preview and saving</h3>
-<ul>
-<li><strong>The card</strong>, drawn with the game's own frame and art. Long text gets a smaller font. The in-game layout can differ a little.</li>
+<li><strong>The card</strong>, drawn with the game's own frame. The frames and official art come from your own game's card art export, loaded on your <a href="/profile">Profile</a> page; without it the preview shows an outline. "Art by …" appears under it when uploaded art has a credit.</li>
 <li><strong>This card follows all of the card creator rules:</strong> must be ticked to submit, not to save a draft.</li>
 <li><strong>Submit for review</strong>, <strong>Save draft</strong> and <strong>New card</strong> (clears the editor).</li>
-<li><strong>Faction warning:</strong> a yellow box when the card uses a keyword, trigger or effect from another faction. The game allows it, but such mechanics often do nothing outside their own faction.</li>
-<li><strong>Review note:</strong> the reviewer's note, when there is one.</li>
-<li><strong>Build notes:</strong> after a save, what the server could and could not write into the game's card data.</li>
+<li><strong>Faction warning:</strong> a yellow box when the card uses another faction's mechanic. The game allows it, but such mechanics often do nothing outside their own faction.</li>
+<li><strong>Build notes:</strong> after a save, plain-language warnings from the server, for example "no artwork chosen". Read them before submitting.</li>
 <li><strong>Design data</strong> and <strong>Game data:</strong> the card as the creator stores it and as the game will store it. For checking, not for editing.</li>
 </ul>
-
 <h3>Making a card, step by step</h3>
-<p>An example troop: <strong>Pack Hunter</strong>, a Space Wolves troop that deals 2 damage to an enemy troop when played. The same order works for any card.</p>
+<p>Five short walkthroughs. Each ends the same way: <strong>Suggest text from the abilities</strong>, check the preview, then <strong>Save draft</strong> and read the <strong>Build notes</strong>.</p>
+<h4>A simple troop that damages an enemy when played</h4>
 <ol>
-<li><strong>Find a model card.</strong> In <a href="/examples">Examples</a>, pick the keyword your card is built around (here Rally) and look at how official cards do it. The simplest are listed first.</li>
-<li><strong>Fill in Basics.</strong> Name <em>Pack Hunter</em>, Kind <em>Troop</em>, Faction <em>Space Wolves</em>, Rarity <em>Common</em>, Cost 2, Melee 2, Ranged 0, Health 2, Armour 0, Unit type <em>Infantry</em>.</li>
-<li><strong>Pick the art.</strong> Type an official card's name under <strong>Artwork – borrow from an existing card</strong>, or press <strong>…or upload your own artwork</strong> and place it.</li>
-<li><strong>Add the keyword.</strong> Under <strong>Keywords</strong>, press <strong>+ Add keyword</strong> and pick <strong>Rally</strong>. A box opens under it for what Rally does.</li>
-<li><strong>Build the effect</strong> in that box: <strong>Effect</strong> <em>Deal damage</em>, <strong>Amount</strong> 2; <strong>Affects</strong> <em>The chosen target</em>, with <strong>Enemy</strong> and <strong>Troops</strong> ticked and the rest unticked.</li>
-<li><strong>Check what the player picks.</strong> <strong>What the player picks when playing the card</strong> appears because the effect aims at the chosen target. Leave it on the default.</li>
-<li><strong>Write the card text.</strong> Press <strong>Suggest text from the abilities</strong>, then edit it and mark the keyword: <code>**Rally**: Deal 2 damage to an enemy troop</code>.</li>
-<li><strong>Check the preview.</strong> The name, stats, art and text should look right, with <strong>Rally</strong> in bold. Fix any yellow faction warning, or explain it in the notes.</li>
-<li><strong>Save a draft</strong> to keep it private, then read the <strong>Build notes</strong>. They say whether everything was written into the game data.</li>
-<li><strong>Submit.</strong> Tick <strong>This card follows all of the card creator rules</strong> and press <strong>Submit for review</strong>. Follow it under <a href="/my-cards">My cards</a>.</li>
+<li><strong>Card template</strong> <em>Troop</em>; give it a name, faction, cost and stats.</li>
+<li><strong>+ Add a keyword or ability</strong> &gt; <strong>Static</strong> &gt; <strong>Flying</strong>.</li>
+<li><strong>+ Add a keyword or ability</strong> &gt; <strong>Ability</strong> &gt; <strong>Rally</strong>.</li>
+<li>In the Rally box, <strong>What the player picks:</strong> tick <strong>Enemy</strong> and <strong>Troops</strong>.</li>
+<li><strong>Effect 1:</strong> <em>Deal damage</em>, amount 2. <strong>Who does it affect?</strong> <em>A unit the player picks</em>.</li>
 </ol>
-
+<h4>A stratagem</h4>
+<ol>
+<li><strong>Card template</strong> <em>Stratagem</em>. The locked "When this is played" ability is already there.</li>
+<li>Add its effect and set <strong>What the player picks</strong>.</li>
+<li>Optional follow-up: <strong>+ Add a keyword or ability</strong> &gt; <strong>Custom</strong> &gt; "Then, after this card's effects", for things like "if the target dies, draw a card".</li>
+</ol>
+<h4>A talent card for a warlord</h4>
+<ol>
+<li>Make the talent card first: <strong>Card template</strong> <em>Talent card</em> (Ephemeral is added by itself). Add its effects and save it.</li>
+<li>On the warlord: <strong>Ability</strong> &gt; <strong>Talent</strong>, effect <em>Add a card to your hand</em>, and pick the talent card you saved.</li>
+</ol>
+<h4>"Whenever this unit attacks"</h4>
+<ol>
+<li><strong>+ Add a keyword or ability</strong> &gt; <strong>Custom</strong> &gt; "When a unit attacks".</li>
+<li><strong>Effect 1:</strong> <em>Stun</em>. <strong>Who does it affect?</strong> <em>The unit the event is about (e.g. the unit attacked)</em>.</li>
+</ol>
+<p>The game decides the unit here, so there is no pick box.</p>
+<h4>Learning from an official card</h4>
+<ol>
+<li>Open the <a href="/examples">Examples</a> tab and pick a keyword.</li>
+<li>Press <strong>Load in editor</strong> on a card. A copy opens in the editor as a new card; nothing is saved until you save.</li>
+<li>Look at how it is built, then change it into your own card.</li>
+</ol>
 <h3>Keywords in card descriptions</h3>
 <p>To show a keyword in bold, put two asterisks on each side of it in the card text: <code>**Rally**</code>. This is the same mark the game's own card texts use, on 907 of the 1,217 official cards that have rules text. The preview turns it bold as you type.</p>
 <p>A keyword shows up in two places, and each comes from a different part of the creator:</p>
 <ul>
-<li><strong>Bold in the card text</strong> comes only from the <code>**</code> marks you type in <strong>Card text</strong>.</li>
-<li><strong>The keyword itself</strong>, the one the game acts on and lists beside the unit with what it does, comes from the <strong>Keywords</strong> or <strong>Action</strong> section. Writing <code>**Flying**</code> in the text does not give the card Flying; adding Flying under Keywords does not write it in the text. Do both.</li>
+<li><strong>Bold in the card text</strong> comes only from the <code>**</code> marks in <strong>Card text</strong>. <strong>Suggest text from the abilities</strong> adds them for you; when you write or edit the text yourself, add them by hand.</li>
+<li><strong>The keyword itself</strong>, the one the game acts on and lists beside the unit with what it does, comes from <strong>Keywords and abilities</strong>. Writing <code>**Flying**</code> in the text does not give the card Flying; adding Flying in the picker does not write it in the text. Do both, or use Suggest text and then edit.</li>
 </ul>
 <p><strong>How official cards write it</strong></p>
 <table>
-<tr><th>Case</th><th>Type this</th><th>The card shows</th></tr>
-<tr><td>A keyword on its own</td><td><code>**Flying**. **Stealth**</code></td><td><strong>Flying</strong>. <strong>Stealth</strong></td></tr>
-<tr><td>A keyword with a number</td><td><code>**Armour** 1</code> or <code>**Blast** 2</code></td><td><strong>Armour</strong> 1</td></tr>
-<tr><td>A keyword that starts an effect</td><td><code>**Rally**: Deal 2 damage to an enemy troop</code></td><td><strong>Rally</strong>: Deal 2 damage to an enemy troop</td></tr>
-<tr><td>An action</td><td><code>**Duty**: Deal 3 damage</code> or <code>**Oath** 2: Gain 1 energy</code></td><td><strong>Duty</strong>: Deal 3 damage</td></tr>
-<tr><td>A keyword of two words</td><td><code>**Hunt Mark**</code></td><td><strong>Hunt Mark</strong></td></tr>
-<tr><td>A keyword the card gives</td><td><code>Give **Flank** to a friendly Infantry</code></td><td>Give <strong>Flank</strong> to a friendly Infantry</td></tr>
-<tr><td>A condition or game term</td><td><code>Deal 2 damage to an enemy and **Stun** it</code></td><td>Deal 2 damage to an enemy and <strong>Stun</strong> it</td></tr>
-<tr><td>Several on one card</td><td><code>**Ephemeral**. Your Warlord gains **Invulnerable** until your next turn</code></td><td><strong>Ephemeral</strong>. Your Warlord gains <strong>Invulnerable</strong> until your next turn</td></tr>
+<thead>
+<tr>
+<th>Case</th>
+<th>Type this</th>
+<th>The card shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A keyword on its own</td>
+<td><code>**Flying**. **Stealth**</code></td>
+<td><strong>Flying</strong>. <strong>Stealth</strong></td>
+</tr>
+<tr>
+<td>A keyword with a number</td>
+<td><code>**Armour** 1</code> or <code>**Blast** 2</code></td>
+<td><strong>Armour</strong> 1</td>
+</tr>
+<tr>
+<td>A keyword that starts an effect</td>
+<td><code>**Rally**: Deal 2 damage to an enemy troop</code></td>
+<td><strong>Rally</strong>: Deal 2 damage to an enemy troop</td>
+</tr>
+<tr>
+<td>An action</td>
+<td><code>**Duty**: Deal 3 damage</code> or <code>**Oath** 2: Gain 1 energy</code></td>
+<td><strong>Duty</strong>: Deal 3 damage</td>
+</tr>
+<tr>
+<td>A keyword of two words</td>
+<td><code>**Hunt Mark**</code></td>
+<td><strong>Hunt Mark</strong></td>
+</tr>
+<tr>
+<td>A keyword the card gives</td>
+<td><code>Give **Flank** to a friendly Infantry</code></td>
+<td>Give <strong>Flank</strong> to a friendly Infantry</td>
+</tr>
+<tr>
+<td>A condition or game term</td>
+<td><code>Deal 2 damage to an enemy and **Stun** it</code></td>
+<td>Deal 2 damage to an enemy and <strong>Stun</strong> it</td>
+</tr>
+<tr>
+<td>Several on one card</td>
+<td><code>**Ephemeral**. Your Warlord gains **Invulnerable** until your next turn</code></td>
+<td><strong>Ephemeral</strong>. Your Warlord gains <strong>Invulnerable</strong> until your next turn</td>
+</tr>
+</tbody>
 </table>
 <p>The pattern: only the keyword's name goes inside the marks. Numbers, colons and full stops stay outside.</p>
 <p><strong>Giving the card the keyword itself</strong></p>
 <table>
-<tr><th>The card should have</th><th>Set it up here</th><th>Then write</th></tr>
-<tr><td>A keyword that works by itself (Flying, Vanguard, Ephemeral)</td><td><strong>Keywords</strong>: add it</td><td><code>**Flying**</code></td></tr>
-<tr><td>A keyword with a number (Blast 2)</td><td><strong>Keywords</strong>: add it, <strong>Value</strong> 2</td><td><code>**Blast** 2</code></td></tr>
-<tr><td>Armour</td><td><strong>Basics</strong>: the <strong>Armour</strong> field, as official troops do</td><td><code>**Armour** 1</code></td></tr>
-<tr><td>A keyword that starts an effect (Rally, Talent, Strike, Artifice)</td><td><strong>Keywords</strong>: add it and fill in the box under it</td><td><code>**Rally**: …</code></td></tr>
-<tr><td>An action (Duty, Ferocity, Pray, Agenda, Oath)</td><td><strong>Action</strong>: pick the kind; the keyword is added for you</td><td><code>**Duty**: …</code></td></tr>
-<tr><td>A keyword it gives another unit</td><td>The effect <strong>Give stats, a keyword or a cost change</strong>, with the keyword picked there</td><td><code>Give **Flank** to …</code></td></tr>
+<thead>
+<tr>
+<th>The card should have</th>
+<th>In <strong>+ Add a keyword or ability</strong></th>
+<th>Then write</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A keyword that works by itself (Flying, Vanguard, Ephemeral)</td>
+<td><strong>Static</strong>: pick it</td>
+<td><code>**Flying**</code></td>
+</tr>
+<tr>
+<td>A keyword with a number (Blast 2)</td>
+<td><strong>Static</strong>: pick it and set the number</td>
+<td><code>**Blast** 2</code></td>
+</tr>
+<tr>
+<td>Armour</td>
+<td>The <strong>Armour</strong> field in Basics, as official troops do</td>
+<td><code>**Armour** 1</code></td>
+</tr>
+<tr>
+<td>A keyword that starts an effect (Rally, Talent, Strike, Slay)</td>
+<td><strong>Ability</strong>: pick it and fill in the box under it</td>
+<td><code>**Rally**: …</code></td>
+</tr>
+<tr>
+<td>An action (Duty, Ferocity, Pray, Agenda, Oath)</td>
+<td><strong>Action</strong>: pick it</td>
+<td><code>**Duty**: …</code></td>
+</tr>
+<tr>
+<td>A keyword it gives another unit</td>
+<td>An effect that gives a keyword (<strong>Give stats, a keyword or a cost change</strong>), with the keyword picked there</td>
+<td><code>Give **Flank** to …</code></td>
+</tr>
+</tbody>
 </table>
 <p>Only keywords in the creator's list exist in the game. A new mechanic of your own cannot be made a keyword by writing it in bold: describe it in plain words, and explain it in <strong>Notes for the reviewer</strong>.</p>
 <p><strong>Common slips</strong></p>
@@ -463,43 +707,202 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <li><strong>A missing pair</strong> (<code>**Rally: Deal 2</code>) leaves the asterisks visible. Check the preview: every keyword should be bold and no asterisk should show.</li>
 <li><strong>Spaces inside the marks</strong> (<code>** Rally **</code>): keep the marks tight against the word.</li>
 <li><strong>Bold sentences:</strong> mark keywords only, as the official cards do.</li>
-<li><strong>Suggest text from the abilities</strong> writes plain text. Add the marks after using it.</li>
+<li><strong>Text written before the last change:</strong> if you add or remove a keyword after writing the text, update the text too, or press <strong>Suggest text</strong> again and redo your edits.</li>
 <li><strong>The marks count toward the 300 characters</strong>, four per keyword.</li>
 </ul>
-
 <h3>Card art</h3>
-<p>Every card's art is one 1024 × 1024 picture. Bring any size: the creator crops and scales it when you upload. The <a href="/artwork">Artwork</a> tab has the full guide and a download kit (<code>art-kit.zip</code>: both templates, a blank mask and an example sheet).</p>
+<p>Every card's art is one 1024 × 1024 picture. The <a href="/artwork">Artwork</a> tab has the full guide and a download kit (<code>art-kit.zip</code>: both templates, a blank mask and an example sheet).</p>
+<p><strong>Official art and frames come from your own game.</strong> The website does not hand out the game's pictures. Export them with the mod (<strong>Settings &gt; Mod &gt; Export card art</strong>) and load the file on your <a href="/profile">Profile</a> page; the <a href="#card-art">Card art guide</a> has the steps. Without it, borrowed art and frames show as outlines.</p>
+<p><strong>Uploading your own picture:</strong></p>
+<ol>
+<li><strong>Save the card once</strong> (a draft is enough).</li>
+<li>Press <strong>…or upload your own artwork</strong> and pick a PNG, JPG or WebP file (up to 20 MB).</li>
+<li>In <strong>Place the artwork</strong>, drag to move, use the mouse wheel or <strong>Zoom</strong> to scale, or <strong>Fit</strong>, <strong>Fill</strong> and <strong>Centre</strong>. Then <strong>Use this artwork</strong>. It is saved at 1024 × 1024.</li>
+<li>Fill in <strong>Artwork credit:</strong> <strong>Artist</strong> (up to 80 characters) and <strong>Link (optional)</strong>, which must start with http:// or https:// (the original post or the artist's page). Press <strong>Save credit</strong>. It is stored with the picture and shows as "Art by …" under the preview.</li>
+</ol>
+<p><strong>Remove uploaded artwork</strong> sets the picture aside.</p>
 <table>
-<tr><th>Card</th><th>What shows</th><th>Aim for</th></tr>
-<tr><td>Troops and warlords</td><td>A portrait strip 670 pixels wide in the middle of the square, full height. The name and text sit over the lower part, darkened.</td><td>At least 670 × 1024, portrait (about 2 : 3). Landscape pictures are cropped hard at the sides.</td></tr>
-<tr><td>Stratagems</td><td>Nearly the whole square. The top right corner sits under the faction badge and cost, the bottom strip under the text box.</td><td>At least 1024 × 1024.</td></tr>
+<thead>
+<tr>
+<th>Card</th>
+<th>What shows</th>
+<th>Aim for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Troops and warlords</td>
+<td>A portrait strip 670 pixels wide in the middle of the square, full height. The name and text sit over the lower part, darkened.</td>
+<td>At least 670 × 1024, portrait (about 2 : 3). Landscape pictures are cropped hard at the sides.</td>
+</tr>
+<tr>
+<td>Stratagems</td>
+<td>Nearly the whole square. The top right corner sits under the faction badge and cost, the bottom strip under the text box.</td>
+<td>At least 1024 × 1024.</td>
+</tr>
+</tbody>
 </table>
 <ul>
-<li><strong>Formats:</strong> PNG, JPG or WebP, up to 20 MB. Saved as a 1024 × 1024 PNG.</li>
 <li><strong>Pop-out mask (troops and warlords, optional):</strong> a second picture, white where the art should be drawn over the frame (a weapon, a banner), black everywhere else. Paint it over the picture <em>as the creator saved it</em>, so the two line up.</li>
-<li><strong>Uploads are stored straight away, drafts included.</strong> Admins see every upload and remove any that break the <a href="/rules">rules</a>: only art you made or may use, nothing sexual, hateful or offensive, and no real people.</li>
+<li><strong>Only upload art you made, or art whose artist gave you permission.</strong> A credit alone is not permission. For fan art: ask the artist first, keep their "yes", credit them, and take the picture down if they ask.</li>
+<li><strong>Uploads are stored straight away, drafts included.</strong> Admins see every upload and remove any that break the <a href="/rules">rules</a>: nothing sexual, hateful, harassing or offensive, and no real people. Breaking the rules can cost you access to the creator.</li>
 </ul>
-
 <h3>Saving, submitting and what happens next</h3>
 <ul>
 <li><strong>Save draft</strong> keeps the card private. You can come back to it from <a href="/my-cards">My cards</a> at any time.</li>
 <li><strong>Submit for review</strong> needs the rules box ticked. The card then shows as <em>Waiting for review</em> under My cards.</li>
 <li><strong>A reviewer</strong> approves or rejects it and can leave a note, shown on the card when you open it. Reviewers cannot approve their own cards; another reviewer or an admin has to.</li>
 <li><strong>Rejected?</strong> Open it from My cards, fix what the note says and submit again. Drafts and rejected cards can also be discarded there.</li>
-<li><strong>Approved</strong> cards go to testers first, in the Custom Test mode, and to everyone later once they pass testing. This step is still being set up, so approved cards may not be in matches yet.</li>
+<li><strong>Approved</strong> cards can only be changed by an admin. They go to testers first, in the Custom Test mode, and to everyone later once they pass testing. This step is still being set up, so approved cards may not be in matches yet.</li>
 </ul>
-
 <h3>Common mistakes</h3>
 <table>
-<tr><th>Problem</th><th>Fix</th></tr>
-<tr><td>The keyword is in the text but the card does not have it</td><td>Add it under <strong>Keywords</strong> (or set up the <strong>Action</strong>). The text is only words.</td></tr>
-<tr><td>The keyword is on the card but not bold in the text</td><td>Wrap its name in <code>**</code>: <code>**Flying**</code>.</td></tr>
-<tr><td>Asterisks show on the card</td><td>A mark is missing or has spaces inside. Every keyword needs <code>**</code> on both sides, tight against the word.</td></tr>
-<tr><td>"official cards only have this on …" next to a keyword</td><td>That keyword is only used on another kind of card (for example Rally on troops, Ephemeral on stratagems). It may not work as expected.</td></tr>
-<tr><td>A yellow faction warning in the preview</td><td>The card uses another faction's mechanic. It may do nothing outside that faction; pick something else or explain why in the notes.</td></tr>
-<tr><td>Submit does nothing</td><td>Tick <strong>This card follows all of the card creator rules</strong> first. Saving a draft does not need it.</td></tr>
-<tr><td>An effect the fields cannot express</td><td>Use <strong>Describe what this should do</strong> on the effect, and <strong>Notes for the reviewer</strong>.</td></tr>
-<tr><td>Not sure how to build something</td><td>Open the keyword's <strong>Official examples</strong>, copy how an official card does it, and read the <strong>Build notes</strong> after saving.</td></tr>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The keyword is in the text but the card does not have it</td>
+<td>Add it with <strong>+ Add a keyword or ability</strong>. The text is only words.</td>
+</tr>
+<tr>
+<td>The keyword is on the card but not bold in the text</td>
+<td>Wrap its name in <code>**</code>, or press <strong>Suggest text from the abilities</strong> again.</td>
+</tr>
+<tr>
+<td>Asterisks show on the card</td>
+<td>A mark is missing or has spaces inside. Every keyword needs <code>**</code> on both sides, tight against the word.</td>
+</tr>
+<tr>
+<td>The keyword or trigger you want is not in the picker</td>
+<td>It may be untested: turn on <strong>Show advanced options</strong> and look under "Untested". Or the template does not allow it (a stratagem cannot use Strike or Slay).</td>
+</tr>
+<tr>
+<td>No pick box on an ability</td>
+<td>The game decides the unit on that trigger. Use "The unit the event is about", or "Every unit that matches …".</td>
+</tr>
+<tr>
+<td>The preview has no frame and borrowed art shows nothing</td>
+<td>Load your game's card art export on your Profile page (see the <a href="#card-art">Card art guide</a>).</td>
+</tr>
+<tr>
+<td>Cannot upload artwork</td>
+<td>Save the card once first.</td>
+</tr>
+<tr>
+<td>A yellow faction warning in the preview</td>
+<td>The card uses another faction's mechanic. It may do nothing outside that faction; pick something else or explain why in the notes.</td>
+</tr>
+<tr>
+<td>Submit does nothing</td>
+<td>Tick <strong>This card follows all of the card creator rules</strong> first. Saving a draft does not need it.</td>
+</tr>
+<tr>
+<td>Something the editor cannot express</td>
+<td>Write it in <strong>Notes for the reviewer</strong>.</td>
+</tr>
+<tr>
+<td>Not sure how to build something</td>
+<td>Use <strong>Load in editor</strong> on an official card from the <a href="/examples">Examples</a> tab and look at how it is built.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="card-art">
+<h2>Card art from your game</h2>
+<p>The website no longer hands out the game's card pictures. To see official card art and frames on the site, you export them from your own copy of the game with the mod, then load that file into your browser. Nothing is uploaded: the pictures stay on your device.</p>
+<p>Once loaded, the website uses them in:</p>
+<ul>
+<li>the <a href="/cards">Card viewer</a>, to draw every official card with its art, pop-out and frame;</li>
+<li><a href="/creator">Create a card</a>, for the faction frame in the preview and for <strong>Artwork – borrow from an existing card</strong>.</li>
+</ul>
+<p>Without the file those pages still work, but official cards show as outlines without pictures. Your own uploaded artwork is not affected.</p>
+<p>The same steps work on Windows and Android. Only where the file is saved, and how you get it to the browser, differ.</p>
+<h3>1. Export the art in the game (Windows and Android)</h3>
+<ol>
+<li><strong>Update the mod.</strong> In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Check for updates</strong>. The export button arrived in mod 0.13.15; older versions do not have it.</li>
+<li><strong>Open the Collection once,</strong> so the game has loaded the cards. If you skip this, the export says "No cards loaded yet: open the Collection once, then try again."</li>
+<li><strong>Go back to Settings &gt; Mod</strong> and press <strong>Export card art</strong>.</li>
+<li><strong>Wait.</strong> The button counts up ("Exporting card art… 250 / 1335"), then shows "Exporting card frames…". It takes about a minute or two. You can keep the game open; do not close it until it finishes.</li>
+<li><strong>Done</strong> when the button says <strong>Card art saved</strong> with the file's size (about 90 MB). On Windows the folder with the file opens by itself.</li>
+</ol>
+<p>If it says <strong>Card art export failed</strong>, try again once. If it fails again, send the game's log (Windows: <code>MelonLoader\Latest.log</code> in the game folder; Android: the Patcher app's <strong>Share logs</strong>).</p>
+<h3>2. Where the file is saved</h3>
+<p>The file is always called <code>card-art-export.zip</code>. Exporting again replaces it.</p>
+<table>
+<thead>
+<tr>
+<th>Device</th>
+<th>Where to find it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Windows</td>
+<td>The game folder, in <code>UserData\WarpforgeRevival\card-art-export.zip</code>. To open the game folder: in Steam, right-click Warpforge &gt; <strong>Manage</strong> &gt; <strong>Browse local files</strong>.</td>
+</tr>
+<tr>
+<td>Android phone or MuMu</td>
+<td>Internal storage: <code>MelonLoader/com.Everguild.WarhammerWarpforge/UserData/WarpforgeRevival/card-art-export.zip</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Inside are every card's art (512 × 512), the pop-out masks of troops and warlords, the faction frames, and a small <code>export.json</code> saying when and from which game version it was made. You do not need to unzip it.</p>
+<h3>3. Load it on the website</h3>
+<ol>
+<li><strong>Sign in</strong> to the Revival website and open your <a href="/profile">Profile</a> (click your name at the top right).</li>
+<li><strong>Find "Card art from your game"</strong> and press <strong>Pick card-art-export.zip</strong>.</li>
+<li><strong>Choose the file:</strong><ul>
+<li><strong>Windows:</strong> go to the game folder, then <code>UserData\WarpforgeRevival</code>, and pick <code>card-art-export.zip</code>.</li>
+<li><strong>Android phone:</strong> in the phone's browser, the button opens Android's file picker. Go to <strong>Internal storage &gt; MelonLoader &gt; com.Everguild.WarhammerWarpforge &gt; UserData &gt; WarpforgeRevival</strong> and pick the file. If the picker shows only recent files, open its menu and choose your phone's storage.</li>
+<li><strong>The other device:</strong> to use a phone's export in a PC browser (or the other way round), copy the zip across first, for example by USB cable.</li>
+</ul>
+</li>
+<li><strong>Wait a few seconds.</strong> The box then says <strong>Loaded:</strong> with the number of pictures and frames, the export date and the game version.</li>
+<li><strong>Check it worked:</strong> open <strong>Card Creator &gt; Card viewer</strong>. Official cards now show their art and frames, and the line above them says the art comes from your game's export.</li>
+</ol>
+<p>The browser keeps the file, so later visits use it by itself. Each browser and each device needs it picked once. <strong>Remove from this browser</strong> forgets it.</p>
+<h3>Rules and common problems</h3>
+<ul>
+<li><strong>Keep the export to yourself.</strong> It is the game's own art from your copy of the game. Do not share the zip, and do not upload its pictures as your card's artwork: to use an official picture on a card, pick it under <strong>Artwork – borrow from an existing card</strong> instead. Uploaded artwork must be your own.</li>
+<li><strong>Export again after a game or mod update</strong> that changes cards, then pick the new file on your Profile.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>What you see</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No <strong>Export card art</strong> button in Settings &gt; Mod</td>
+<td>Update the mod (<strong>Check for updates</strong>), then restart the game.</td>
+</tr>
+<tr>
+<td>"No cards loaded yet: open the Collection once, then try again."</td>
+<td>Open the Collection, go back to Settings &gt; Mod and press the button again.</td>
+</tr>
+<tr>
+<td><strong>Card art export failed</strong></td>
+<td>Try once more. If it fails again, send the game's log.</td>
+</tr>
+<tr>
+<td>"Could not use that file" on the website</td>
+<td>You picked another file, or an unfinished export. Pick <code>card-art-export.zip</code> itself (not a file ending in <code>.part</code>), or export again.</td>
+</tr>
+<tr>
+<td>Official cards show as outlines again</td>
+<td>This browser forgot the file (private window, cleared site data, another browser or device). Pick it again on your Profile.</td>
+</tr>
+<tr>
+<td>"The card art is shown, but this browser would not keep it"</td>
+<td>The browser does not allow saving it (often a private window). It works until you close the page; pick it again next time.</td>
+</tr>
+</tbody>
 </table>
 </section>
 <p class="dim" style="margin-top:40px">Guides as of 12 October 2026 (mod 0.13, Warpforge Patcher 0.2.1).</p>
