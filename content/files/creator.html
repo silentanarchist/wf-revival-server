@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Warpforge Revival</title>
 <style>
@@ -2488,8 +2489,7 @@ async function showExamples(keyword) {
   }
 }
 /* ---------- a card drawn like the game ----------
-   The faction frames (content/files/card-frames/<faction>_<troop|stratagem>_<rarity tier>.webp) and the card
-   art are the game's 1024 x 1024 textures; the card itself is the 684 x 960 middle, which is the box drawn
+   The faction frames and the card art (both from the player's own export, see "local card art" below) are the game's 1024 x 1024 textures; the card itself is the 684 x 960 middle, which is the box drawn
    here. Positions are in those texture pixels. */
 const TIERS = { Common: 1, Rare: 2, Epic: 3, Legendary: 4 };
 function richText(box, text) {                  // **Keyword** -> bold, as the game shows keywords
@@ -2504,8 +2504,9 @@ function cardFace(c, artUrl, width, maskUrl, frameUrl) {
   const box = el("div", { class: "faceBox" }); box.style.setProperty("--w", width + "px");
   const f = el("div", { class: "face", style: `transform:scale(${width / 684})` });
   const art = el("div", { class: "fArt " + (strat ? "strat" : "unit") }); if (artUrl) art.style.backgroundImage = `url("${artUrl}")`;
-  // frameUrl: undefined = the server's frame; a string = that picture; null = no frame picture (outline only)
-  const src = frameUrl === undefined ? FILES + "card-frames/" + encodeURIComponent(frame) + ".webp" : frameUrl;
+  // frameUrl: a picture (from the player's own card art export); none = no frame picture (outline only).
+  // The server does not hand out the game's frames or art.
+  const src = frameUrl || null;
   const img = src ? el("img", { class: "fFrame", alt: "", src }) : null;
   if (img) img.onerror = () => { img.remove(); f.classList.add("noFrame"); }; else f.classList.add("noFrame");
   f.append(el("div", { class: "fBack" }), art);
@@ -2539,8 +2540,6 @@ function cardFace(c, artUrl, width, maskUrl, frameUrl) {
   box.append(f);
   return box;
 }
-function artUrlOf(id) { return id ? FILES + "card-art/" + encodeURIComponent(id) + ".jpg" : ""; }
-function maskUrlOf(id) { return id ? FILES + "card-masks/" + encodeURIComponent(id) + ".png" : ""; }   // pop-out mask (units only)
 
 /* ---------- card art from the player's own game ----------
    The game mod's Settings > Mod > Export card art writes card-art-export.zip: card-art/<id>.jpg,
@@ -3245,7 +3244,7 @@ function filterPeople() {
 let kwList = null;
 async function showKeywords() {
   if (!kwList) {
-    try { const r = await fetch(FILES + "keywords.json", { cache: "no-store" }); kwList = (await r.json()).keywords; }
+    try { kwList = (await privData("keywords.json")).keywords; }
     catch (e) { kwList = null; return say("Could not load the keyword list: " + e.message, "bad"); }
     const pick = $("kwFaction"); pick.textContent = "";
     pick.append(el("option", { value: "", text: "All" }), el("option", { value: "-", text: "General (no faction)" }));
@@ -3254,7 +3253,7 @@ async function showKeywords() {
     const known = new Set(kwList.map(k => k.id).filter(Boolean));
     const missing = schema.traits.filter(t => t.official && !known.has(t.id)).map(t => t.label);
     try {
-      const st = await (await fetch(FILES + "stratagem-types.json", { cache: "no-store" })).json(), body = $("stTable").querySelector("tbody");
+      const st = await privData("stratagem-types.json"), body = $("stTable").querySelector("tbody");
       body.textContent = "";
       for (const t of st.types) body.append(el("tr", {}, el("td", {}, el("strong", { text: t.name })), el("td", { text: t.text }), el("td", { text: t.faction }), el("td", { text: t.deck }), el("td", { text: String(t.cards) })));
       $("stUnused").textContent = "In the game but used by no official card, so untested: " + st.unused.join(", ") + ".";
@@ -3581,10 +3580,10 @@ async function loadList() {
     $("tabList").classList.toggle("hidden", !role);
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
+    if (me && !schema) { try { await loadMenus(); } catch (e) { say("The creator could not load its menus from the server: " + e.message, "bad"); } }
     gate();
     if (editingId) { const fresh = allCards.find(c => c.id === editingId); if (fresh) editingCard = fresh; }
-    preview();
-    drawList();
+    if (schema) { preview(); drawList(); }
     if (!$("viewHome").classList.contains("hidden")) drawHome();
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
@@ -3657,20 +3656,23 @@ function show(which, replace) {                // a page name from PAGES
   if (which === "Server") loadServer();
 }
 
-async function start() {
-  try {
-    const [s, cards] = await Promise.all([fetch(FILES + "creator-schema.json", { cache: "no-store" }).then(r => r.json()),
-                                          fetch(FILES + "creator-cards.json", { cache: "no-store" }).then(r => r.json())]);
-    schema = s;
+// The creator's menus and lists (official card names, the effect schema, help texts, keywords) are
+// for signed-in accounts only (Revival/CreatorData), so they are loaded once someone is signed in.
+let menusReady = null;
+function privData(file) { return call("CreatorData", { file }).then(d => d.data); }
+function loadMenus() {
+  return menusReady || (menusReady = (async () => {
+    const [s, cards] = await Promise.all([privData("creator-schema.json"), privData("creator-cards.json")]);
     // our own wording for triggers and keywords (creator-help.json) and the keyword cheat sheet's texts
-    try {
-      const [h, k] = await Promise.all([fetch(FILES + "creator-help.json", { cache: "no-store" }).then(r => r.json()),
-                                        fetch(FILES + "keywords.json", { cache: "no-store" }).then(r => r.json())]);
+    let h = null, k = null;
+    try { [h, k] = await Promise.all([privData("creator-help.json"), privData("keywords.json")]); } catch (e) { /* descriptions are optional */ }
+    schema = s;
+    if (h && k) {
       help = h;
       for (const x of k.keywords || []) if (x.id) kwText[x.id] = x.text;
       for (const t of schema.triggers) if (help.triggers[t.id]) t.label = help.triggers[t.id].name;
       for (const t of schema.traits) if (help.keywords[t.id]) t.label = help.keywords[t.id].name;
-    } catch (e) { /* descriptions are optional */ }
+    }
     const dl = $("cardList");
     for (const c of cards.cards) {
       const shown = `${c.name} (${c.id})`;
@@ -3678,10 +3680,14 @@ async function start() {
       dl.append(el("option", { value: shown }));
       if (c.enchantment) $("enchList").append(el("option", { value: shown }));
     }
-  } catch (e) { return say("The creator could not load its menus from the server: " + e.message, "bad"); }
+    options($("f_kind"), schema.kinds); options($("f_army"), schema.armies); options($("f_rarity"), schema.rarities);
+    options($("f_keyword"), schema.keywords, false, "none"); options($("f_stratagemType"), schema.stratagemTypes);
+    fill(null);
+  })().catch(e => { menusReady = null; throw e; }));
+}
+
+async function start() {
   options($("f_template"), TEMPLATES); $("f_template").addEventListener("change", e => setTemplate(e.target.value));
-  options($("f_kind"), schema.kinds); options($("f_army"), schema.armies); options($("f_rarity"), schema.rarities);
-  options($("f_keyword"), schema.keywords, false, "none"); options($("f_stratagemType"), schema.stratagemTypes);
   try { localStorage.removeItem("creator.key"); } catch (x) {}      // staff keys are gone; roles belong to accounts now
   $("signOut").onclick = signOut;
   $("meName").onclick = e => { if (plainClick(e)) { e.preventDefault(); show("Profile"); } };
@@ -3750,9 +3756,9 @@ async function start() {
   for (const id of ["cvArmy", "cvKind", "cvShow"]) $(id).onchange = drawViewerList;
   window.addEventListener("popstate", () => { const page = pageOf(location.pathname); if (me && page) show(page, true); else gate(); });
   $("filter").onchange = drawList; $("refresh").onclick = loadList;
-  fill(null);
   const first = location.hash === "#rules" ? "Rules" : pageOf(location.pathname);      // "#rules" is the older address of the rules
-  if (first && first !== "Create") { wanted = first; if (session()) show(first, true); }
+  if (session()) { try { await loadMenus(); } catch (e) { /* a stale session: the sign-in page follows */ } }
+  if (first && first !== "Create") { wanted = first; if (session() && schema) show(first, true); }
   loadList();
 }
 start();

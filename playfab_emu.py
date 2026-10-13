@@ -959,10 +959,52 @@ SITE_PAGES = {
         "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
         "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/unreleased",
         "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu", "/guides/creator", "/guides/card-art")},
+    "/robots.txt": "robots.txt",                  # asks search engines and crawlers to keep out (all but /terms)
 }
 # Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
-# the guides are for signed-in accounts and reach the site through Revival/Guides.
-SITE_PRIVATE_FILES = {"guides.html"}
+# the guides are for signed-in accounts and reach the site through Revival/Guides; the card creator's
+# data (the publisher's card list and rules data) through Revival/CreatorData (security review 27).
+CREATOR_DATA_FILES = ("creator-cards.json", "creator-schema.json", "creator-help.json", "keywords.json", "stratagem-types.json")
+SITE_PRIVATE_FILES = {"guides.html", *CREATOR_DATA_FILES}
+# Folders in content/files (or their .zip stand-ins) never handed out to anyone: the game's card art,
+# pop-out masks and frames. The site draws official cards only from the player's own export now.
+SITE_PRIVATE_FOLDERS = {"card-art", "card-masks", "card-frames"}
+
+
+def _site_file_refused(rel):
+    """True for a /api/v1/content/files/ path that must not be served: one inside SITE_PRIVATE_FOLDERS,
+    or one spelled in a way no file the site serves is (see the security notes)."""
+    rel = (rel or "").replace("\\", "/")
+    if "~" in rel:
+        return True
+    parts = [p.lower().rstrip(". ") for p in os.path.normpath(rel).replace("\\", "/").split("/") if p not in ("", ".")]
+    return bool(parts) and parts[0] in SITE_PRIVATE_FOLDERS
+
+
+def _site_block_files():
+    """Puts _site_file_refused in front of the running server's page handler (once per process; the
+    lists are read from this file's newest copy on every request, so no restart is needed)."""
+    import sys
+    from urllib.parse import urlparse, unquote
+    handler = getattr(sys.modules.get("__main__"), "Handler", None)
+    if handler is None or not hasattr(handler, "do_GET") or getattr(handler, "_site_files_wrapped", False):
+        return
+    original = handler.do_GET
+
+    def do_GET(self):
+        try:
+            path = urlparse(self.path).path
+            lists = sys.modules.get(__name__)
+            if path.startswith("/api/v1/content/files/") and getattr(lists, "_site_file_refused", _site_file_refused)(unquote(path[len("/api/v1/content/files/"):])):
+                return self._json(404, {"error": "not found"})
+        except Exception:
+            log.exception("site files: could not check the address")
+            return self._json(404, {"error": "not found"})
+        return original(self)
+
+    handler.do_GET = do_GET
+    handler._site_files_wrapped = True
+    log.info("site files: card pictures and short-name paths are refused")
 
 
 def _site_patch_running_server():
@@ -1008,6 +1050,10 @@ def _site_patch_running_server():
 
 
 _site_patch_running_server()
+try:
+    _site_block_files()
+except Exception:
+    log.exception("site files: could not set up the refusals")
 
 
 def _server_log_setup():
@@ -3777,6 +3823,22 @@ class PlayFabEmulator:
         if keyword:
             return ok({"keyword": keyword, "examples": self._examples.get("keywords", {}).get(keyword) or {"count": 0, "cards": []}})
         return ok({"keywords": {k: v["count"] for k, v in self._examples.get("keywords", {}).items()}})
+
+    def api_Revival_CreatorData(self, req, headers):
+        """The card creator's menus and lists for signed-in, approved accounts (not banned, not still
+        waiting): the official card list, the effect schema, our help texts, keywords and stratagem
+        types. They are not plain downloads (security review 27). {file} -> {file, data}."""
+        if not self._creator_user(req):
+            return err("NotAuthorized", "sign in first")
+        name = req.get("file")
+        if name not in CREATOR_DATA_FILES:
+            return err("InvalidParams", "unknown file")
+        try:
+            with open(os.path.join(self.content_root, "files", name), encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return err("NotFound", "that file is not on the server", 1001, 404)
+        return ok({"file": name, "data": data})
 
     def api_Revival_CreatorOfficial(self, req, headers):
         """The card viewer: every official card (the list), or one card's creator design and game data (signed-in accounts only)."""
