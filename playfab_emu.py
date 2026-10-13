@@ -1096,6 +1096,25 @@ def _cards_version(handler):
     return hashlib.sha256("|".join(sorted(shas)).encode()).hexdigest()[:16] if shas else ""
 
 
+# The content bundles (the game's card file, alternate art and text) are only for signed-in players.
+# Mods from 0.13.21 send their saved game sign-in with each bundle download (X-Revival-Login).
+# Until BUNDLES_NEED_SIGN_IN is switched on, downloads without one are still served and only logged.
+BUNDLES_NEED_SIGN_IN = False
+BUNDLE_PATHS = ("/api/v1/content/bundles/", "/api/v1/content/bundles-android/")
+
+
+def _bundle_signed_in(handler):
+    """True when the request carries the saved game sign-in of an approved, unbanned account."""
+    token = str(handler.headers.get("X-Revival-Login") or "").strip()
+    if not token or len(token) > 200:
+        return False
+    api = handler.current_playfab()
+    with api.store.lock:
+        users = api._creator_users()
+    _, user = api._game_login_user(users, token)
+    return user is not None and api._creator_perms(user)["access"] == "approved"
+
+
 def _site_content_get(handler, path):
     """Game content answers changed without a restart. Returns True when the request was answered.
     - /api/v1/content/pack is no longer handed out: the mod never used its cards (only its version,
@@ -1104,6 +1123,17 @@ def _site_content_get(handler, path):
     if path == "/api/v1/content/pack":
         handler._json(404, {"error": "not found"})
         return True
+    if path.startswith(BUNDLE_PATHS):
+        try:
+            signed = _bundle_signed_in(handler)
+        except Exception:
+            log.exception("bundles: could not check the sign-in")
+            signed = False
+        log.info("bundles: %s %s", path.rsplit("/", 1)[-1], "with a game sign-in" if signed else "WITHOUT a game sign-in")
+        if BUNDLES_NEED_SIGN_IN and not signed:
+            handler._json(403, {"error": "sign in to the game first"})
+            return True
+        return False
     if path == "/api/v1/content/manifest":
         try:
             cv = _cards_version(handler)
