@@ -2026,7 +2026,8 @@ function describeEffect(fx, ab) {
     .map(x => (x[1] > 0 ? "+" : "") + x[1] + " " + x[0]);
   const gift = [stats.join(", "), b.trait && bold(lab(schema.traits, b.trait)) + (b.traitValue ? " " + b.traitValue : ""), b.cost && `cost ${b.cost > 0 ? "+" : ""}${b.cost}`].filter(Boolean).join(" and ");
   const lasts = { turn: " this turn", nextTurn: " until your next turn", aura: "" }[b.duration] || "";
-  const card = cardNames[fx.card] || fx.card || "a card";
+  // official cards: the name from the player's export (the server sends none), else "a card"; own cards: their name
+  const card = !fx.card ? "a card" : cardInfo[fx.card] ? (ltTerm("Card_Name/" + fx.card) || "a card") : (cardNames[fx.card] || "a card");
   switch (fx.effect) {
     case "doDamage": case "doDamageFast": return `Deal ${fx.amount}${fx.amountMax ? "-" + fx.amountMax : ""} damage to ${t}`;
     case "doDamageMultiRandom": return `Deal ${fx.amount} damage ${fx.count} times, split among ${t}`;
