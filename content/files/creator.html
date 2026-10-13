@@ -500,9 +500,10 @@
       </div>
     </section>
     <section id="p_cardArt" class="localArt">
-      <h2>Card art from your game</h2>
+      <h2>Card art and text from your game</h2>
       <p><span id="laStatus">Checking…</span></p>
-      <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded. The Card viewer and other pages draw official cards with it; without it they show cards without pictures. Step by step for Windows and Android: <a href="/guides/card-art">the card art guide</a>.</p>
+      <p id="ltLangRow" class="hidden"><label>Card text language <select id="ltLang"></select></label></p>
+      <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded. The Card viewer and other pages draw official cards with it, with their names, rules and lore in any of the game's languages (exports from mod 0.13.19 on); without it they show cards without pictures. Step by step for Windows and Android: <a href="/guides/card-art">the card art guide</a>.</p>
         <div class="row" style="align-items:center; gap:10px">
           <label class="button small" style="cursor:pointer">Pick card-art-export.zip<input type="file" id="laFile" accept=".zip,application/zip" style="display:none"></label>
           <button class="small hidden" id="laRemove" type="button">Remove from this browser</button>
@@ -2483,7 +2484,7 @@ async function showExamples(keyword) {
   for (const c of d.cards) {
     const stats = c.stats ? ` · ${c.stats[0]}/${c.stats[1]}/${c.stats[2]}` : "";
     box.append(el("div", { class: "box" },
-      el("div", { class: "head" }, el("strong", { text: c.name }), el("span", { class: "hint", text: `${c.id ? c.id + " · " : ""}${lab(schema.armies, c.army)} ${c.kind} · ${c.rarity} · cost ${c.cost}${stats}${c.token ? " · created by another card" : ""}` })),
+      el("div", { class: "head" }, el("strong", { text: c.id ? offName(c.id, c.name) : c.name }), el("span", { class: "hint", text: `${c.id ? c.id + " · " : ""}${lab(schema.armies, c.army)} ${c.kind} · ${c.rarity} · cost ${c.cost}${stats}${c.token ? " · created by another card" : ""}` })),
       el("div", { class: "hint", text: "Keywords: " + c.keywords.map(k => lab(schema.traits, k)).join(", ") }),
       el("pre", { style: "max-height:none", text: JSON.stringify(c.data, null, 1) })));
   }
@@ -2623,13 +2624,14 @@ async function laUse(blob, remember) {
   localArt.urls.clear();
   localArt.blob = blob; localArt.entries = entries;
   try { localArt.info = JSON.parse(await (await laRead("export.json")).text()); } catch (e) { localArt.info = {}; }
+  await ltLoad();
   if (remember) { try { await laStore("put", blob); } catch (e) { say("The card art is shown, but this browser would not keep it: pick the file again next time.", "info"); } }
   laShow();
 }
 function laShow() {
   const i = localArt.info;
   $("laStatus").textContent = localArt.entries
-    ? `Loaded: ${i.art ?? "?"} pictures, ${i.frames ?? "?"} frames${i.made ? ", exported " + String(i.made).slice(0, 10) : ""}${i.game ? " from game " + i.game : ""}`
+    ? `Loaded: ${i.art ?? "?"} pictures, ${i.frames ?? "?"} frames${localText.langs ? `, card text in ${localText.langs.length} languages` : ", no card text (export again with mod 0.13.19 or later)"}${i.made ? ", exported " + String(i.made).slice(0, 10) : ""}${i.game ? " from game " + i.game : ""}`
     : "Not loaded: cards show without pictures";
   $("laRemove").classList.toggle("hidden", !localArt.entries);
   $("laHelp").classList.toggle("hidden", !!localArt.entries);
@@ -2644,9 +2646,62 @@ function laNotes() {
     const link = el("a", { href: "/profile", text: localArt.entries ? "change it on your Profile page" : "load them on your Profile page",
       onclick: e => { if (!plainClick(e)) return; e.preventDefault(); laGoProfile(); } });
     p.append(localArt.entries
-      ? `Official frames and card art: from your game's export${localArt.info && localArt.info.made ? " of " + String(localArt.info.made).slice(0, 10) : ""} (kept in this browser) – `
-      : "Official frames and card art come from your own copy of the game, not from this site – ", link, ".");
+      ? `Official frames, card art${localText.langs ? " and card text" : ""}: from your game's export${localArt.info && localArt.info.made ? " of " + String(localArt.info.made).slice(0, 10) : ""} (kept in this browser) – `
+      : "Official frames, card art and card text come from your own copy of the game, not from this site – ", link, ".");
   }
+}
+/* Official card text from the export (card-text.json: the game's own text entries in every language it
+   has). Names, rules text and lore are shown from here, in the language picked on the Profile page;
+   the server's copy is only the fallback while it still sends one. */
+const localText = { langs: null, terms: null, col: 0, en: 0 };
+const LT_LANG = "wfr.cardTextLang";
+function ltTerm(key) {
+  const row = localText.terms && localText.terms[key];
+  return row ? (row[localText.col] || row[localText.en] || "") : "";
+}
+function ltRender(t) {                      // the game's text markup -> plain text, keywords as **Name**
+  if (!t) return "";
+  const tpl = (m, inner) => {
+    const parts = inner.split(",");
+    let s = ltTerm("Modular_Description/" + parts[0].trim());
+    if (!s) return parts.join(" ");
+    parts.slice(1).forEach((a, i) => { s = s.split("{" + i + "}").join(a.trim()); });
+    return s;
+  };
+  for (let i = 0; i < 3; i++) t = t.replace(/\(\(([^()]*)\)\)/g, tpl);
+  t = t.replace(/<sprite name=Atlas_trait_icon_(\w+)>/g, (m, k) => " " + ({ questPoints1: "Skull", questPoints2: "Skulls" }[k] || k.replace(/_/g, " ").replace(/\b\w/g, x => x.toUpperCase())));
+  t = t.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+  t = t.replace(/\[\[(\w+)\]\]/g, (m, k) => "**" + (ltTerm("Card_Trait/" + k) || k) + "**");
+  t = t.replace(/\$\$(\w+)\$\$/g, (m, id) => ltTerm("Card_Name/" + id) || (cardInfo[id] || {}).name || id);
+  return t.replace(/[ \t]+/g, " ").replace(/ \./g, ".").trim();
+}
+function offName(id, fallback) { return ltTerm("Card_Name/" + id) || fallback || id; }
+function offText(id, fallback) { const raw = ltTerm("Card_Description/" + id); return raw ? ltRender(raw) : (fallback || ""); }
+function offLore(id, fallback) { const raw = ltTerm("Warlord_Lore/" + id); return raw ? ltRender(raw) : (fallback || ""); }
+function ltPick(code) {
+  const langs = localText.langs || [];
+  localText.en = Math.max(0, langs.findIndex(l => l.code === "en"));
+  const i = langs.findIndex(l => l.code === code);
+  localText.col = i >= 0 ? i : localText.en;
+  const sel = $("ltLang"); sel.textContent = "";
+  for (const l of langs) sel.append(el("option", { value: l.code, text: l.name }));
+  if (langs.length) sel.value = langs[localText.col].code;
+  $("ltLangRow").classList.toggle("hidden", !langs.length);
+}
+async function ltLoad() {                   // after an export is picked or found: its card text, if it has some
+  localText.langs = localText.terms = null;
+  try {
+    const b = await laRead("card-text.json");
+    if (b) { const j = JSON.parse(await b.text()); if (j && Array.isArray(j.languages) && j.terms) { localText.langs = j.languages; localText.terms = j.terms; } }
+  } catch (e) { console.warn("card text:", e); }
+  let code = "en"; try { code = localStorage.getItem(LT_LANG) || "en"; } catch (e) { }
+  ltPick(code);
+  ltApply();
+}
+function ltApply() {                        // redraw what shows official card text
+  if (menuCards) cardLists();
+  if (cvCards && !$("viewCards").classList.contains("hidden")) { drawViewerList(); if (cvPick) viewCard(cvPick); }
+  if (exCounts && !$("viewExamples").classList.contains("hidden")) showExamples();
 }
 function laGoProfile() {
   show("Profile");
@@ -2662,10 +2717,12 @@ async function laStart() {                  // once per page: what this browser 
     try { await laUse(f, true); say("Card art loaded from your game's export. It stays in this browser.", "ok"); if (cvPick) viewCard(cvPick); }
     catch (x) { laShow(); say("Could not use that file: " + x.message + ".", "bad"); }
   });
+  $("ltLang").addEventListener("change", e => { try { localStorage.setItem(LT_LANG, e.target.value); } catch (x) { } ltPick(e.target.value); ltApply(); });
   $("laRemove").addEventListener("click", async () => {
     try { await laStore("delete"); } catch (e) { }
     for (const u of localArt.urls.values()) if (u) URL.revokeObjectURL(u);
     localArt.urls.clear(); localArt.blob = localArt.entries = localArt.info = null;
+    localText.langs = localText.terms = null; ltPick("en"); ltApply();
     laShow(); if (cvPick) viewCard(cvPick);
   });
   try { const kept = await laStore("get"); if (kept) await laUse(kept, false); } catch (e) { console.warn("local card art:", e); }
@@ -2687,7 +2744,7 @@ async function showViewer() {
 function viewerMatches() {
   const q = val("cvSearch").trim().toLowerCase(), army = val("cvArmy"), kind = val("cvKind"), show = val("cvShow");
   return cvCards.filter(c => (!army || c.army === army) && (!kind || c.kind === kind) && (!show || c.status === show) &&
-    (!q || c.name.toLowerCase().includes(q) || c.id.toLowerCase() === q || (q.length > 2 && c.text.toLowerCase().includes(q))));
+    (!q || offName(c.id, c.name).toLowerCase().includes(q) || c.id.toLowerCase() === q || (q.length > 2 && offText(c.id, c.text).toLowerCase().includes(q))));
 }
 function drawViewerList() {
   if (!cvCards) return;
@@ -2696,7 +2753,7 @@ function drawViewerList() {
   const kinds = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" };
   for (const c of hits) {
     const it = el("div", { class: "it" + (c.id === cvPick ? " on" : ""), role: "option", onclick: () => viewCard(c.id) },
-      el("span", { class: "c", text: c.cost >= 0 ? String(c.cost) : "–" }), el("span", { class: "n", text: c.name }),
+      el("span", { class: "c", text: c.cost >= 0 ? String(c.cost) : "–" }), el("span", { class: "n", text: offName(c.id, c.name) }),
       el("span", { class: "m", text: `${lab(schema.armies, c.army)} · ${kinds[c.kind]}${c.status === "created" ? " · created by a card" : c.status === "defence" ? " · defence" : ""}` }));
     it.dataset.id = c.id; list.append(it);
   }
@@ -2704,7 +2761,8 @@ function drawViewerList() {
 async function viewCard(id) {
   cvPick = id; const mine = ++cvAsk;
   for (const it of $("cvList").children) it.classList.toggle("on", it.dataset.id === id);
-  const c = cvCards.find(x => x.id === id), box = $("cvDetail");
+  const found = cvCards.find(x => x.id === id), box = $("cvDetail");
+  const c = Object.assign({}, found, { name: offName(found.id, found.name), text: offText(found.id, found.text) });
   box.textContent = ""; box.append(el("p", { class: "hint", text: "Loading " + c.name + "…" }));
   let d;
   try { d = await call("CreatorOfficial", { id }); } catch (e) { return say("Could not load the card: " + e.message, "bad"); }
@@ -2726,7 +2784,7 @@ async function viewCard(id) {
   box.append(el("div", { class: "top" }, cardFace(c, artUrl, 320, maskUrl, frameUrl || null),
     el("div", { class: "facts" }, el("h2", { text: c.name, style: "margin-top:0" }), text,
       el("table", {}, ...facts.map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { text: String(v) })))),
-      d.lore ? el("p", { class: "hint", style: "font-style:italic", text: d.lore }) : null,
+      offLore(c.id, d.lore) ? el("p", { class: "hint", style: "font-style:italic", text: offLore(c.id, d.lore) }) : null,
       el("div", { class: "row", style: "margin-top:12px" },
         el("button", { class: "primary", text: "Load in editor", onclick: () => loadOfficial(c, d.design) })))),
     el("details", { open: true }, el("summary", { text: "The data the game uses (from the game's card file; empty fields left out, numbers with their names)" }),
@@ -2736,6 +2794,7 @@ async function viewCard(id) {
 function loadOfficial(c, design) {
   const d = JSON.parse(JSON.stringify(design));
   delete d.id;
+  d.name = c.name || d.name || ""; d.text = c.text || d.text || "";      // the names and text being shown
   if (c.enchantment || (cardInfo[c.id] || {}).enchantment) d.enchantment = true;   // the designs do not carry it; the card list does
   const rarityOk = schema.rarities.some(r => (r.id || r) === d.rarity);
   if (!rarityOk) d.rarity = "Legendary";
@@ -2934,7 +2993,7 @@ async function recover() {
 const b64 = { to: t => btoa(String.fromCharCode(...new TextEncoder().encode(t))),
               from: t => new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(t), ch => ch.charCodeAt(0))) };
 let decks = [], deckAsk = 0, openDecks = new Set();
-const cardName = id => (cardInfo[id] || {}).name || id;
+const cardName = id => cardInfo[id] ? offName(id, cardInfo[id].name) : id;
 function deckCode(d) {
   const ids = [];
   if (d.defenseCard) ids.push(d.defenseCard);
@@ -3547,6 +3606,20 @@ function drawList() {
       actions));
   }
 }
+// The pickers' lists of official cards ("Name (id)"); names from the player's export when it has them.
+// Earlier spellings stay known (cardIds), so a name typed before a language change still finds its card.
+let menuCards = null;
+function cardLists() {
+  $("cardList").textContent = ""; $("enchList").textContent = "";
+  for (const c of menuCards) {
+    const shown = `${offName(c.id, c.name)} (${c.id})`;
+    cardNames[c.id] = shown; cardIds[shown] = c.id; cardInfo[c.id] = c;
+    $("cardList").append(el("option", { value: shown }));
+    if (c.enchantment) $("enchList").append(el("option", { value: shown }));
+  }
+  for (const c of allCards || []) delete cardNames[c.id];      // own cards are listed again below
+  ownCardsInLists();
+}
 function ownCardsInLists() {                   // custom cards can be picked by name too (summons, enchantments, "only these cards")
   for (const c of allCards) {
     const shown = `${c.name} (${c.id})`;
@@ -3673,13 +3746,8 @@ function loadMenus() {
       for (const t of schema.triggers) if (help.triggers[t.id]) t.label = help.triggers[t.id].name;
       for (const t of schema.traits) if (help.keywords[t.id]) t.label = help.keywords[t.id].name;
     }
-    const dl = $("cardList");
-    for (const c of cards.cards) {
-      const shown = `${c.name} (${c.id})`;
-      cardNames[c.id] = shown; cardIds[shown] = c.id; cardInfo[c.id] = c;
-      dl.append(el("option", { value: shown }));
-      if (c.enchantment) $("enchList").append(el("option", { value: shown }));
-    }
+    menuCards = cards.cards;
+    cardLists();
     options($("f_kind"), schema.kinds); options($("f_army"), schema.armies); options($("f_rarity"), schema.rarities);
     options($("f_keyword"), schema.keywords, false, "none"); options($("f_stratagemType"), schema.stratagemTypes);
     fill(null);
