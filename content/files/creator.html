@@ -989,7 +989,7 @@ function drawEntries() {
   if (lockedAb) box.append(drawCustomEntry(lockedAb, state.abilities.indexOf(lockedAb)));
   state.traits.forEach((t, i) => box.append(drawKeywordEntry(t, i)));
   if (state.action) box.append(drawActionEntry());
-  state.abilities.forEach((ab, i) => { if (!keywordOf(ab) && !ab.locked) box.append(drawCustomEntry(ab, i)); });
+  state.abilities.forEach((ab, i) => { if (!keywordOf(ab) && !ab.locked && !(state.action && isActionAbility(ab))) box.append(drawCustomEntry(ab, i)); });
   if (!box.children.length) box.append(el("p", { class: "hint", text: "No keywords or abilities yet." }));
 }
 function drawKeywordEntry(t, i) {
@@ -1181,19 +1181,31 @@ function usedGroup(official) { return official ? { rank: 0, group: "Used by offi
 // added through that keyword, so they only show here with advanced options on.
 function keywordTrigger(id) { return schema.traits.some(k => k.trigger === id && k.id.toLowerCase() === id.toLowerCase() && kwType(k.id) === "ability"); }
 // Two groups: triggers official cards use, then (advanced options only) the untested ones the game can fire.
+// Triggers named after an action keyword: an ability on them is part of that action, so it is set up through
+// the action (Action tab), never as a Custom ability.
+const ACTION_TRIGGERS = ["Pray", "Duty", "Ferocity", "Agenda", "Oath"];
+const isActionAbility = ab => ACTION_TRIGGERS.includes(ab.trigger) && !ab.keyword;
+// the Pray ability every official Pray card carries (the praying state); the server adds it to Pray cards by itself
+const PRAY_STANDARD = { trigger: "Pray", context: "Play", priority: "Instant", playIcon: true,
+  effects: [{ effect: "buffSelf", targets: { pool: "self" }, buff: { type: "singleUseEnchantment", trait: "pray", enchantment: "9218576fd3e26554db5b4c239a36dbc7" } }] };
+let prayStd = null;
+function isStandardPray(ab) {
+  if (ab.trigger !== "Pray") return false;
+  if (!prayStd) prayStd = JSON.stringify(trimAbility(mergeAbility(JSON.parse(JSON.stringify(PRAY_STANDARD)))));
+  return JSON.stringify(trimAbility(ab)) === prayStd;
+}
 function triggerItems() {
   const t = tmpl(), sets = ADV ? null : t.hand ? SABOTAGE_TRIGGERS : stratLike() ? STRAT_TRIGGERS : null;
   if (sets) return sets.flatMap(g => g.ids.filter(id => schema.triggers.some(x => x.id === id)).map(id => {
     const d = schema.triggers.find(x => x.id === id);
     return { id: id + "@" + g.ctx, label: (g.labels || {})[id] || d.label, text: (g.texts || {})[id] || trigDesc(id), note: d.official ? d.official + " official" : "untested", rank: g.rank, group: g.group };
   }));
-  return schema.triggers.filter(x => ADV || t.ench || !ONLY_ENCH_TRIGGERS.includes(x.id)).filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)) && (ADV || t.official))
+  return schema.triggers.filter(x => !ACTION_TRIGGERS.includes(x.id) && (ADV || t.ench || !ONLY_ENCH_TRIGGERS.includes(x.id))).filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)) && (ADV || t.official))
     .map(t => Object.assign({ id: t.id, label: t.label, text: trigDesc(t.id), note: t.official ? t.official + " official" : "untested" }, usedGroup(t.official)));
 }
 function actionItems() {
   const items = schema.traits.filter(t => t.action && keywordAllowed(t.id, "action") && (t.official || ADV))
     .map(t => Object.assign({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card" }, usedGroup(t.official)));
-  if (ADV && tmpl().kind !== "tactic") items.push(Object.assign({ id: "", label: "Plain action (no keyword)", text: "An action without a keyword, as on one official card (Armorium Cherub).", note: "1 official" }, usedGroup(1)));
   return items;
 }
 function splitTrig(v) { const [id, ctx] = String(v).split("@"); return { id, ctx: ctx || "" }; }
@@ -1599,7 +1611,23 @@ function drawActionEntry() {
   a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
   b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
   if (advOr(a.playAnim)) b.append(el("div", { class: "checks" }, check("Play the action animation", a, "playAnim")));
+  state.abilities.forEach((ab, i) => { if (isActionAbility(ab)) b.append(drawActionAbility(ab, i)); });
   if (advOr(state.alternative)) drawAlternative(b);
+  return b;
+}
+// An ability on the action's own trigger (Pray ...): part of the action. The standard praying state every
+// official Pray card has is only a line unless advanced options are on.
+function drawActionAbility(ab, i) {
+  const name = lab(schema.triggers, ab.trigger);
+  if (isStandardPray(ab) && !ADV) return el("p", { class: "hint", text: "Also gives the praying state when it prays, as every official Pray card does." });
+  const b = el("div", { class: "kwbox" },
+    el("div", { class: "head" }, el("strong", { text: `When it is used (${name}): what else happens` }), el("span", { class: "spacer" }),
+      el("button", { class: "small danger", text: "Remove", onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
+    isStandardPray(ab) ? el("p", { class: "hint", text: "The praying state, as on every official Pray card (the server adds it to a Pray card that has none)." }) : null);
+  const subj = drawSubject(ab); if (subj) b.append(subj);
+  b.append(drawAbilityOptions(ab));
+  ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
+  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
   return b;
 }
 // "Say what the player picks" when no effect aims at the chosen target (official cards whose effects
