@@ -193,6 +193,10 @@
   .cvList .it:hover { background: #1c2028; } .cvList .it.on { background: #23324a; }
   .cvList .it .c { grid-row: span 2; align-self: center; text-align: center; font-weight: 700; color: var(--accent2); }
   .cvList .it .n { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .cvList .it .m { font-size: 12px; color: var(--dim); }
+  .localArt .head strong { color: var(--accent2); }
+  label.button { display: inline-block; font: inherit; font-size: 13px; color: var(--text); background: #2c313b; border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; }
+  label.button:hover { border-color: var(--accent); }
+  .face.noFrame { outline: 3px solid #555; outline-offset: -3px; }
   .cvDetail .top { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
   .cvDetail .facts { flex: 1; min-width: 220px; }
   .cvDetail .facts table { border-collapse: collapse; font-size: 14px; } .cvDetail .facts td { padding: 2px 10px 2px 0; vertical-align: top; } .cvDetail .facts td:first-child { color: var(--dim); }
@@ -649,6 +653,14 @@
     <section>
       <h2>Card viewer</h2>
       <p class="hint">Every official card, drawn with the game's own frame and art, with the data the game uses for it. <strong>Load in editor</strong> copies the card into the card creator as a new card, built the same way the game builds it, so you can see how it is made or start from it.</p>
+      <div class="box localArt" id="laBox">
+        <div class="head"><strong>Card art from your game</strong><span class="spacer"></span><span class="hint" id="laStatus">Checking…</span></div>
+        <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded.</p>
+        <div class="row" style="align-items:center; gap:10px">
+          <label class="button small" style="cursor:pointer">Pick card-art-export.zip<input type="file" id="laFile" accept=".zip,application/zip" style="display:none"></label>
+          <button class="small hidden" id="laRemove" type="button">Remove from this browser</button>
+        </div>
+      </div>
       <div class="row">
         <div class="field grow"><label>Search (name, rules text or id)</label><input id="cvSearch" placeholder="e.g. Fenrisian Wolf, Rally, SW9" autocomplete="off"></div>
         <div class="field"><label>Faction</label><select id="cvArmy"></select></div>
@@ -2471,18 +2483,20 @@ function richText(box, text) {                  // **Keyword** -> bold, as the g
     if (/^\*\*[^*]+\*\*$/.test(part)) box.append(el("b", { text: part.slice(2, -2) })); else if (part) box.append(document.createTextNode(part));
   });
 }
-function cardFace(c, artUrl, width, maskUrl) {
+function cardFace(c, artUrl, width, maskUrl, frameUrl) {
   const strat = c.kind === "tactic";
   const frame = c.frame || `${c.army}_${strat ? "stratagem" : "troop"}_${TIERS[c.rarity] || 1}`;
   width = width || 300;
   const box = el("div", { class: "faceBox" }); box.style.setProperty("--w", width + "px");
   const f = el("div", { class: "face", style: `transform:scale(${width / 684})` });
   const art = el("div", { class: "fArt " + (strat ? "strat" : "unit") }); if (artUrl) art.style.backgroundImage = `url("${artUrl}")`;
-  const img = el("img", { class: "fFrame", alt: "", src: FILES + "card-frames/" + encodeURIComponent(frame) + ".webp" });
-  img.onerror = () => { img.remove(); f.style.outline = "3px solid #555"; };
+  // frameUrl: undefined = the server's frame; a string = that picture; null = no frame picture (outline only)
+  const src = frameUrl === undefined ? FILES + "card-frames/" + encodeURIComponent(frame) + ".webp" : frameUrl;
+  const img = src ? el("img", { class: "fFrame", alt: "", src }) : null;
+  if (img) img.onerror = () => { img.remove(); f.classList.add("noFrame"); }; else f.classList.add("noFrame");
   f.append(el("div", { class: "fBack" }), art);
   if (!strat) f.append(el("div", { class: "fShade" }));
-  f.append(img);
+  if (img) f.append(img);
   // parts of a unit's art drawn over the frame: the same picture through its pop-out mask
   if (!strat && artUrl && maskUrl) {
     const pop = el("div", { class: "fPop" });
@@ -2514,9 +2528,115 @@ function cardFace(c, artUrl, width, maskUrl) {
 function artUrlOf(id) { return id ? FILES + "card-art/" + encodeURIComponent(id) + ".jpg" : ""; }
 function maskUrlOf(id) { return id ? FILES + "card-masks/" + encodeURIComponent(id) + ".png" : ""; }   // pop-out mask (units only)
 
+/* ---------- card art from the player's own game ----------
+   The game mod's Settings > Mod > Export card art writes card-art-export.zip: card-art/<id>.jpg,
+   card-masks/<id>.png, card-frames/<Army>_<troop|stratagem>_<1-4>.png and export.json. The player picks
+   that file; it is kept in this browser (IndexedDB) and read from there, never uploaded. The mod writes
+   its entries uncompressed ("stored"), so a picture is just a slice of the file. */
+const localArt = { blob: null, entries: null, urls: new Map(), info: null };
+const LA_DB = "wfr-local-art", LA_STORE = "files", LA_KEY = "card-art-export";
+function laDb() {
+  return new Promise((ok, bad) => {
+    let req;
+    try { req = indexedDB.open(LA_DB, 1); } catch (e) { return bad(e); }
+    req.onupgradeneeded = () => req.result.createObjectStore(LA_STORE);
+    req.onsuccess = () => ok(req.result); req.onerror = () => bad(req.error);
+  });
+}
+async function laStore(op, value) {
+  const db = await laDb();
+  try {
+    return await new Promise((ok, bad) => {
+      const tx = db.transaction(LA_STORE, op === "get" ? "readonly" : "readwrite"), st = tx.objectStore(LA_STORE);
+      const req = op === "get" ? st.get(LA_KEY) : op === "put" ? st.put(value, LA_KEY) : st.delete(LA_KEY);
+      req.onsuccess = () => ok(req.result); req.onerror = () => bad(req.error);
+    });
+  } finally { db.close(); }
+}
+// The zip's list of files (its central directory at the end): name -> where its data is.
+async function laIndex(blob) {
+  const tailLen = Math.min(blob.size, 65557), tail = new DataView(await blob.slice(blob.size - tailLen).arrayBuffer());
+  let eocd = -1;
+  for (let i = tailLen - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error("this is not a zip file");
+  const count = tail.getUint16(eocd + 10, true), cdSize = tail.getUint32(eocd + 12, true), cdAt = tail.getUint32(eocd + 16, true);
+  const cd = new DataView(await blob.slice(cdAt, cdAt + cdSize).arrayBuffer()), dec = new TextDecoder();
+  const entries = new Map();
+  for (let p = 0, n = 0; n < count && p + 46 <= cd.byteLength; n++) {
+    if (cd.getUint32(p, true) !== 0x02014b50) throw new Error("the zip's file list is damaged");
+    const method = cd.getUint16(p + 10, true), size = cd.getUint32(p + 20, true), nameLen = cd.getUint16(p + 28, true);
+    const extraLen = cd.getUint16(p + 30, true), commentLen = cd.getUint16(p + 32, true), local = cd.getUint32(p + 42, true);
+    const name = dec.decode(new Uint8Array(cd.buffer, cd.byteOffset + p + 46, nameLen));
+    entries.set(name, { method, size, local });
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  return entries;
+}
+async function laRead(name) {               // a file from the zip as a Blob (stored, or deflated)
+  const e = localArt.entries && localArt.entries.get(name);
+  if (!e) return null;
+  if (e.start === undefined) {
+    const h = new DataView(await localArt.blob.slice(e.local, e.local + 30).arrayBuffer());
+    if (h.getUint32(0, true) !== 0x04034b50) throw new Error("damaged entry " + name);
+    e.start = e.local + 30 + h.getUint16(26, true) + h.getUint16(28, true);
+  }
+  const type = name.endsWith(".jpg") ? "image/jpeg" : name.endsWith(".png") ? "image/png" : "application/octet-stream";
+  const raw = localArt.blob.slice(e.start, e.start + e.size);
+  if (e.method === 0) return new Blob([raw], { type });
+  if (e.method === 8 && typeof DecompressionStream === "function")
+    return new Blob([await new Response(raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer()], { type });
+  throw new Error("unsupported packing in " + name);
+}
+async function laUrl(name) {                // a picture from the zip as an address the page can draw, or ""
+  if (!localArt.entries) return "";
+  if (localArt.urls.has(name)) return localArt.urls.get(name);
+  let url = "";
+  try { const b = await laRead(name); if (b) url = URL.createObjectURL(b); } catch (e) { console.warn(e); }
+  localArt.urls.set(name, url);
+  return url;
+}
+async function laUse(blob, remember) {
+  const entries = await laIndex(blob);
+  if (!entries.has("export.json")) throw new Error("this zip was not made by the game's Export card art");
+  for (const u of localArt.urls.values()) if (u) URL.revokeObjectURL(u);
+  localArt.urls.clear();
+  localArt.blob = blob; localArt.entries = entries;
+  try { localArt.info = JSON.parse(await (await laRead("export.json")).text()); } catch (e) { localArt.info = {}; }
+  if (remember) { try { await laStore("put", blob); } catch (e) { say("The card art is shown, but this browser would not keep it: pick the file again next time.", "info"); } }
+  laShow();
+}
+function laShow() {
+  const i = localArt.info;
+  $("laStatus").textContent = localArt.entries
+    ? `Loaded: ${i.art ?? "?"} pictures, ${i.frames ?? "?"} frames${i.made ? ", exported " + String(i.made).slice(0, 10) : ""}${i.game ? " from game " + i.game : ""}`
+    : "Not loaded: cards show without pictures";
+  $("laRemove").classList.toggle("hidden", !localArt.entries);
+  $("laHelp").classList.toggle("hidden", !!localArt.entries);
+}
+let laStarted = false;
+async function laStart() {                  // once per page: what this browser kept, and the buttons
+  if (laStarted) return; laStarted = true;
+  $("laFile").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    $("laStatus").textContent = "Reading " + f.name + "…";
+    try { await laUse(f, true); say("Card art loaded from your game's export. It stays in this browser.", "ok"); if (cvPick) viewCard(cvPick); }
+    catch (x) { laShow(); say("Could not use that file: " + x.message + ".", "bad"); }
+  });
+  $("laRemove").addEventListener("click", async () => {
+    try { await laStore("delete"); } catch (e) { }
+    for (const u of localArt.urls.values()) if (u) URL.revokeObjectURL(u);
+    localArt.urls.clear(); localArt.blob = localArt.entries = localArt.info = null;
+    laShow(); if (cvPick) viewCard(cvPick);
+  });
+  try { const kept = await laStore("get"); if (kept) await laUse(kept, false); } catch (e) { console.warn("local card art:", e); }
+  laShow();
+}
+
 /* ---------- card viewer ---------- */
 let cvCards = null, cvPick = "", cvAsk = 0;
 async function showViewer() {
+  laStart();
   if (!cvCards) {
     try { cvCards = (await call("CreatorOfficial")).cards; } catch (e) { return say("Could not load the card list: " + e.message, "bad"); }
     const armies = [...new Set(cvCards.map(c => c.army))].sort((a, b) => lab(schema.armies, a).localeCompare(lab(schema.armies, b)));
@@ -2550,6 +2670,12 @@ async function viewCard(id) {
   let d;
   try { d = await call("CreatorOfficial", { id }); } catch (e) { return say("Could not load the card: " + e.message, "bad"); }
   if (mine !== cvAsk) return;
+  // pictures only from the player's own export (never the server's copy)
+  const strat = c.kind === "tactic";
+  const frameName = c.frame || `${c.army}_${strat ? "stratagem" : "troop"}_${TIERS[c.rarity] || 1}`;
+  const [artUrl, maskUrl, frameUrl] = await Promise.all([laUrl("card-art/" + c.id + ".jpg"),
+    strat ? "" : laUrl("card-masks/" + c.id + ".png"), laUrl("card-frames/" + frameName + ".png")]);
+  if (mine !== cvAsk) return;
   box.textContent = "";
   const kinds = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" };
   const facts = [["Id", c.id], ["Faction", lab(schema.armies, c.army)], ["Kind", kinds[c.kind]], ["Rarity", c.rarity], ["Cost", c.cost],
@@ -2558,7 +2684,7 @@ async function viewCard(id) {
     ["In the game", { collectible: "Collectible", created: "Created by other cards (not in the collection)", defence: "Defence card" }[c.status]],
     d.design.traits && d.design.traits.length ? ["Keywords", d.design.traits.map(t => lab(schema.traits, t.name) + (t.value ? " " + t.value : "")).join(", ")] : null].filter(Boolean);
   const text = el("p", {}); richText(text, c.text);
-  box.append(el("div", { class: "top" }, cardFace(c, artUrlOf(c.id), 320, maskUrlOf(c.id)),
+  box.append(el("div", { class: "top" }, cardFace(c, artUrl, 320, maskUrl, frameUrl || null),
     el("div", { class: "facts" }, el("h2", { text: c.name, style: "margin-top:0" }), text,
       el("table", {}, ...facts.map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { text: String(v) })))),
       d.lore ? el("p", { class: "hint", style: "font-style:italic", text: d.lore }) : null,
