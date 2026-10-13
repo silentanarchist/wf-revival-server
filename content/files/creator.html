@@ -219,6 +219,7 @@
   .deck { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
   .deck .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .deck .top strong { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+  .deck .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   .cfg { border-collapse: collapse; width: 100%; font-size: 14px; }
   .cfg th, .cfg td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
   .cfg td input[type=number] { width: 72px; } .cfg td input[type=text] { width: 160px; }
@@ -2815,7 +2816,9 @@ function drawDecks() {
     const total = Object.values(d.cards || {}).reduce((a, b) => a + b, 0), open = openDecks.has(d.id);
     const item = el("div", { class: "deck" }, el("div", { class: "top" },
       el("strong", { text: d.name || "(unnamed deck)" }),
-      el("span", { class: "hint", text: `${d.mode} · ${cardName(d.hero)} · ${total} cards` }),
+      el("span", { class: "hint", text: `${d.mode} · ${cardName(d.hero)} · ${total} cards` })),
+      // the buttons sit on their own row, left-aligned, the same on every deck
+      el("div", { class: "acts" },
       el("button", { class: "small", type: "button", text: open ? "Hide cards" : "Show cards", onclick: () => { open ? openDecks.delete(d.id) : openDecks.add(d.id); drawDecks(); } }),
       el("button", { class: "small", type: "button", text: "Copy code", onclick: async () => {
         try { await navigator.clipboard.writeText(deckCode(d)); say(`Deck code for ${d.name} copied.`, "ok"); }
