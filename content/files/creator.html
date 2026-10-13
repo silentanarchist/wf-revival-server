@@ -1010,7 +1010,7 @@ function drawKeywordEntry(t, i) {
       : el("button", { class: "small danger", text: "Remove", onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }));
   const b = el("div", { class: "box" }, head,
     kwDesc(t.name) ? el("p", { class: "hint pickDesc", text: kwDesc(t.name) }) : null,
-    def.onlyOn && def.onlyOn !== val("f_kind") ? el("p", { class: "hint", style: "color:var(--warn)", text: `Official cards only have this on ${lab(schema.kinds, def.onlyOn).toLowerCase()}s.` }) : null,
+    def.onlyOn && def.onlyOn !== val("f_kind") && !(t.name === "codex" && stratLike()) ? el("p", { class: "hint", style: "color:var(--warn)", text: `Official cards only have this on ${lab(schema.kinds, def.onlyOn).toLowerCase()}s.` }) : null,
     advOr(t.hidden || (!def.takesValue && t.value)) ? el("div", { class: "row tight" },
       def.takesValue ? null : field("Number (a few official cards set one)", num(t.value, v => { t.value = v; }, 0, 20)),
       el("div", { class: "checks" }, check("Hidden on the card", t, "hidden"))) : null);
@@ -1098,7 +1098,7 @@ function enforceTemplate(full) {
 const STRAT_TRIGGERS = [
   { group: "When played", rank: 0, ctx: "", ids: ["ThisCardPlayed"] },
   { group: "Straight after it is played (it waits in the graveyard)", rank: 1, ctx: "InPlayOrCementery",
-    ids: ["FollowUpResolution", "UseFaith", "UseSpiritStone", "Codex", "OtherUnitDeath"] },
+    ids: ["FollowUpResolution", "UseFaith", "UseSpiritStone", "OtherUnitDeath"] },
   { group: "While it is in your hand", rank: 2, ctx: "Hand",
     ids: ["WhileInPlayVariable", "OtherUnitSummoned", "OtherUnitDeath", "TurnStart", "TurnEnd", "OtherCardPlayed", "TriggeredCodex"],
     labels: { WhileInPlayVariable: "Its cost follows a count while in hand" },
@@ -1120,7 +1120,7 @@ function keywordAllowed(id, type) {
   const t = tmpl();
   if (t.ench) return true;
   if (t.kind !== "tactic") return traitDef(id).onlyOn !== "tactic";
-  if (t.id === "stratagem" || t.id === "talent") return type === "action" ? id === "oath" : id === "ephemeral";
+  if (t.id === "stratagem" || t.id === "talent") return type === "action" ? id === "oath" : type === "ability" ? id === "codex" : id === "ephemeral";
   return false;
 }
 
@@ -1200,7 +1200,7 @@ function triggerItems() {
     const d = schema.triggers.find(x => x.id === id);
     return { id: id + "@" + g.ctx, label: (g.labels || {})[id] || d.label, text: (g.texts || {})[id] || trigDesc(id), note: d.official ? d.official + " official" : "untested", rank: g.rank, group: g.group };
   }));
-  return schema.triggers.filter(x => !ACTION_TRIGGERS.includes(x.id) && (ADV || t.ench || !ONLY_ENCH_TRIGGERS.includes(x.id))).filter(t => trigStatus(t.id) !== "dead" && (ADV || !keywordTrigger(t.id)) && (ADV || t.official))
+  return schema.triggers.filter(x => !ACTION_TRIGGERS.includes(x.id) && (ADV || t.ench || !ONLY_ENCH_TRIGGERS.includes(x.id))).filter(t => trigStatus(t.id) !== "dead" && !keywordTrigger(t.id) && (ADV || t.official))
     .map(t => Object.assign({ id: t.id, label: t.label, text: trigDesc(t.id), note: t.official ? t.official + " official" : "untested" }, usedGroup(t.official)));
 }
 function actionItems() {
@@ -1587,7 +1587,9 @@ function abilityFor(id) {                       // a keyword was added or change
   if (!def.needsAbility || !def.trigger) return;
   const sameName = def.trigger.toLowerCase() === id.toLowerCase();
   if (state.abilities.some(a => sameName ? a.trigger === def.trigger : a.keyword === id)) return;
-  state.abilities.push(newAbility(def.trigger, sameName ? "" : id));
+  const ab = newAbility(def.trigger, sameName ? "" : id);
+  if (id === "codex" && stratLike()) ab.context = "InPlayOrCementery";
+  state.abilities.push(ab);
 }
 // The card's action, listed as an Action keyword (Duty, Pray, Oath, Agenda, Ferocity; plain action is advanced).
 function drawActionEntry() {
