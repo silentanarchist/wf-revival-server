@@ -1084,11 +1084,86 @@ def _site_patch_running_server():
         log.info("site pages: the running server now takes its page list from playfab_emu.py (no restart needed)")
 
 
+def _cards_version(handler):
+    """One version for the cards the game plays with, the same on PC and Android: from the card bundles
+    the server hands out (allcards*, both platforms). Replays record it, so a replay is only played
+    with the cards it was recorded with."""
+    shas = []
+    for store in (getattr(handler, "bundles", None), getattr(handler, "bundles_android", None)):
+        if store is None:
+            continue
+        shas += [b["sha256"] for b in store.list() if b.get("name", "").startswith("allcards")]
+    return hashlib.sha256("|".join(sorted(shas)).encode()).hexdigest()[:16] if shas else ""
+
+
+def _site_content_get(handler, path):
+    """Game content answers changed without a restart. Returns True when the request was answered.
+    - /api/v1/content/pack is no longer handed out: the mod never used its cards (only its version,
+      now "cardsVersion" in the manifest); mods before 0.13.20 still ask and keep their cached copy.
+    - /api/v1/content/manifest gains "cardsVersion"."""
+    if path == "/api/v1/content/pack":
+        handler._json(404, {"error": "not found"})
+        return True
+    if path == "/api/v1/content/manifest":
+        try:
+            cv = _cards_version(handler)
+        except Exception:
+            log.exception("site content: could not work out cardsVersion")
+            cv = ""
+        plain = handler._json
+
+        def with_version(code, obj, *a, **k):
+            if code == 200 and isinstance(obj, dict):
+                obj = dict(obj, cardsVersion=cv)
+            return plain(code, obj, *a, **k)
+        handler._json = with_version
+        handler._site_content_started = True             # from here on the request is the original's
+        try:
+            handler._site_content_original(handler)
+        finally:
+            del handler._json
+        return True
+    return False
+
+
+def _site_content_patch():
+    """Puts _site_content_get (newest copy, read on every request) in front of the running server's
+    page handler, once per process."""
+    import sys
+    from urllib.parse import urlparse
+    handler = getattr(sys.modules.get("__main__"), "Handler", None)
+    if handler is None or not hasattr(handler, "do_GET") or getattr(handler, "_site_content_wrapped", False):
+        return
+    original = handler.do_GET
+
+    def do_GET(self):
+        try:
+            path = urlparse(self.path).path.rstrip("/") or "/"
+            if path.startswith("/api/v1/content/") and "~" not in path:
+                hook = getattr(sys.modules.get(__name__), "_site_content_get", None)
+                self._site_content_original = original
+                if hook is not None and hook(self, path):
+                    return
+        except Exception:
+            log.exception("site content: could not answer %s", getattr(self, "path", "?"))
+            if getattr(self, "_site_content_started", False):
+                return
+        return original(self)
+
+    handler.do_GET = do_GET
+    handler._site_content_wrapped = True
+    log.info("site content: the card pack is no longer handed out; the manifest carries cardsVersion")
+
+
 _site_patch_running_server()
 try:
     _site_block_files()
 except Exception:
     log.exception("site files: could not set up the refusals")
+try:
+    _site_content_patch()
+except Exception:
+    log.exception("site content: could not set up")
 
 
 def _server_log_setup():
