@@ -2207,7 +2207,7 @@ class PlayFabEmulator:
         incoming = len(log_text.encode("utf-8")) + len(screen or b"") + len(dump or b"") + len(description.encode("utf-8"))
         if self._bugs_storage_full(incoming):
             log.warning("bug report from %s refused: data/bugs is at its storage cap (bugStorageMB)", perms["name"])
-            return err("StorageFull", "the server's bug report storage is full - please tell an admin on Discord", 1199, 507)
+            return err("StorageFull", "the server's bug report storage is full - please tell us at wf-revival@silentanarchist.com", 1199, 507)
         self._allow("bug-hour", pfid, 10, 3600)
         self._allow("bug-day", pfid, 30, 86400)
         now = now_iso()
