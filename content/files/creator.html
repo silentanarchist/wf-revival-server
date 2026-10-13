@@ -2484,7 +2484,7 @@ async function showExamples(keyword) {
   for (const c of d.cards) {
     const stats = c.stats ? ` · ${c.stats[0]}/${c.stats[1]}/${c.stats[2]}` : "";
     box.append(el("div", { class: "box" },
-      el("div", { class: "head" }, el("strong", { text: c.id ? offName(c.id, c.name) : c.name }), el("span", { class: "hint", text: `${c.id ? c.id + " · " : ""}${lab(schema.armies, c.army)} ${c.kind} · ${c.rarity} · cost ${c.cost}${stats}${c.token ? " · created by another card" : ""}` })),
+      el("div", { class: "head" }, el("strong", { text: (c.id && ltTerm("Card_Name/" + c.id)) || (c.token ? "A card made by another card" : c.id || "") }), el("span", { class: "hint", text: `${c.id && !/^[0-9a-f]{32}$/.test(c.id) ? c.id + " · " : ""}${lab(schema.armies, c.army)} ${c.kind} · ${c.rarity} · cost ${c.cost}${stats}${c.token ? " · created by another card" : ""}` })),
       el("div", { class: "hint", text: "Keywords: " + c.keywords.map(k => lab(schema.traits, k)).join(", ") }),
       el("pre", { style: "max-height:none", text: JSON.stringify(c.data, null, 1) })));
   }
@@ -2643,16 +2643,16 @@ function laShow() {
 function laNotes() {
   for (const p of document.querySelectorAll(".laNote")) {
     p.textContent = "";
-    const link = el("a", { href: "/profile", text: localArt.entries ? "change it on your Profile page" : "load them on your Profile page",
+    const link = el("a", { href: "/profile", text: localArt.entries ? "change it on your Profile page" : "Load them on your Profile page",
       onclick: e => { if (!plainClick(e)) return; e.preventDefault(); laGoProfile(); } });
     p.append(localArt.entries
       ? `Official frames, card art${localText.langs ? " and card text" : ""}: from your game's export${localArt.info && localArt.info.made ? " of " + String(localArt.info.made).slice(0, 10) : ""} (kept in this browser) – `
-      : "Official frames, card art and card text come from your own copy of the game, not from this site – ", link, ".");
+      : "Official card names, rules text, frames and art come from your own copy of the game, not from this site – without them cards show their ids. ", link, ".");
   }
 }
 /* Official card text from the export (card-text.json: the game's own text entries in every language it
-   has). Names, rules text and lore are shown from here, in the language picked on the Profile page;
-   the server's copy is only the fallback while it still sends one. */
+   has). Names, rules text and lore are shown only from here, in the language picked on the Profile
+   page: the server sends official cards without them (ids, numbers and game data only). */
 const localText = { langs: null, terms: null, col: 0, en: 0 };
 const LT_LANG = "wfr.cardTextLang";
 function ltTerm(key) {
@@ -3612,7 +3612,7 @@ let menuCards = null;
 function cardLists() {
   $("cardList").textContent = ""; $("enchList").textContent = "";
   for (const c of menuCards) {
-    const shown = `${offName(c.id, c.name)} (${c.id})`;
+    const nm = offName(c.id, c.name), shown = nm === c.id ? c.id : `${nm} (${c.id})`;     // no export: the id alone
     cardNames[c.id] = shown; cardIds[shown] = c.id; cardInfo[c.id] = c;
     $("cardList").append(el("option", { value: shown }));
     if (c.enchantment) $("enchList").append(el("option", { value: shown }));

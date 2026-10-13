@@ -971,6 +971,41 @@ SITE_PRIVATE_FILES = {"guides.html", *CREATOR_DATA_FILES}
 SITE_PRIVATE_FOLDERS = {"card-art", "card-masks", "card-frames"}
 
 
+# Official card names, rules text and lore are not handed out by the server: players see them from
+# their own game's export (Settings > Mod > Export card art, card-text.json), read in their browser.
+# The Card viewer, Examples and the creator's card list get ids, numbers and game data only.
+OFFICIAL_TEXT_KEYS = ("name", "text", "lore")          # on a card entry, its detail and its design
+OFFICIAL_DATA_TEXT_KEYS = ("m_Name", "cardName")       # inside the game data
+_NAMED_REF = re.compile(r"^(\w+ \S+) \((?!\d+\)$).*\)$")
+
+
+def _data_without_names(obj):
+    """The game data without the card's own names, and references like "card AM60 (Timely
+    Reinforcements)" as "card AM60". Enum values like "Rare (2)" are kept."""
+    if isinstance(obj, dict):
+        return {k: _data_without_names(v) for k, v in obj.items() if k not in OFFICIAL_DATA_TEXT_KEYS}
+    if isinstance(obj, list):
+        return [_data_without_names(v) for v in obj]
+    if isinstance(obj, str):
+        m = _NAMED_REF.match(obj)
+        if m:
+            return m.group(1)
+    return obj
+
+
+def _card_without_text(card):
+    """A copy of an official card entry (list entry, viewer detail or example) without its name, rules
+    text and lore, in itself, its "design" and its "data"."""
+    if not isinstance(card, dict):
+        return card
+    out = {k: v for k, v in card.items() if k not in OFFICIAL_TEXT_KEYS}
+    if isinstance(out.get("design"), dict):
+        out["design"] = {k: v for k, v in out["design"].items() if k not in OFFICIAL_TEXT_KEYS}
+    if "data" in out:
+        out["data"] = _data_without_names(out["data"])
+    return out
+
+
 def _site_file_refused(rel):
     """True for a /api/v1/content/files/ path that must not be served: one inside SITE_PRIVATE_FOLDERS,
     or one spelled in a way no file the site serves is (see the security notes)."""
@@ -3821,8 +3856,26 @@ class PlayFabEmulator:
             return err("NotFound", "no examples are available on this server")
         keyword = req.get("keyword")
         if keyword:
-            return ok({"keyword": keyword, "examples": self._examples.get("keywords", {}).get(keyword) or {"count": 0, "cards": []}})
+            ex = self._examples.get("keywords", {}).get(keyword) or {"count": 0, "cards": []}
+            ids = self._official_ids_by_name()
+            cards = [dict(c, id=c.get("id") or ids.get((c.get("name"), c.get("army")), "")) for c in ex.get("cards") or []]
+            return ok({"keyword": keyword, "examples": dict(ex, cards=[_card_without_text(c) for c in cards])})
         return ok({"keywords": {k: v["count"] for k, v in self._examples.get("keywords", {}).items()}})
+
+    def _official_ids_by_name(self):
+        """(name, army) -> card id from creator-cards.json, for examples that carry only a name (cards made
+        by other cards have no short id there), so the player's export can name them."""
+        path = os.path.join(self.content_root, "files", "creator-cards.json")
+        try:
+            stamp = os.path.getmtime(path)
+            if getattr(self, "_ids_by_name_stamp", None) != stamp:
+                with open(path, encoding="utf-8") as f:
+                    cards = json.load(f).get("cards") or []
+                self._ids_by_name = {(c.get("name"), c.get("army")): c.get("id") for c in cards if c.get("id")}
+                self._ids_by_name_stamp = stamp
+        except (OSError, ValueError, AttributeError):
+            return {}
+        return self._ids_by_name
 
     def api_Revival_CreatorData(self, req, headers):
         """The card creator's menus and lists for signed-in, approved accounts (not banned, not still
@@ -3838,6 +3891,8 @@ class PlayFabEmulator:
                 data = json.load(f)
         except (OSError, ValueError):
             return err("NotFound", "that file is not on the server", 1001, 404)
+        if name == "creator-cards.json" and isinstance(data, dict):
+            data = dict(data, cards=[_card_without_text(c) for c in data.get("cards") or []])
         return ok({"file": name, "data": data})
 
     def api_Revival_CreatorOfficial(self, req, headers):
@@ -3858,8 +3913,11 @@ class PlayFabEmulator:
             one = (self._official.get("detail") or {}).get(str(card_id))
             if not one:
                 return err("NotFound", "no official card has that id")
-            return ok(dict(one, id=str(card_id)))
-        return ok({"cards": self._official.get("cards") or []})
+            return ok(dict(_card_without_text(one), id=str(card_id)))
+        if getattr(self, "_official_list_stamp", None) != self._official_stamp:
+            self._official_list = [_card_without_text(c) for c in self._official.get("cards") or []]
+            self._official_list_stamp = self._official_stamp
+        return ok({"cards": self._official_list})
 
     def api_Revival_CreatorUnreleased(self, req, headers):
         """Admin > Unreleased cards: the cards that only exist as text in the game (names and rules text
