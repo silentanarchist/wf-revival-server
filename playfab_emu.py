@@ -1769,6 +1769,7 @@ class PlayFabEmulator:
             user = users.get(name.lower())
             if self._name_locked(name, where, user):
                 return slow
+            new_request = False
             if user is None:
                 if not req.get("create"):
                     self._allow("signin-fail", where, 20, 900)
@@ -1776,6 +1777,7 @@ class PlayFabEmulator:
                 if not self._allow("signup", where, 5, 3600):
                     return err("TooManyAttempts", "too many new accounts from this connection - try again in an hour", 1199, 429)
                 salt = os.urandom(16).hex()
+                new_request = not self._creator_auto_approve()
                 user = users[name.lower()] = {"name": name, "salt": salt, "hash": self._creator_hash(passphrase, salt),
                                               "sessions": [], "created": now_iso(),
                                               "access": "approved" if self._creator_auto_approve() else "requested"}
@@ -1801,12 +1803,89 @@ class PlayFabEmulator:
                 # A new account that an admin has not approved yet: nothing on the site or in the
                 # game until then (it is saved, so it appears on the People page).
                 self._creator_users_save(users)
+                if new_request:
+                    self._discord_request(user["name"])
                 return err("AccountNotApproved", "your account is waiting for an admin to approve it - try again once it is approved", 1002, 403)
             token = uuid.uuid4().hex + uuid.uuid4().hex
             user["sessions"] = (user.get("sessions", []) + [hashlib.sha256(token.encode()).hexdigest()])[-5:]
             self._creator_users_save(users)
         self._site_session_fresh(hashlib.sha256(token.encode()).hexdigest(), new=True)
         return ok({"name": user["name"], "session": token, "account": self._creator_perms(user), "deletionCancelled": cancelled})
+
+    # New account requests to a Discord channel. data/discord-webhook.json holds
+    #   {"url": "<the channel's webhook address>", "pingRole": "<role id to @, optional>"}
+    # (Discord: channel settings > Integrations > Webhooks > New Webhook > Copy Webhook URL; the role id
+    # from Server settings > Roles > right-click the role > Copy Role ID, with Developer Mode on).
+    # The webhook address lets anyone post in that channel, so it lives in data/: never served, never
+    # in the repo, never logged. No file (or no valid address) = off. The note only gives the
+    # username and a link to the site's Requests page; approving is done on the site.
+    # Requests close together go out as one message, at most one a minute, so a burst of sign-ups
+    # cannot flood the channel; the posting runs on its own thread and never holds up a sign-in.
+    DISCORD_FILE = "discord-webhook.json"
+    DISCORD_HOOK = re.compile(r"https://(?:ptb\.|canary\.)?discord(?:app)?\.com/api/webhooks/\d{5,25}/[\w-]{20,100}")
+    DISCORD_GAP = 60
+    _discord_state = {"lock": threading.Lock(), "names": [], "busy": False, "last": 0.0}
+
+    def _discord_settings(self):
+        try:
+            with open(os.path.join(self.store.root, self.DISCORD_FILE), encoding="utf-8") as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            return None
+        url = str(d.get("url") or "").strip() if isinstance(d, dict) else ""
+        if not self.DISCORD_HOOK.fullmatch(url):
+            return None
+        role = str(d.get("pingRole") or "").strip()
+        return url, (role if re.fullmatch(r"\d{5,25}", role) else "")
+
+    def _discord_request(self, name):
+        if self._discord_settings() is None:
+            return
+        st = self._discord_state
+        with st["lock"]:
+            st["names"].append(name)
+            if st["busy"]:
+                return                      # the running sender picks this one up
+            st["busy"] = True
+        threading.Thread(target=self._discord_send, name="discord-requests", daemon=True).start()
+
+    def _discord_send(self):
+        st = self._discord_state
+        while True:
+            wait = st["last"] + self.DISCORD_GAP - time.time()
+            if wait > 0:
+                time.sleep(wait)
+            with st["lock"]:
+                names, st["names"] = st["names"], []
+                if not names:
+                    st["busy"] = False
+                    return
+            try:
+                self._discord_post(names)
+            except Exception as e:          # the error only, never the address (it is a secret)
+                log.warning("discord: could not post %d account request(s): %s", len(names), type(e).__name__)
+            st["last"] = time.time()
+
+    def _discord_post(self, names):
+        import urllib.request
+        got = self._discord_settings()
+        if got is None:
+            return
+        url, role = got
+        site = str(self._settings().get("creatorUrl") or "").rstrip("/")
+        base = site.split("/creator")[0] if site else ""
+        with self.store.lock:
+            waiting = sum(1 for u in self._creator_users().values() if self._creator_perms(u)["access"] == "requested")
+        shown = ", ".join("`" + n + "`" for n in names[:20]) + (f" and {len(names) - 20} more" if len(names) > 20 else "")
+        text = (f"<@&{role}> " if role else "") + \
+            ("New account request: " if len(names) == 1 else f"{len(names)} new account requests: ") + shown + \
+            f"\n{waiting} waiting in all. " + (f"Review them at {base}/requests" if base else "Review them on the site's Requests page.")
+        body = json.dumps({"content": text[:1900], "username": "Warpforge Revival",
+                           "allowed_mentions": {"parse": [], "roles": [role] if role else []}}).encode()
+        rq = urllib.request.Request(url, data=body, method="POST",
+                                    headers={"Content-Type": "application/json", "User-Agent": "WarpforgeRevival (server, 1.0)"})
+        with urllib.request.urlopen(rq, timeout=15) as resp:
+            log.info("discord: posted %d account request(s) (HTTP %s)", len(names), resp.status)
 
     def api_Revival_CreatorSignOut(self, req, headers):
         token = str(req.get("session") or "")
