@@ -1994,7 +1994,7 @@ class PlayFabEmulator:
                 changed += 1
             else:
                 base = self._creator_art_path(f[:-5] if f.endswith(".json") else f[:-10])[:-4]
-                for tail in (".png", ".mask.png", ".removed.png", ".mask.removed.png"):
+                for tail in self.ART_TAILS:
                     try:
                         os.remove(base + tail)
                     except OSError:
@@ -2747,6 +2747,8 @@ class PlayFabEmulator:
                 card["artUpload"] = existing["artUpload"]      # the uploaded artwork stays unless art is borrowed instead
                 if existing.get("artMask") and card.get("kind") != "tactic":
                     card["artMask"] = existing["artMask"]
+                if existing.get("artCredit"):
+                    card["artCredit"] = existing["artCredit"]
             card["native"], card["buildNotes"] = self._creator_compile(card)
             if (existing or {}).get("rulesAccepted"):
                 card["rulesAccepted"] = existing["rulesAccepted"]
@@ -2859,6 +2861,46 @@ class PlayFabEmulator:
             self._creator_store(card, path)
         return ok({"card": card})
 
+    # Who made an uploaded picture. Kept in a file next to the picture (art/<id>.credit.json, so it stays with
+    # the art file when the picture is handed on or packed) and copied onto the card for display.
+    ART_TAILS = (".png", ".mask.png", ".removed.png", ".mask.removed.png", ".credit.json", ".credit.removed.json")
+    CREDIT_ARTIST_MAX = 80
+    CREDIT_LINK_MAX = 300
+
+    def _creator_credit_path(self, card_id):
+        return self._creator_art_path(card_id)[:-4] + ".credit.json"
+
+    def api_Revival_CreatorArtCredit(self, req, headers):
+        """Sets the credit of a card's uploaded artwork: the artist's name and an optional link (http or https
+        only, since the page shows it as a link). Both empty removes it."""
+        artist = re.sub(r"\s+", " ", re.sub(r"[\x00-\x1f\x7f]", "", str(req.get("artist") or ""))).strip()
+        link = str(req.get("link") or "").strip()
+        if len(artist) > self.CREDIT_ARTIST_MAX:
+            return err("InvalidParams", "the artist's name is too long (%d characters at most)" % self.CREDIT_ARTIST_MAX)
+        if link and (len(link) > self.CREDIT_LINK_MAX or not re.fullmatch(r"https?://[^\s<>\"'`\\]+", link)):
+            return err("InvalidParams", "the link must be a web address starting with http:// or https://")
+        if link and not artist:
+            return err("InvalidParams", "give the artist's name with the link")
+        with self.store.lock:
+            card, path, problem = self._creator_card_for(req, change=True)
+            if problem:
+                return problem
+            if not card.get("artUpload"):
+                return err("InvalidParams", "upload the artwork first")
+            side = self._creator_credit_path(card["id"])
+            if not artist:
+                card.pop("artCredit", None)
+                if os.path.isfile(side):
+                    os.remove(side)
+            else:
+                credit = {"artist": artist, "link": link, "by": self._creator_user(req), "at": now_iso()}
+                with open(side + ".tmp", "w", encoding="utf-8") as f:
+                    json.dump(dict(credit, card=card["id"], picture=card["artUpload"]), f, ensure_ascii=False, indent=1)
+                os.replace(side + ".tmp", side)
+                card["artCredit"] = credit
+            self._creator_store(card, path)
+        return ok({"card": card})
+
     def api_Revival_CreatorArtGet(self, req, headers):
         with self.store.lock:
             card, path, problem = self._creator_card_for(req, change=False, admin_any=True)
@@ -2873,7 +2915,8 @@ class PlayFabEmulator:
             if card.get("artMask") and os.path.isfile(art[:-4] + ".mask.png"):     # white = drawn over the frame
                 with open(art[:-4] + ".mask.png", "rb") as f:
                     mask = "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
-        return ok({"image": "data:image/png;base64," + base64.b64encode(raw).decode("ascii"), "stamp": card["artUpload"], "mask": mask})
+        return ok({"image": "data:image/png;base64," + base64.b64encode(raw).decode("ascii"), "stamp": card["artUpload"], "mask": mask,
+                   "credit": card.get("artCredit")})
 
     def api_Revival_CreatorArtRemove(self, req, headers):
         with self.store.lock:
@@ -2886,8 +2929,12 @@ class PlayFabEmulator:
             mask = art[:-4] + ".mask.png"
             if os.path.isfile(mask):
                 os.replace(mask, mask[:-4] + ".removed.png")
+            credit = self._creator_credit_path(card["id"])
+            if os.path.isfile(credit):
+                os.replace(credit, credit[:-5] + ".removed.json")
             card.pop("artUpload", None)
             card.pop("artMask", None)
+            card.pop("artCredit", None)
             self._creator_store(card, path)
         return ok({"card": card})
 
@@ -2898,7 +2945,8 @@ class PlayFabEmulator:
             return err("NotAuthorized", "only admins can see every upload")
         with self.store.lock:
             out = [{"id": c["id"], "name": c.get("name", ""), "author": c.get("author", ""), "status": c.get("status", ""),
-                    "kind": c.get("kind", ""), "artUpload": c["artUpload"], "artMask": c.get("artMask") or ""}
+                    "kind": c.get("kind", ""), "artUpload": c["artUpload"], "artMask": c.get("artMask") or "",
+                    "artCredit": c.get("artCredit")}
                    for c in self._creator_load()
                    if c.get("artUpload") and os.path.isfile(self._creator_art_path(c["id"]))]
         out.sort(key=lambda c: c["artUpload"], reverse=True)
@@ -2915,12 +2963,13 @@ class PlayFabEmulator:
                 return problem
             base = self._creator_art_path(card["id"])[:-4]
             gone = 0
-            for tail in (".png", ".mask.png", ".removed.png", ".mask.removed.png"):
+            for tail in self.ART_TAILS:
                 if os.path.isfile(base + tail):
                     os.remove(base + tail)
                     gone += 1
             card.pop("artUpload", None)
             card.pop("artMask", None)
+            card.pop("artCredit", None)
             card["artDeleted"] = {"by": self._creator_user(req), "at": now_iso(), "reason": reason}
             if card.get("status") in ("pending", "approved"):      # a card cannot stay in review or in the game without its picture
                 card["status"] = "rejected"

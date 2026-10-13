@@ -199,7 +199,7 @@
   .cvDetail pre { max-height: 520px; }
   @media (max-width: 760px) { .cv { grid-template-columns: 1fr; } .cvList { max-height: 40vh; } }
   .agree { display: flex; gap: 8px; align-items: flex-start; color: var(--text); font-size: 14px; margin: 4px 0 12px; }
-  .agree a, .rules a { color: var(--accent2); }
+  .agree a, .rules a, #pvCredit a, #uploads .hint a { color: var(--accent2); }
   /* long-text options: only the box itself ticks (div.agree, not a label), so a stray click on the text does nothing */
   .agree input[type=checkbox] { cursor: pointer; width: 18px; height: 18px; margin: 1px 0 0; flex: none; }
   .rules { max-width: 820px; } .rules h1 { font: 600 22px Georgia, serif; color: var(--accent); margin: 0 0 12px; }
@@ -348,6 +348,16 @@
           <button class="small danger hidden" id="artRemove">Remove uploaded artwork</button>
           <span class="hint" id="artState"></span>
         </div>
+        <div class="box hidden" id="creditBox" style="margin:0 0 10px">
+          <div class="head"><strong>Artwork credit</strong><span class="spacer"></span><span class="hint" id="creditState"></span></div>
+          <div class="row">
+            <div class="field grow"><label>Artist</label><input id="f_creditArtist" maxlength="80" placeholder="who made the picture (your name if it is yours)"></div>
+            <div class="field grow"><label>Link (optional)</label><input id="f_creditLink" maxlength="300" placeholder="https://… the original post or the artist's page"></div>
+          </div>
+          <div class="row"><button class="small" id="creditSave">Save credit</button></div>
+          <p class="hint">Saved with the uploaded picture itself, not only with this card. Only upload art you made, or art whose artist
+            gave you permission – a credit alone is not permission.</p>
+        </div>
         <div class="row hidden" id="maskRow">
           <button class="small" id="maskPick">Add a pop-out mask (optional)</button>
           <input type="file" id="maskFile" accept="image/png,image/jpeg,image/webp" hidden>
@@ -407,6 +417,7 @@
           <div class="text" id="pvText"></div>
           <div class="stats" id="pvStats"></div>
         </div>
+        <p class="hint" id="pvCredit"></p>
         <p class="hint">Drawn with the game's own frame and art; the in-game text layout can differ a little.</p>
         <label class="agree"><input type="checkbox" id="agree">
           <span>This card follows all of the <a href="/rules" target="_blank" rel="noopener">card creator rules</a>.</span></label>
@@ -2013,6 +2024,7 @@ function preview() {
   $("pvType").textContent = [lab(schema.armies, c.army), lab(schema.kinds, c.kind), c.keyword, c.token && "created by a card"].filter(Boolean).join(" · ");
   $("pvText").textContent = c.text;
   $("pvArt").textContent = c.art ? "art of: " + (cardNames[c.art] || c.art) : (editingCard && editingCard.artUpload ? "uploaded artwork" : "no artwork chosen");
+  const cl = $("pvCredit"); if (cl) { cl.textContent = ""; const line = !c.art && editingCard && editingCard.artUpload ? creditLine(editingCard.artCredit) : null; if (line) cl.append(line); }
   const st = $("pvStats"); st.textContent = "";
   if (c.kind !== "tactic") for (const [k, v] of [["⚔", c.melee], ["➶", c.ranged], ["🛡", c.armour], ["♥", c.health]]) st.append(el("span", { text: `${k} ${v}` }));
   $("json").textContent = JSON.stringify(c, null, 1);
@@ -2134,11 +2146,35 @@ async function artRemove() {
   try { const d = await call("CreatorArtRemove", { id: editingId }); editingCard = d.card; preview(); loadList(); say("Uploaded artwork removed.", "ok"); }
   catch (e) { say("Not removed: " + e.message, "bad"); }
 }
+// The artwork credit box: shown once a picture is uploaded; filled from the card when it changes.
+let creditFor = null;
+function drawCredit(up) {
+  $("creditBox").classList.toggle("hidden", !up);
+  if (!up) return;
+  const c = editingCard, cr = c.artCredit || {}, key = c.id + c.artUpload + (cr.at || "");
+  if (creditFor !== key) { creditFor = key; $("f_creditArtist").value = cr.artist || ""; $("f_creditLink").value = cr.link || ""; }
+  $("creditState").textContent = cr.artist ? "credited" : "no credit yet";
+}
+async function saveCredit() {
+  if (!editingId) return;
+  const artist = $("f_creditArtist").value.trim(), link = $("f_creditLink").value.trim();
+  if (link && !/^https?:\/\//i.test(link)) return say("The link must start with http:// or https://", "bad");
+  try { const d = await call("CreatorArtCredit", { id: editingId, artist, link }); editingCard = d.card; creditFor = null; preview();
+        say(artist ? "Artwork credit saved with the picture." : "Artwork credit removed.", "ok"); }
+  catch (e) { say(e.message, "bad"); }
+}
+// a credit link is only ever shown as a link when it is a web address
+function creditLine(cr) {
+  if (!cr || !cr.artist) return null;
+  const safe = /^https?:\/\//i.test(cr.link || "");
+  return el("span", {}, "Art by ", safe ? el("a", { href: cr.link, target: "_blank", rel: "noopener noreferrer nofollow", text: cr.artist }) : cr.artist);
+}
 function drawArtPreview() {
   const box = $("pvArt"), c = editingCard, up = c && c.artUpload && !val("f_art");
   $("artRemove").classList.toggle("hidden", !up);
   $("artState").textContent = up ? "This card uses uploaded artwork." : (c && c.artUpload ? "Borrowed art is chosen – saving will drop the uploaded picture." : "");
   $("maskRow").classList.toggle("hidden", !(up && unitArt()));
+  drawCredit(up);
   $("maskRemove").classList.toggle("hidden", !(c && c.artMask));
   $("maskPick").textContent = c && c.artMask ? "Replace the pop-out mask" : "Add a pop-out mask (optional)";
   $("maskState").textContent = c && c.artMask ? "This card has a pop-out mask." : "Without a mask the whole picture stays inside the frame.";
@@ -3255,6 +3291,7 @@ async function loadUploads() {
     box.append(el("div", { class: "up" }, img,
       el("div", { class: "title", text: u.name || u.id }),
       el("div", { class: "hint", text: `${u.id} · by ${u.author} · ${u.status}${u.artMask ? " · has a mask" : ""} · ${u.artUpload.slice(0, 10)}` }),
+      el("div", { class: "hint" }, creditLine(u.artCredit) || "no artwork credit"),
       el("button", { class: "small danger", text: "Delete", onclick: async () => {
         const reason = prompt(`Delete the artwork of “${u.name || u.id}” by ${u.author} for good?\n\nReason (shown to the author if the card was submitted):`, "");
         if (reason === null) return;
@@ -3490,6 +3527,7 @@ async function start() {
     c.addEventListener("wheel", e => { if (!art.img) return; e.preventDefault(); art.scale *= e.deltaY < 0 ? 1.06 : 1 / 1.06; artSlider(); artDraw(true); }, { passive: false });
   })();
   $("f_kind").addEventListener("change", () => { if (art.img) { const a = artArea(); art.base = Math.min(a.w / art.img.width, a.h / art.img.height); artPlace(true); } });
+  $("creditSave").onclick = saveCredit;
   $("suggest").onclick = () => { $("f_text").value = suggestText().slice(0, 300); redraw(true); };
   $("save").onclick = () => save(true); $("saveDraft").onclick = () => save(false);
   $("reset").onclick = () => { fill(null); $("agree").checked = false; say(""); };
