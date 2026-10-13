@@ -1078,7 +1078,7 @@ function enforceTemplate(full) {
     let ab = state.abilities.find(a => a.locked);
     if (!ab) ab = state.abilities.find(a => a.trigger === "ThisCardPlayed" && !a.keyword && !keywordOf(a));
     if (ab) ab.locked = true;
-    else if (!state.lockedRemoved || !ADV) { ab = newAbility("ThisCardPlayed", ""); ab.effects = []; ab.locked = true; state.abilities.unshift(ab); state.lockedRemoved = false; }
+    else if (!state.lockedRemoved || !ADV) { ab = newAbility("ThisCardPlayed", ""); ab.effects = []; ab.locked = true; ab.auto = true; state.abilities.unshift(ab); state.lockedRemoved = false; }
     if (ab && t.hand) ab.context = "Hand";
   }
   if (t.hand && !ADV) for (const ab of state.abilities) ab.context = "Hand";
@@ -1908,7 +1908,7 @@ function collect() {
   const c = { name: val("f_name").trim(), kind, army: val("f_army"), rarity: val("f_rarity"), cost: ival("f_cost"),
               text: val("f_text"), art: cardIds[val("f_art")] || val("f_art"), lore: val("f_lore").trim(), designNotes: val("f_designNotes"), token: $("f_token").checked || ench,
               traits: state.traits.map(t => Object.assign({ name: t.name, value: t.value || 0 }, t.hidden ? { hidden: true } : {})),
-              abilities: state.abilities.filter(a => !(a.locked && !a.effects.length)).map(trimAbility) };
+              abilities: state.abilities.filter(a => !(a.auto && !a.effects.length)).map(trimAbility) };   // an empty one the editor added is not saved (a loaded one is: Stormhawk Interception)
   if (ench) c.enchantment = true;
   if (state.choose) c.choose = cleanTargets(state.choose); else if (state.choose === false) c.choose = false;
   if (state.action) {
@@ -1940,19 +1940,22 @@ function collect() {
   return c;
 }
 function lab(list, id) { const o = list.find(x => x.id === id); return o ? o.label : id; }
-function describeTargets(t) {
+function describeTargets(t, ab) {
   if (!t) return "";
+  if (ab && whoMode(ab) === "nopick" && /^(target|targetIfMeetsCriteria)$/.test(t.pool)) return EVENT_IT[ab.trigger] || "it";
   const who = [t.friendly && "friendly", t.enemy && "enemy"].filter(Boolean).join(" or ");
   const what = [t.troops && "troop", t.warlords && "warlord", t.stratagems && "stratagem"].filter(Boolean).join(" or ") || "unit";
   switch (t.pool) {
     case "self": return "this troop"; case "actingCard": return "it"; case "friendlyHero": return "your warlord"; case "enemyHero": return "the enemy warlord";
-    case "target": return `${/^[aeiou]/.test(who || what) ? "an" : "a"} ${who} ${what}`.replace(/\s+/g, " ");
+    case "target": return `${/^(?!uni)[aeiou]/.test(who || what) ? "an" : "a"} ${who} ${what}`.replace(/\s+/g, " ");
     case "allFiltered": return t.max ? `${t.max} random ${who} ${what}${t.max > 1 ? "s" : ""}` : `all ${who} ${what}s`;
     default: return lab(schema.targetPools, t.pool).toLowerCase();
   }
 }
-function describeEffect(fx) {
-  const t = describeTargets(fx.targets), b = fx.buff || {};
+// what "the target" is called in the text when the event decides it
+const EVENT_IT = { UnitAttack: "the unit attacked", Strike: "the unit it hit", UnitStunned: "it", ThisUnitDeath: "it", OtherUnitDeath: "it", TriggeredSwarm: "it" };
+function describeEffect(fx, ab) {
+  const t = describeTargets(fx.targets, ab), b = fx.buff || {};
   const stats = [["Melee", b.melee], ["Ranged", b.ranged], ["Health", b.health], ["Armour", b.armour]].filter(x => x[1])
     .map(x => (x[1] > 0 ? "+" : "") + x[1] + " " + x[0]);
   const gift = [stats.join(", "), b.trait && bold(lab(schema.traits, b.trait)) + (b.traitValue ? " " + b.traitValue : ""), b.cost && `cost ${b.cost > 0 ? "+" : ""}${b.cost}`].filter(Boolean).join(" and ");
@@ -1987,12 +1990,14 @@ function suggestText() {
   const parts = state.traits.filter(t => !labelled.has(t.name)).map(t => bold(lab(schema.traits, t.name)) + (t.value ? " " + t.value : ""));
   const lines = parts.length ? [parts.join(". ") + "."] : [];
   for (const a of state.abilities) {
-    const what = a.effects.map(describeEffect).join(". ");
+    const what = a.effects.map(fx => describeEffect(fx, a)).join(". ");
     const sj = a.subject, who = sj && WATCHES.test(a.trigger) ? [sj.friendly && "friendly", sj.enemy && "enemy"].filter(Boolean).join(" or ") + " " +
       ([sj.troops && "troop", sj.warlords && "warlord"].filter(Boolean).join(" or ") || "unit") : "";
-    const special = { UnitAttack: `Whenever a ${who} attacks, `, AboutToAttack: `Before a ${who} attacks, `, OtherUnitDeath: `Whenever a ${who} dies, `,
+    const special = { UnitAttack: who.trim() ? `Whenever a ${who} attacks, ` : "Whenever this unit attacks, ", AboutToAttack: `Before a ${who} attacks, `, OtherUnitDeath: `Whenever a ${who} dies, `,
                       OtherUnitSummoned: `Whenever a ${who} enters play, `, UnitDamaged: `Whenever a ${who} is damaged, ` }[a.trigger];
-    const when = a.keyword ? bold(lab(schema.traits, a.keyword)) + ": " : a.trigger === "ThisCardPlayed" ? "" : special || trigHead(a.trigger) + ": ";
+    const paid = { UseFaith: "Faith", UseSpiritStone: "Spirit Stone" }[a.trigger];      // official text: "6 Faith: ..."
+    const when = a.keyword ? bold(lab(schema.traits, a.keyword)) + ": " : a.trigger === "ThisCardPlayed" ? ""
+      : paid ? `${a.triggerValue ? a.triggerValue + " " : ""}${paid}: ` : special || trigHead(a.trigger) + ": ";
     lines.push(when + what + ".");
   }
   if (state.action) {
@@ -2499,6 +2504,7 @@ async function viewCard(id) {
 function loadOfficial(c, design) {
   const d = JSON.parse(JSON.stringify(design));
   delete d.id;
+  if (c.enchantment || (cardInfo[c.id] || {}).enchantment) d.enchantment = true;   // the designs do not carry it; the card list does
   const rarityOk = schema.rarities.some(r => (r.id || r) === d.rarity);
   if (!rarityOk) d.rarity = "Legendary";
   fill(d); editingCard = null;

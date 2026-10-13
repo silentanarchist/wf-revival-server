@@ -381,6 +381,8 @@ class CardCompiler:
     effect's data the game's code actually reads (tools/effect_reads.json, taken from
     AbilityLogic.PlayAbility). An effect only gets the parts it reads; anything else a design
     supplies for it is reported instead of being written where the game would ignore it."""
+    # triggers where the player picks nothing but "the target" is still a unit (the one the event is about)
+    EVENT_UNIT_TRIGGERS = ("UnitAttack", "Strike", "UnitStunned", "ThisUnitDeath", "OtherUnitDeath", "TriggeredSwarm")
 
     SELF, ENEMY = 10, 20
     KINDS = {"troop": 0, "hero": 10, "tactic": 20}
@@ -874,8 +876,12 @@ class CardCompiler:
             a, wants, trigger = self.ability(ab, i)
             if wants is not None:
                 if not (self.trig.get(trigger) or {}).get("chooses", trigger == "ThisCardPlayed"):
-                    self.notes.append(f"ability {i} asks the player to choose a target, but official cards only do that on "
-                                      "'when played' style abilities and actions - use a random or 'all' target group instead")
+                    # the player picks nothing here: "the target" is the unit the event is about, which official
+                    # cards only use on these triggers (Venomthrope, Jain Zar, Tyranid Prime ...) and on enchantments
+                    if trigger not in self.EVENT_UNIT_TRIGGERS and not card.get("enchantment"):
+                        self.notes.append(f"ability {i} aims at 'the target', but the player picks nothing on this trigger and official "
+                                          "cards only do that where the event is about a unit (attacks, Strike, stuns, deaths, Swarm) - "
+                                          "use a random or 'all' target group instead")
                 elif chosen is None:
                     chosen = wants
             if ab.get("keyword") and ab["keyword"] not in own:      # e.g. Rally labelling a "when played" ability
