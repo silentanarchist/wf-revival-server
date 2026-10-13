@@ -53,6 +53,8 @@
   .guide .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
   .guide li { margin: 4px 0; }
   main { padding: 20px; max-width: 1280px; margin: 0 auto; }
+  footer.site { max-width: 1280px; margin: 0 auto; padding: 16px 20px 28px; border-top: 1px solid var(--line, #333); color: var(--dim); font-size: 12px; line-height: 1.5; }
+  footer.site p { margin: 0 0 6px; } footer.site a { color: var(--accent2); }
   .cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
   @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
@@ -835,6 +837,11 @@
     </section>
   </div>
 </main>
+<footer class="site">
+  <p>Warpforge Revival is an unofficial, non-commercial fan project. It is not affiliated with, endorsed or supported by Games Workshop or Everguild Ltd. Warhammer 40,000, Warhammer 40,000: Warpforge and all related names, images and game content belong to their owners.</p>
+  <p>The game itself is not provided by this project: players install their own copy. The project runs a replacement server and a mod so the game keeps working now that its official servers are closed. The project makes no money.</p>
+  <p>Rights holders, and anyone with a question or a takedown request: <a href="mailto:wf-revival@silentanarchist.com">wf-revival@silentanarchist.com</a>. <a href="/terms" target="_blank" rel="noopener">Terms and Privacy</a></p>
+</footer>
 <datalist id="cardList"></datalist>
 <datalist id="enchList"></datalist>
 
