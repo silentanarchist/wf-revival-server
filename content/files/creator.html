@@ -423,7 +423,7 @@
           <div class="stats" id="pvStats"></div>
         </div>
         <p class="hint" id="pvCredit"></p>
-        <p class="hint">Drawn with the game's own frame and art; the in-game text layout can differ a little.</p>
+        <p class="hint laNote"></p>
         <label class="agree"><input type="checkbox" id="agree">
           <span>This card follows all of the <a href="/rules" target="_blank" rel="noopener">card creator rules</a>.</span></label>
         <div class="row">
@@ -2078,7 +2078,11 @@ function preview() {
   const n = $("reviewNote"), showNote = editingCard && editingCard.reviewNote && (cs === "rejected" || editingCard.returned);
   n.classList.toggle("hidden", !showNote); n.textContent = showNote ? "Reviewer's note: " + editingCard.reviewNote : "";
   const face = $("pvFace"); face.textContent = "";
-  face.append(cardFace(Object.assign({}, c, { health: c.health, frame: "" }), "", 300));
+  // the faction frame comes from the player's own export of the game's card art (none without it)
+  laStart();
+  const frameName = `${c.army}_${c.kind === "tactic" ? "stratagem" : "troop"}_${TIERS[c.rarity] || 1}`;
+  const frameUrl = laCached("card-frames/" + frameName + ".png", preview);
+  face.append(cardFace(Object.assign({}, c, { health: c.health, frame: "" }), "", 300, undefined, frameUrl || null));
   drawNative(); drawFaction(); drawArtPreview();
   $("save").textContent = cs === "rejected" || (editingCard && editingCard.returned) ? "Resubmit for review" : "Submit for review";
 }
@@ -2230,7 +2234,7 @@ function drawArtPreview() {
     if (face && mask && unit) {                    // an official unit's pop-out, over the frame
       const pop = el("div", { class: "fPop" }); pop.style.backgroundImage = `url("${url}")`; pop.style.webkitMaskImage = pop.style.maskImage = `url("${mask}")`;
       if (luminance) pop.style.maskMode = "luminance";        // an uploaded mask is black and white, not see-through
-      face.querySelector(".fFrame").after(pop);
+      const fr = face.querySelector(".fFrame"); if (fr) fr.after(pop); else face.append(pop);
     }
     box.classList.add("has");
     box.style.backgroundImage = `url(${url})`;
@@ -2240,10 +2244,10 @@ function drawArtPreview() {
   if (art.img && art.live) { box.textContent = "new artwork (not saved yet)"; return place(art.live, unitArt()); }
   const borrowed = val("f_art") && collect().art;
   if (!up && borrowed && (cardInfo[borrowed] || /^[0-9a-f]{32}$/.test(borrowed))) {      // hidden official cards (tokens) have art too
-    // an official card's picture, from the server's copy of the game's card art (if it has one)
-    const url = FILES + "card-art/" + encodeURIComponent(borrowed) + ".jpg", probe = new Image();
-    probe.onload = () => { if (collect().art === borrowed && !(art.img && art.live)) place(url, (cardInfo[borrowed] || { kind: val("f_kind") }).kind !== "tactic", maskUrlOf(borrowed)); };
-    probe.src = url;
+    // an official card's picture, from the player's own export of the game's card art (if loaded)
+    Promise.all([laUrl("card-art/" + borrowed + ".jpg"), laUrl("card-masks/" + borrowed + ".png")]).then(([url, mask]) => {
+      if (url && collect().art === borrowed && !(art.img && art.live)) place(url, (cardInfo[borrowed] || { kind: val("f_kind") }).kind !== "tactic", mask);
+    });
     return;
   }
   if (!up) return;
@@ -2597,6 +2601,14 @@ async function laUrl(name) {                // a picture from the zip as an addr
   localArt.urls.set(name, url);
   return url;
 }
+// A picture's address if it is ready now; otherwise "" and, with redraw, the picture is fetched and
+// redraw() runs once it is (each picture is fetched once).
+function laCached(name, redraw) {
+  if (!localArt.entries) return "";
+  if (localArt.urls.has(name)) return localArt.urls.get(name);
+  if (redraw) laUrl(name).then(u => { if (u) redraw(); });
+  return "";
+}
 async function laUse(blob, remember) {
   const entries = await laIndex(blob);
   if (!entries.has("export.json")) throw new Error("this zip was not made by the game's Export card art");
@@ -2615,17 +2627,18 @@ function laShow() {
   $("laRemove").classList.toggle("hidden", !localArt.entries);
   $("laHelp").classList.toggle("hidden", !!localArt.entries);
   laNotes();
+  if (schema && !$("viewCreate").classList.contains("hidden")) { try { preview(); } catch (e) { } }     // the creator's preview frame
 }
 // A line for any page that draws official cards (class "laNote"): whether the card art is loaded, with a
 // link to the Profile page where it is picked.
 function laNotes() {
   for (const p of document.querySelectorAll(".laNote")) {
     p.textContent = "";
-    const link = el("a", { href: "/profile", text: localArt.entries ? "change it on your Profile page" : "load it on your Profile page",
+    const link = el("a", { href: "/profile", text: localArt.entries ? "change it on your Profile page" : "load them on your Profile page",
       onclick: e => { if (!plainClick(e)) return; e.preventDefault(); laGoProfile(); } });
     p.append(localArt.entries
-      ? `Card art: from your game's export${localArt.info && localArt.info.made ? " of " + String(localArt.info.made).slice(0, 10) : ""} (kept in this browser) – `
-      : "Cards are shown without pictures: the art comes from your own copy of the game – ", link, ".");
+      ? `Official frames and card art: from your game's export${localArt.info && localArt.info.made ? " of " + String(localArt.info.made).slice(0, 10) : ""} (kept in this browser) – `
+      : "Official frames and card art come from your own copy of the game, not from this site – ", link, ".");
   }
 }
 function laGoProfile() {
