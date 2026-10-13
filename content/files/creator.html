@@ -495,6 +495,15 @@
         <input type="file" id="deckFile" accept=".txt,.wfdeck,text/plain" class="hidden">
       </div>
     </section>
+    <section id="p_cardArt" class="localArt">
+      <h2>Card art from your game</h2>
+      <p><span id="laStatus">Checking…</span></p>
+      <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded. The Card viewer and other pages draw official cards with it; without it they show cards without pictures.</p>
+        <div class="row" style="align-items:center; gap:10px">
+          <label class="button small" style="cursor:pointer">Pick card-art-export.zip<input type="file" id="laFile" accept=".zip,application/zip" style="display:none"></label>
+          <button class="small hidden" id="laRemove" type="button">Remove from this browser</button>
+        </div>
+    </section>
     <section>
       <h2>Game account</h2>
       <p id="p_link"></p>
@@ -653,14 +662,7 @@
     <section>
       <h2>Card viewer</h2>
       <p class="hint">Every official card, drawn with the game's own frame and art, with the data the game uses for it. <strong>Load in editor</strong> copies the card into the card creator as a new card, built the same way the game builds it, so you can see how it is made or start from it.</p>
-      <div class="box localArt" id="laBox">
-        <div class="head"><strong>Card art from your game</strong><span class="spacer"></span><span class="hint" id="laStatus">Checking…</span></div>
-        <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded.</p>
-        <div class="row" style="align-items:center; gap:10px">
-          <label class="button small" style="cursor:pointer">Pick card-art-export.zip<input type="file" id="laFile" accept=".zip,application/zip" style="display:none"></label>
-          <button class="small hidden" id="laRemove" type="button">Remove from this browser</button>
-        </div>
-      </div>
+      <p class="hint laNote"></p>
       <div class="row">
         <div class="field grow"><label>Search (name, rules text or id)</label><input id="cvSearch" placeholder="e.g. Fenrisian Wolf, Rally, SW9" autocomplete="off"></div>
         <div class="field"><label>Faction</label><select id="cvArmy"></select></div>
@@ -2612,6 +2614,23 @@ function laShow() {
     : "Not loaded: cards show without pictures";
   $("laRemove").classList.toggle("hidden", !localArt.entries);
   $("laHelp").classList.toggle("hidden", !!localArt.entries);
+  laNotes();
+}
+// A line for any page that draws official cards (class "laNote"): whether the card art is loaded, with a
+// link to the Profile page where it is picked.
+function laNotes() {
+  for (const p of document.querySelectorAll(".laNote")) {
+    p.textContent = "";
+    const link = el("a", { href: "/profile", text: localArt.entries ? "change it on your Profile page" : "load it on your Profile page",
+      onclick: e => { if (!plainClick(e)) return; e.preventDefault(); laGoProfile(); } });
+    p.append(localArt.entries
+      ? `Card art: from your game's export${localArt.info && localArt.info.made ? " of " + String(localArt.info.made).slice(0, 10) : ""} (kept in this browser) – `
+      : "Cards are shown without pictures: the art comes from your own copy of the game – ", link, ".");
+  }
+}
+function laGoProfile() {
+  show("Profile");
+  setTimeout(() => { const b = $("p_cardArt"); if (b) b.scrollIntoView({ block: "start" }); }, 50);
 }
 let laStarted = false;
 async function laStart() {                  // once per page: what this browser kept, and the buttons
@@ -3606,7 +3625,7 @@ function show(which, replace) {                // a page name from PAGES
   if (which === "Examples") showExamples();
   if (which === "Cards") showViewer();
   if (which === "Keywords") showKeywords();
-  if (which === "Profile") { say(""); loadList(); }
+  if (which === "Profile") { say(""); loadList(); laStart(); if (location.hash === "#card-art") setTimeout(() => $("p_cardArt").scrollIntoView({ block: "start" }), 50); }
   if (list) loadList();
   if (which === "People") loadPeople();
   if (which === "Requests") loadRequests();
