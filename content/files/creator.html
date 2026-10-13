@@ -203,7 +203,7 @@
   .cvDetail pre { max-height: 520px; }
   @media (max-width: 760px) { .cv { grid-template-columns: 1fr; } .cvList { max-height: 40vh; } }
   .agree { display: flex; gap: 8px; align-items: flex-start; color: var(--text); font-size: 14px; margin: 4px 0 12px; }
-  .agree a, .rules a, #pvCredit a, #uploads .hint a { color: var(--accent2); }
+  .agree a, .rules a, #pvCredit a, #uploads .hint a, .laNote a { color: var(--accent2); }
   /* long-text options: only the box itself ticks (div.agree, not a label), so a stray click on the text does nothing */
   .agree input[type=checkbox] { cursor: pointer; width: 18px; height: 18px; margin: 1px 0 0; flex: none; }
   .rules { max-width: 820px; } .rules h1 { font: 600 22px Georgia, serif; color: var(--accent); margin: 0 0 12px; }
@@ -292,7 +292,6 @@
   <a id="tabModeration" href="/moderation" class="hidden">Moderation</a>
   <a id="tabUploads" href="/uploads" class="hidden">Uploaded artwork</a>
   <a id="tabList" href="/review" class="hidden">Review queue</a>
-  <a id="tabCards" href="/cards" class="hidden">Card viewer</a>
   <a id="tabUnreleased" href="/unreleased" class="hidden">Unreleased cards</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
 </nav>
@@ -308,6 +307,7 @@
   <a id="tabCreate" href="/creator">Create a card</a>
   <a id="tabMine" href="/my-cards">My cards</a>
   <a id="tabExamples" href="/examples">Examples</a>
+  <a id="tabCards" href="/cards">Card viewer</a>
   <a id="tabKeywords" href="/keywords">Keywords</a>
   <a id="tabArtwork" href="/artwork">Artwork</a>
   <a id="tabRules" href="/rules">Rules</a>
@@ -3559,7 +3559,7 @@ async function loadList() {
     if (!me && session()) setSession("");
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
-    for (const t of ["People", "Requests", "Moderation", "Uploads", "Cards", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
+    for (const t of ["People", "Requests", "Moderation", "Uploads", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
     $("tabAdmin").classList.toggle("hidden", !role);              // reviewers: Admin holds only the review queue
     $("tabAdmin").href = role >= 2 ? "/people" : "/review";
     if (role >= 2) loadRequestCount();
@@ -3571,7 +3571,6 @@ async function loadList() {
     if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
     if (role < 2 && ["People", "Requests", "Moderation", "Uploads", "Unreleased"].some(v => !$("view" + v).classList.contains("hidden"))) show(role ? "List" : "Mine");
     $("tabList").classList.toggle("hidden", !role);
-    if (role < 2 && !$("viewCards").classList.contains("hidden")) show(role ? "List" : "Create");   // card viewer: admins for now
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
     gate();
@@ -3582,10 +3581,10 @@ async function loadList() {
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
 // The Card Creator tab on the top ribbon opens the second ribbon with these pages; it remembers the last one.
-const CREATOR_GROUP = ["Create", "Mine", "Examples", "Keywords", "Artwork", "Rules"];
+const CREATOR_GROUP = ["Create", "Mine", "Examples", "Cards", "Keywords", "Artwork", "Rules"];
 let lastCreatorPage = "Create";
 // The Admin tab opens its own ribbon: admins see every page, reviewers only the review queue.
-const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Cards", "Unreleased", "Server"];
+const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Unreleased", "Server"];
 let lastAdminPage = "";
 const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).

@@ -3703,8 +3703,6 @@ class PlayFabEmulator:
         """The card viewer: every official card (the list), or one card's creator design and game data (signed-in accounts only)."""
         if not self._creator_user(req):
             return err("NotAuthorized", "sign in first")
-        if self._creator_role(req) < 1:                    # the card viewer is for reviewers and admins for now
-            return err("NotAuthorized", "the card viewer is for reviewers and admins")
         path = os.path.join(self.content_root, "creator-official.json")
         try:
             stamp = os.path.getmtime(path)
