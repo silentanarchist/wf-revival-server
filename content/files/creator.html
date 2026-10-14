@@ -3410,13 +3410,14 @@ const MODE_ROWS = [
   ["warlordLifeChange", "Warlord life change", "num"], ["slotsPerSide", "Unit slots per side", "num"],
   ["deckSize", "Deck size", "num"], ["numberOfCopiesOtherRarities", "Copies of each card", "num"],
   ["numberOfCopiesLegendary", "Copies of each legendary", "num"], ["maxLegendaries", "Legendaries per deck", "num"],
-  ["showMulligan", "Mulligan", "bool"], ["shouldReshuffle", "Reshuffle", "bool"], ["alternativeTraitLogic", "Alternative trait logic", "bool"]
+  ["showMulligan", "Mulligan", "bool"], ["shouldReshuffle", "Reshuffle", "bool"], ["alternativeTraitLogic", "Alternative trait logic", "bool"],
+  ["offenseCards", "Offence cards (the battlefield card pick before a match)", "bool"]
 ];
 // [path, label, kind, hint]
 const SET_ROWS = [
   [["rulesVersion"], "Rules version", "text", "Raise it whenever match rules or cards change."],
   [["turnSeconds"], "Turn timer (seconds)", "num", ""],
-  [["offenseCards"], "Offence cards", "bool", "The battlefield card pick before a match."],
+  [["offenseCards"], "Offence cards, mods before 0.13.24", "bool", "Newer mods use each game mode's own Offence cards switch (Game modes, above)."],
   [["practiceClassicWarlordLife"], "Practice Classic warlord life", "num", ""],
   [["longGame", "warlordHealth"], "Long Game warlord health (times normal)", "dec", ""],
   [["longGame", "classicDeckSize"], "Long Game: size of a Classic deck it is built from", "num", ""],

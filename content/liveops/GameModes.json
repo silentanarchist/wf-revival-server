@@ -114,7 +114,8 @@
           "shouldReshuffle": false,
           "showMulligan": true,
           "assignDefensiveCardsInEditMode": true,
-          "alternativeTraitLogic": false
+          "alternativeTraitLogic": false,
+          "offenseCards": true
         },
         "drawData": {
           "EventAssets": [
@@ -233,7 +234,8 @@
           "shouldReshuffle": false,
           "showMulligan": true,
           "assignDefensiveCardsInEditMode": true,
-          "alternativeTraitLogic": false
+          "alternativeTraitLogic": false,
+          "offenseCards": true
         },
         "EnemyDeckAddressableIds": [
           "083319e5a1b4caf4d9df33b444a7e8b9",
@@ -415,7 +417,8 @@
           "assignDefensiveCardsInEditMode": true,
           "alternativeTraitLogic": false,
           "startingHand": 4,
-          "secondPlayerExtraCards": 0
+          "secondPlayerExtraCards": 0,
+          "offenseCards": true
         },
         "drawData": {
           "EventAssets": [
@@ -534,7 +537,8 @@
           "shouldReshuffle": false,
           "showMulligan": true,
           "assignDefensiveCardsInEditMode": true,
-          "alternativeTraitLogic": false
+          "alternativeTraitLogic": false,
+          "offenseCards": true
         },
         "EnemyDeckAddressableIds": [
           "083319e5a1b4caf4d9df33b444a7e8b9",
@@ -697,7 +701,8 @@
           "shouldReshuffle": false,
           "showMulligan": true,
           "assignDefensiveCardsInEditMode": true,
-          "alternativeTraitLogic": false
+          "alternativeTraitLogic": false,
+          "offenseCards": true
         },
         "matches": [
           {
@@ -958,7 +963,8 @@
           "assignDefensiveCardsInEditMode": true,
           "alternativeTraitLogic": false,
           "startingHand": 4,
-          "secondPlayerExtraCards": 1
+          "secondPlayerExtraCards": 1,
+          "offenseCards": true
         },
         "drawData": {
           "EventAssets": [

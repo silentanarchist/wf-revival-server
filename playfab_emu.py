@@ -1116,8 +1116,34 @@ def _bundle_signed_in(handler):
     return user is not None and api._creator_perms(user)["access"] == "approved"
 
 
+_offence_cache = [None, {}]
+
+
+def _offence_modes(handler):
+    """{eventId: true/false} for every game mode in content/liveops/GameModes.json: whether its
+    Offence card pick is on ("offenseCards" in its gameplayVariables; a mode without it: off).
+    Re-read when the file changes."""
+    api = handler.current_playfab()
+    path = os.path.join(api.content_root, "liveops", "GameModes.json")
+    try:
+        stamp = os.path.getmtime(path)
+    except OSError:
+        return {}
+    if _offence_cache[0] != stamp:
+        modes = {}
+        with open(path, encoding="utf-8-sig") as f:
+            for ev in json.load(f).get("RawEvents", []):
+                d = (ev or {}).get("Data") or {}
+                if isinstance(d.get("eventId"), str):
+                    modes[d["eventId"]] = (d.get("gameplayVariables") or {}).get("offenseCards") is True
+        _offence_cache[0], _offence_cache[1] = stamp, modes
+    return _offence_cache[1]
+
+
 def _site_content_get(handler, path):
     """Game content answers changed without a restart. Returns True when the request was answered.
+    - /api/v1/content/files/revival-settings.json (what the mod reads) gains "offenseCardModes",
+      each game mode's Offence card switch (mod 0.13.24 on; older mods read "offenseCards").
     - /api/v1/content/pack is no longer handed out: the mod never used its cards (only its version,
       now "cardsVersion" in the manifest); mods before 0.13.20 still ask and keep their cached copy.
     - /api/v1/content/manifest gains "cardsVersion"."""
@@ -1135,6 +1161,30 @@ def _site_content_get(handler, path):
             handler._json(403, {"error": "sign in to the game first"})
             return True
         return False
+    if path == "/api/v1/content/files/revival-settings.json":
+        try:
+            modes = _offence_modes(handler)
+        except Exception:
+            log.exception("site content: could not read the game modes' Offence switches")
+            modes = {}
+        plain = handler._send
+
+        def with_modes(code, body, ctype="application/json", *a, **k):
+            if code == 200 and ctype == "application/json" and not a and not k.get("gz_body"):
+                try:
+                    obj = json.loads(body)
+                    if isinstance(obj, dict):
+                        body = json.dumps(dict(obj, offenseCardModes=modes), ensure_ascii=False).encode("utf-8")
+                except ValueError:
+                    pass
+            return plain(code, body, ctype, *a, **k)
+        handler._send = with_modes
+        handler._site_content_started = True
+        try:
+            handler._site_content_original(handler)
+        finally:
+            del handler._send
+        return True
     if path == "/api/v1/content/manifest":
         try:
             cv = _cards_version(handler)
@@ -1183,7 +1233,7 @@ def _site_content_patch():
 
     handler.do_GET = do_GET
     handler._site_content_wrapped = True
-    log.info("site content: the card pack is no longer handed out; the manifest carries cardsVersion")
+    log.info("site content: the card pack is no longer handed out; the manifest carries cardsVersion; settings carry each mode's Offence switch")
 
 
 _site_patch_running_server()
@@ -1487,6 +1537,9 @@ class PlayFabEmulator:
                              "drawCardsPerTurn": (0, 5, 1), "handLimit": (3, 20, 1), "startingMana": (0, 10, 1),
                              "startingManaSecond": (0, 10, 1), "manaPerTurn": (0, 5, 1), "overtimeTurn": (5, 60, 1),
                              "turnSeconds": (30, 300, 5)}
+    # from mod 0.13.24: the Offence card pick (0 off, 1 on) and who goes first (0 the game decides,
+    # 1 the challenger, 2 the friend challenged); messages from older mods carry neither
+    CHALLENGE_RULE_FIELDS_NEW = dict(CHALLENGE_RULE_FIELDS, offenseCards=(0, 1, 1), firstPlayer=(0, 2, 1))
     CHALLENGE_RULE_EVENT = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
     def _private_rules_ok(self, data):
@@ -1506,9 +1559,12 @@ class PlayFabEmulator:
         if not isinstance(rr["event"], str) or not self.CHALLENGE_RULE_EVENT.fullmatch(rr["event"]):
             return False
         v = rr["v"]
-        if not isinstance(v, dict) or set(v) != set(self.CHALLENGE_RULE_FIELDS):
+        if not isinstance(v, dict):
             return False
-        for k, (lo, hi, step) in self.CHALLENGE_RULE_FIELDS.items():
+        fields = next((f for f in (self.CHALLENGE_RULE_FIELDS_NEW, self.CHALLENGE_RULE_FIELDS) if set(v) == set(f)), None)
+        if fields is None:
+            return False
+        for k, (lo, hi, step) in fields.items():
             if not whole(v[k]) or not lo <= v[k] <= hi or (v[k] - lo) % step:
                 return False
         return v["startingHand"] + v["secondPlayerExtraCards"] <= v["handLimit"]
@@ -1614,7 +1670,9 @@ class PlayFabEmulator:
                     "startingMana": (0, 50), "startingManaSecond": (0, 50), "addedManaSecond": (0, 50), "manaPerTurn": (0, 50),
                     "drawCardsPerTurn": (0, 20), "manaAccumulation": (0, 50), "handLimit": (1, 30),
                     "startingHand": (0, 10), "secondPlayerExtraCards": (0, 10)}
-    MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic")
+    # "offenseCards" is the revival's own: the Offence card pick in that mode (mod 0.13.24 on; a mode
+    # without it has no pick)
+    MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic", "offenseCards")
     SETTING_SWITCHES = ("offenseCards", "onlyRevivalMod", "requireAccount", "requireHttps", "requireEncryptedMatches")
     # every top-level key the server or the mod reads; keys starting with "_" are notes (review #21)
     SETTING_KEYS = SETTING_SWITCHES + ("turnSeconds", "practiceClassicWarlordLife", "rulesVersion", "minModVersion", "creatorUrl",
@@ -5241,6 +5299,9 @@ class PlayFabEmulator:
                           "secondPlayerExtraCards": (0, 10), "drawCardsPerTurn": (0, 10), "handLimit": (1, 30),
                           "startingMana": (0, 20), "startingManaSecond": (0, 20), "manaPerTurn": (0, 10),
                           "overtimeTurn": (0, 200), "turnSeconds": (0, 600)}
+    # from mod 0.13.24, sent together: whether the Offence card pick ran, and whether a challenge's rules
+    # forced who went first (replays from older mods have neither)
+    REPLAY_RULE_OPTIONAL = {"offenseCards": (0, 1), "forcedFirst": (0, 1)}
     REPLAY_RULE_EVENT = re.compile(r"[A-Za-z0-9_.-]{1,64}")
     REPLAY_RULE_CARDS = re.compile(r"[A-Za-z0-9._-]{1,80}")
 
@@ -5256,13 +5317,14 @@ class PlayFabEmulator:
         if not isinstance(raw["cards"], str) or not self.REPLAY_RULE_CARDS.fullmatch(raw["cards"]):
             return None
         rules = raw["rules"]
-        if not isinstance(rules, dict) or set(rules) != set(self.REPLAY_RULE_RANGES):
+        ranges = dict(self.REPLAY_RULE_RANGES, **self.REPLAY_RULE_OPTIONAL)
+        if not isinstance(rules, dict) or set(rules) not in (set(self.REPLAY_RULE_RANGES), set(ranges)):
             return None
-        for k, (lo, hi) in self.REPLAY_RULE_RANGES.items():
-            if not whole(rules[k]) or not lo <= rules[k] <= hi:
+        for k, (lo, hi) in ranges.items():
+            if k in rules and (not whole(rules[k]) or not lo <= rules[k] <= hi):
                 return None
         return {"v": 1, "event": raw["event"], "mod": raw["mod"], "cards": raw["cards"],
-                "rules": {k: rules[k] for k in self.REPLAY_RULE_RANGES}}
+                "rules": {k: rules[k] for k in ranges if k in rules}}
 
     def _replay_dir(self, pfid):
         return os.path.join(self.store.root, "replays", pfid)
