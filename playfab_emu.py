@@ -160,6 +160,10 @@ class Store:
         os.makedirs(self.players_dir, exist_ok=True)
         os.makedirs(self.titledata_dir, exist_ok=True)
         self.lock = threading.Lock()
+        # Each player's display name, kept with the file's modified time and size (efficiency E3):
+        # finding a player by name or friend code, or picking a free name, reads only files that changed.
+        self._names = {}
+        self._names_lock = threading.Lock()
         # Game sessions. A ticket is known only to the game it was given to; the server keeps a
         # fingerprint of it (never the ticket) in data/sessions.json, so a session survives a
         # restart without anything having to be taken on trust.
@@ -330,15 +334,46 @@ class Store:
         ticket = self.issue(pfid)
         return p, ticket
 
+    def names(self):
+        """[(player id, display name stripped and lower-cased)] for every player file, in folder order.
+        The folder is listed each time (cheap); a file is read again only when its modified time or
+        size changed since it was last read, and files that are gone drop out (efficiency E3)."""
+        out, seen = [], set()
+        with self._names_lock:
+            cache = self._names
+            with os.scandir(self.players_dir) as entries:
+                for e in entries:
+                    if not e.name.endswith(".json"):
+                        continue
+                    pfid = e.name[:-5]
+                    if not self.PLAYER_ID.fullmatch(pfid):
+                        continue
+                    try:
+                        st = e.stat()
+                    except OSError:
+                        continue
+                    stamp = (st.st_mtime_ns, st.st_size)
+                    hit = cache.get(pfid)
+                    if hit is None or hit[0] != stamp:
+                        try:
+                            p = self.load(pfid)
+                        except (OSError, ValueError):
+                            p = None
+                        if not p:
+                            cache.pop(pfid, None)
+                            continue
+                        hit = (stamp, (p.get("DisplayName") or "").strip().lower())
+                        cache[pfid] = hit
+                    seen.add(pfid)
+                    out.append((pfid, hit[1]))
+            for k in [k for k in cache if k not in seen]:
+                del cache[k]
+        return out
+
     def default_name(self, pfid):
         """Name given to a new player until they pick one: "Commander-" plus part of their id,
         lengthened if someone already took that exact name."""
-        taken = set()
-        for name in os.listdir(self.players_dir):
-            if name.endswith(".json") and name[:-5] != pfid:
-                other = self.load(name[:-5])
-                if other and other.get("DisplayName"):
-                    taken.add(other["DisplayName"].strip().lower())
+        taken = {name for other, name in self.names() if other != pfid and name}
         for n in range(4, len(pfid) + 1):
             candidate = "Commander-" + pfid[:n]
             if candidate.lower() not in taken:
@@ -3500,9 +3535,8 @@ class PlayFabEmulator:
         query = str(req.get("query") or "").strip().lower()
         if query:
             key = query.replace("-", "").replace(" ", "").upper()
-            for p in self._all_players():
-                pfid = p["PlayFabId"]
-                if (query in (p.get("DisplayName") or "").lower() or pfid.startswith(key)) and len(found) < 30:
+            for pfid, name in self.store.names():
+                if (query in name or pfid.startswith(key)) and len(found) < 30:
                     found.append(describe(pfid))
         return ok({"bans": [describe(pfid) for pfid in sorted(banned)], "found": found,
                    "requireAccount": self._settings().get("requireAccount") is True})
@@ -4914,12 +4948,15 @@ class PlayFabEmulator:
             return None
         key = q.replace("-", "").replace(" ", "").upper()
         by_code = None
-        for p in self._all_players():
-            if (p.get("DisplayName") or "").strip().lower() == q.lower() or p["PlayFabId"] == key:
-                return p
-            if len(key) == 8 and p["PlayFabId"].startswith(key):
-                by_code = p
-        return by_code
+        # from the kept names (E3): only the player found is read in full
+        for pfid, name in self.store.names():
+            if name == q.lower() or pfid == key:
+                p = self.store.load(pfid)
+                if p:
+                    return p
+            if len(key) == 8 and pfid.startswith(key):
+                by_code = pfid
+        return self.store.load(by_code) if by_code else None
 
     def _set_display_name(self, player, name):
         """Returns None on success, or (error, message, code) for a PlayFab-style error."""
