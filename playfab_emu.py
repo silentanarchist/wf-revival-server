@@ -1110,9 +1110,7 @@ def _bundle_signed_in(handler):
     if not token or len(token) > 200:
         return False
     api = handler.current_playfab()
-    with api.store.lock:
-        users = api._creator_users()
-    _, user = api._game_login_user(users, token)
+    _, user = api._game_login_user_cached(token)
     return user is not None and api._creator_perms(user)["access"] == "approved"
 
 
@@ -1826,7 +1824,7 @@ class PlayFabEmulator:
         """Admins: reported chat messages, newest first (closed ones only with "closed": true)."""
         if self._creator_role(req) < 2:
             return err("NotAuthorized", "only admins can see reports")
-        users = self._creator_users()
+        users = self._creator_users_view()
         banned = self._banned_ids()
 
         def who(pfid):
@@ -1874,6 +1872,7 @@ class PlayFabEmulator:
 
     # Creator accounts: a name and a passphrase, so drafts and rejected cards stay with their author.
     def _creator_users(self):
+        """The accounts file, freshly read: a private copy for code that changes accounts and saves."""
         try:
             with open(os.path.join(self.store.root, "creator_users.json"), encoding="utf-8") as f:
                 return json.load(f)
@@ -1885,6 +1884,42 @@ class PlayFabEmulator:
         with open(path + ".tmp", "w", encoding="utf-8") as f:
             json.dump(users, f, ensure_ascii=False, indent=1)
         os.replace(path + ".tmp", path)
+        self._users_cache = None
+
+    # Efficiency E1: the accounts file read once and kept until it changes on disk (its modified time
+    # and size; a save here also drops it), with lookups from site session, game login and game player
+    # to the account. Read-only: code that changes accounts reads its own copy (_creator_users) and
+    # saves it; accounts handed out from here are copies.
+    def _users_cached(self):
+        path = os.path.join(self.store.root, "creator_users.json")
+        try:
+            st = os.stat(path)
+            stamp = (st.st_mtime_ns, st.st_size)
+        except OSError:
+            stamp = None
+        cached = getattr(self, "_users_cache", None)
+        if cached is not None and cached[0] == stamp:
+            return cached
+        users = self._creator_users() if stamp is not None else {}
+        if not isinstance(users, dict):
+            users = {}
+        sessions, logins, players = {}, {}, {}
+        for key, user in users.items():
+            if not isinstance(user, dict):
+                continue
+            for d in user.get("sessions") or []:
+                sessions.setdefault(d, key)               # the first account holding it, as a scan in file order found
+            for h in self._game_login_hashes(user):
+                logins.setdefault(h, key)
+            if user.get("player"):
+                players.setdefault(user["player"], key)
+        cached = (stamp, users, sessions, logins, players)
+        self._users_cache = cached
+        return cached
+
+    def _creator_users_view(self):
+        """The accounts, from memory. Do not change what this returns."""
+        return self._users_cached()[1]
 
     @staticmethod
     def _creator_hash(passphrase, salt):
@@ -1910,7 +1945,7 @@ class PlayFabEmulator:
         # An expired session is kept as 0 (still refused), never deleted: a session with no time at all
         # counts as one from before this existed and would be accepted again (review #15a). Entries go
         # only once the session is gone from every account (signed out, password changed, replaced).
-        live = {d for u in self._creator_users().values() for d in (u.get("sessions") or [])}
+        live = {d for u in self._creator_users_view().values() for d in (u.get("sessions") or [])}
         for k in list(seen):
             if k not in live:
                 del seen[k]
@@ -1947,10 +1982,11 @@ class PlayFabEmulator:
         if not token:
             return None
         digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        for user in self._creator_users().values():
-            if digest in user.get("sessions", []):
-                return user if self._site_session_fresh(digest) else None
-        return None
+        cached = self._users_cached()
+        key = cached[2].get(digest)
+        if key is None:
+            return None
+        return copy.deepcopy(cached[1][key]) if self._site_session_fresh(digest) else None
 
     def _creator_user(self, req):
         """Display name of the signed-in author, or None."""
@@ -2120,7 +2156,7 @@ class PlayFabEmulator:
         site = str(self._settings().get("creatorUrl") or "").rstrip("/")
         base = site.split("/creator")[0] if site else ""
         with self.store.lock:
-            waiting = sum(1 for u in self._creator_users().values() if self._creator_perms(u)["access"] == "requested")
+            waiting = sum(1 for u in self._creator_users_view().values() if self._creator_perms(u)["access"] == "requested")
         shown = ", ".join("`" + n + "`" for n in names[:20]) + (f" and {len(names) - 20} more" if len(names) > 20 else "")
         text = (f"<@&{role}> " if role else "") + \
             ("New account request: " if len(names) == 1 else f"{len(names)} new account requests: ") + shown + \
@@ -2782,18 +2818,34 @@ class PlayFabEmulator:
     # A ban - of the account, or of its game player - takes every role away for good.
     ACCESS = ("requested", "approved", "banned")
 
-    def _creator_founders(self):
+    def _file_cached(self, slot, path, read):
+        """Efficiency E4: read(path) kept until the file's modified time or size changes (None when missing)."""
         try:
-            with open(os.path.join(self.store.root, "creator_admins.json"), encoding="utf-8") as f:
-                return {str(n).lower() for n in json.load(f)}
-        except (OSError, ValueError, TypeError):
-            return set()
+            st = os.stat(path)
+            stamp = (st.st_mtime_ns, st.st_size)
+        except OSError:
+            stamp = None
+        cache = self.__dict__.setdefault("_files_cache", {})
+        hit = cache.get(slot)
+        if hit is not None and hit[0] == stamp and hit[1] == path:
+            return hit[2]
+        value = read(path) if stamp is not None else None
+        cache[slot] = (stamp, path, value)
+        return value
+
+    def _creator_founders(self):
+        def read(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    return frozenset(str(n).lower() for n in json.load(f))
+            except (OSError, ValueError, TypeError):
+                return frozenset()
+        return self._file_cached("founders", os.path.join(self.store.root, "creator_admins.json"), read) or frozenset()
 
     def _creator_auto_approve(self):
         try:
-            with open(os.path.join(self.content_root, "files", "revival-settings.json"), encoding="utf-8") as f:
-                return (json.load(f).get("accounts") or {}).get("autoApprove", True) is not False
-        except (OSError, ValueError, AttributeError):
+            return (self._settings().get("accounts") or {}).get("autoApprove", True) is not False
+        except AttributeError:
             return True
 
     def _creator_perms(self, user):
@@ -3314,7 +3366,9 @@ class PlayFabEmulator:
 
     def creator_perms_for_player(self, pfid):
         """Permissions of the site account linked to a game player, or None when not linked."""
-        key, user = self._creator_account_of_player(self._creator_users(), pfid)
+        cached = self._users_cached()
+        key = cached[4].get(pfid) if pfid else None
+        user = cached[1].get(key) if key is not None else None
         return dict(self._creator_perms(user), name=user["name"]) if user else None
 
     def _end_play(self, pfid, reason):
@@ -3415,7 +3469,7 @@ class PlayFabEmulator:
         if cached and cached[0] == stamp:
             return cached[1]
         ids = set(self._bans()["players"])
-        for user in self._creator_users().values():
+        for user in self._creator_users_view().values():
             if user.get("player") and self._creator_perms(user)["access"] == "banned":
                 ids.add(user["player"])
         self._banned_cache = (stamp, frozenset(ids))
@@ -3431,7 +3485,7 @@ class PlayFabEmulator:
             return err("NotAuthorized", "only admins can see bans")
         banned = self._banned_ids()
         direct = self._bans()["players"]
-        users = self._creator_users()
+        users = self._creator_users_view()
 
         def describe(pfid):
             p = self.store.load(pfid) or {}
@@ -3797,6 +3851,21 @@ class PlayFabEmulator:
             hashes.append(user["gameLoginHash"])
         return hashes
 
+    def _game_login_user_cached(self, token):
+        """(key, copy of the account) a game login belongs to, or (None, None), from memory (E1)."""
+        token = str(token or "").strip()
+        if token.startswith(self.GAME_LOGIN_PREFIX):
+            token = token[len(self.GAME_LOGIN_PREFIX):]
+        if len(token) < 32:
+            return None, None
+        digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        cached = self._users_cached()
+        key = cached[3].get(digest)
+        user = cached[1].get(key) if key is not None else None
+        if user is None or not any(hmac.compare_digest(h, digest) for h in self._game_login_hashes(user)):
+            return None, None
+        return key, copy.deepcopy(user)
+
     def _game_login_user(self, users, token):
         """(key, account) a game login belongs to, or (None, None)."""
         token = str(token or "").strip()
@@ -4104,7 +4173,7 @@ class PlayFabEmulator:
         if self._creator_role(req) < 2:
             return err("NotAuthorized", "only admins can see the accounts")
         with self.store.lock:
-            users, cards = self._creator_users(), self._creator_load()
+            users, cards = self._creator_users_view(), self._creator_load()
         counts = {}
         for c in cards:
             counts[c.get("author", "").lower()] = counts.get(c.get("author", "").lower(), 0) + 1
@@ -4154,7 +4223,7 @@ class PlayFabEmulator:
             return err("InvalidParams", "offset and limit are numbers")
         query = " ".join(str(req.get("query") or "").split()).lower()[:30]
         with self.store.lock:
-            users = self._creator_users()
+            users = self._creator_users_view()
         waiting = [u for u in users.values() if self._creator_perms(u)["access"] == "requested"]
         total = len(waiting)
         if query:
@@ -4308,13 +4377,17 @@ class PlayFabEmulator:
 
     # ------------------------------------------------------------------ plumbing
     def _settings(self):
-        """The owner's revival-settings.json ({} when there is none)."""
-        try:
-            with open(os.path.join(self.content_root, "files", "revival-settings.json"), encoding="utf-8") as f:
-                d = json.load(f)
-            return d if isinstance(d, dict) else {}
-        except (OSError, ValueError):
-            return {}
+        """The owner's revival-settings.json ({} when there is none). Kept in memory until the file
+        changes (E4); each caller gets its own copy."""
+        def read(path):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    d = json.load(f)
+                return d if isinstance(d, dict) else {}
+            except (OSError, ValueError):
+                return {}
+        d = self._file_cached("settings", os.path.join(self.content_root, "files", "revival-settings.json"), read)
+        return copy.deepcopy(d) if d else {}
 
     @staticmethod
     def _version_number(text):
