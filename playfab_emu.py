@@ -1098,8 +1098,9 @@ def _cards_version(handler):
 
 # The content bundles (the game's card file, alternate art and text) are only for signed-in players.
 # Mods from 0.13.21 send their saved game sign-in with each bundle download (X-Revival-Login).
-# Until BUNDLES_NEED_SIGN_IN is switched on, downloads without one are still served and only logged.
-BUNDLES_NEED_SIGN_IN = False
+# Switched on 2026-10-14: a download without a valid sign-in gets 403 (the mod fetches it again after
+# signing in). The mod's own update (/api/v1/mod/...) stays open, so old mods can always update.
+BUNDLES_NEED_SIGN_IN = True
 BUNDLE_PATHS = ("/api/v1/content/bundles/", "/api/v1/content/bundles-android/")
 
 
