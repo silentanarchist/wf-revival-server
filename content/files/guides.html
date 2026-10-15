@@ -823,13 +823,26 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <p>The same steps work on Windows and Android. Only where the file is saved, and how you get it to the browser, differ.</p>
 <h3>1. Export the art in the game (Windows and Android)</h3>
 <ol>
-<li><strong>Update the mod.</strong> In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Check for updates</strong>. The export button arrived in mod 0.13.15; older versions do not have it.</li>
+<li><strong>Update the mod.</strong> In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Check for updates</strong>. The export button arrived in mod 0.13.15, and the <strong>Compress Card Art</strong> box in 0.13.27; older versions do not have them.</li>
 <li><strong>Open the Collection once,</strong> so the game has loaded the cards. If you skip this, the export says "No cards loaded yet: open the Collection once, then try again."</li>
-<li><strong>Go back to Settings &gt; Mod</strong> and press <strong>Export card art</strong>.</li>
-<li><strong>Wait.</strong> The button counts up ("Exporting card art… 250 / 1335"), then shows "Exporting card frames…". It takes about a minute or two. You can keep the game open; do not close it until it finishes.</li>
-<li><strong>Done</strong> when the button says <strong>Card art saved</strong> with the file's size (about 90 MB). On Windows the folder with the file opens by itself.</li>
+<li><strong>Go back to Settings &gt; Mod.</strong> Under <strong>Export card art</strong>, leave <strong>Compress Card Art</strong> ticked, or untick it for full-size pictures (see below).</li>
+<li><strong>Press Export card art.</strong></li>
+<li><strong>Wait.</strong> The button counts up ("Exporting card art… 250 / 1335"), then shows "Exporting card frames…". Compressed, it takes a minute or two. You can keep the game open; do not close it until it finishes.</li>
+<li><strong>Done</strong> when the button says <strong>Card art saved</strong> with the file's size. On Windows the folder with the file opens by itself.</li>
 </ol>
 <p>If it says <strong>Card art export failed</strong>, try again once. If it fails again, send the game's log (Windows: <code>MelonLoader\Latest.log</code> in the game folder; Android: the Patcher app's <strong>Share logs</strong>).</p>
+<h3>Compress Card Art</h3>
+<p>A tick box under <strong>Export card art</strong>, on by default. It decides how big the card pictures are:</p>
+<table>
+<thead>
+<tr><th>Compress Card Art</th><th>Card art size</th><th>Time</th><th>Use it when</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>On</strong> (default)</td><td>512 × 512</td><td>About a minute or two</td><td>You just want to see cards on the website. Recommended for most players.</td></tr>
+<tr><td><strong>Off</strong></td><td>1024 × 1024, the game's own size</td><td>Much longer: slower devices, including many phones, may need 5 minutes or longer</td><td>You want the sharpest pictures.</td></tr>
+</tbody>
+</table>
+<p>The game shows the same warning when you untick it. Either way the file works on the website the same way; only the pictures' sharpness differs. To switch, change the box and export again: the new file replaces the old one.</p>
 <h3>2. Where the file is saved</h3>
 <p>The file is always called <code>card-art-export.zip</code>. Exporting again replaces it.</p>
 <table>
@@ -850,7 +863,7 @@ Mods\WarpforgeRevival\manifest.json</pre>
 </tr>
 </tbody>
 </table>
-<p>Inside are every card's art (512 × 512), the pop-out masks of troops and warlords, the faction frames, and a small <code>export.json</code> saying when and from which game version it was made. You do not need to unzip it.</p>
+<p>Inside are every card's art (512 × 512, or 1024 × 1024 with <strong>Compress Card Art</strong> off), the pop-out masks of troops and warlords, the faction frames, every card's name, rules text and lore in all of the game's languages, and a small <code>export.json</code> saying when and from which game version it was made. You do not need to unzip it.</p>
 <h3>3. Load it on the website</h3>
 <ol>
 <li><strong>Sign in</strong> to the Revival website and open your <a href="/profile">Profile</a> (click your name at the top right).</li>
@@ -902,10 +915,14 @@ Mods\WarpforgeRevival\manifest.json</pre>
 <td>"The card art is shown, but this browser would not keep it"</td>
 <td>The browser does not allow saving it (often a private window). It works until you close the page; pick it again next time.</td>
 </tr>
+<tr>
+<td>The export with Compress Card Art off seems stuck</td>
+<td>Give it time: full-size pictures can take 5 minutes or longer on slower devices. If you do not need the sharpest pictures, tick Compress Card Art and export again.</td>
+</tr>
 </tbody>
 </table>
 </section>
-<p class="dim" style="margin-top:40px">Guides as of 12 October 2026 (mod 0.13, Warpforge Patcher 0.2.1).</p>
+<p class="dim" style="margin-top:40px">Guides as of 14 October 2026 (mod 0.13, Warpforge Patcher 0.2.1).</p>
 </main>
 </body>
 </html>
