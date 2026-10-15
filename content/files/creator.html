@@ -38,6 +38,8 @@
   header h1 a { color: inherit; text-decoration: none; } header h1 a:hover { opacity: .85; }
   nav.sub { background: #15181d; border-bottom: 1px solid #23272e; padding-left: 28px; }
   nav.sub a { padding: 7px 14px; font-size: 14px; }
+  nav.sub2 { background: #121418; padding-left: 44px; }      /* a ribbon inside a sub ribbon (Guides > Install Guides) */
+  nav.sub2 a { padding: 6px 12px; font-size: 13.5px; }
   .uploads { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
   .uploads .up { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #1a1d23; }
   .uploads img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: #0e1013; display: block; margin-bottom: 6px; }
@@ -300,12 +302,15 @@
 </nav>
 <nav id="guideTabs" class="sub hidden">
   <a id="tabGuideHome" href="/guides">Which guide?</a>
+  <a id="tabGuideInstall" href="/guides/pc">Install Guides</a>
+  <a id="tabGuideCreator" href="/guides/creator">Card Creator</a>
+  <a id="tabGuideCardArt" href="/guides/card-art">Card art</a>
+</nav>
+<nav id="installTabs" class="sub sub2 hidden">
   <a id="tabGuidePc" href="/guides/pc">PC (Windows)</a>
   <a id="tabGuidePhone" href="/guides/phone">Android phone: Patcher app</a>
   <a id="tabGuideAndroid" href="/guides/android-pc">Android phone: with a PC</a>
   <a id="tabGuideMumu" href="/guides/mumu">MuMu Player</a>
-  <a id="tabGuideCreator" href="/guides/creator">Card Creator</a>
-  <a id="tabGuideCardArt" href="/guides/card-art">Card art</a>
 </nav>
 <nav id="creatorTabs" class="sub">
   <a id="tabCreate" href="/creator">Create a card</a>
@@ -3673,6 +3678,8 @@ const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", Guid
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
 const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu", GuideCreator: "creator", GuideCardArt: "card-art" };
 let lastGuidePage = "GuideHome", guideParts = null, guideAsk = null;
+const INSTALL_GUIDES = ["GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu"];   // under Guides > Install Guides
+let lastInstallGuide = "GuidePc";
 async function showGuide(which) {
   if (!guideParts) {
     guideAsk = guideAsk || call("Guides");
@@ -3714,6 +3721,9 @@ function show(which, replace) {                // a page name from PAGES
   if (inGuides) lastGuidePage = which;
   $("viewGuides").classList.toggle("hidden", !inGuides);
   $("tabGuides").classList.toggle("on", inGuides); $("guideTabs").classList.toggle("hidden", !inGuides);
+  const inInstall = INSTALL_GUIDES.includes(which);
+  if (inInstall) lastInstallGuide = which;
+  $("tabGuideInstall").classList.toggle("on", inInstall); $("installTabs").classList.toggle("hidden", !inInstall);
   if (inGuides) showGuide(which);
   if (which === "Home") drawHome();
   if (which === "Examples") showExamples();
@@ -3814,6 +3824,7 @@ async function start() {
   $("peopleSearch").addEventListener("input", filterPeople); $("peopleShow").onchange = filterPeople;
   $("unrelQuery").addEventListener("input", drawUnreleased); $("unrelShow").onchange = drawUnreleased;
   $("tabGuides").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGuidePage); } };
+  $("tabGuideInstall").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastInstallGuide); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's
     if (t) t.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(name); } };
