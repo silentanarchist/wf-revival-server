@@ -410,7 +410,7 @@
           "addedManaSecond": 0,
           "manaPerTurn": 2,
           "drawCardsPerTurn": 1,
-          "manaAccumulation": 0,
+          "manaAccumulation": 1,
           "handLimit": 8,
           "shouldReshuffle": false,
           "showMulligan": true,
