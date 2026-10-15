@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Warpforge Revival</title>
+<title>WF-Revival</title>
 <style>
   :root {
     --bg: #14161a; --panel: #1d2026; --panel2: #252931; --line: #343a45; --text: #e6e3da; --dim: #9aa0aa;
@@ -800,7 +800,7 @@
   <div id="viewHome" class="hidden home">
     <section>
       <h2 id="homeHello">Welcome</h2>
-      <p>Welcome to Warpforge Revival, the community project that keeps <em>Warhammer 40,000: Warpforge</em> playable now that its official servers have closed. Sign in to the game with this same account, design your own cards in the Card Creator, and play against the rest of the community.</p>
+      <p>Welcome to WF-Revival, the community project that keeps <em>Warhammer 40,000: Warpforge</em> playable now that its official servers have closed. Sign in to the game with this same account, design your own cards in the Card Creator, and play against the rest of the community.</p>
       <p class="hint">An unofficial fan project, not affiliated with Everguild or Games Workshop. You need your own copy of the game.</p>
     </section>
     <section>
@@ -814,8 +814,8 @@
     <section>
       <h2>On GitHub</h2>
       <ul class="homeLinks">
-        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod" target="_blank" rel="noopener">Warpforge Revival mod for PC</a> <span class="hint">- downloads and install steps (Windows)</span></li>
-        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod-android" target="_blank" rel="noopener">Warpforge Revival for Android</a> <span class="hint">- the patcher and a step-by-step guide</span></li>
+        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod" target="_blank" rel="noopener">WF-Revival mod for PC</a> <span class="hint">- downloads and install steps (Windows)</span></li>
+        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod-android" target="_blank" rel="noopener">WF-Revival for Android</a> <span class="hint">- the patcher and a step-by-step guide</span></li>
       </ul>
     </section>
   </div>
@@ -2453,9 +2453,9 @@ function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.ke
 function goto(path, replace) { if (location.pathname !== path) history[replace ? "replaceState" : "pushState"](null, "", path); }
 function gate() {                                // signed out: only the sign-in page
   const out = !me;
-  if (out) { if (location.pathname !== LOGIN) { wanted = pageOf(location.pathname); goto(LOGIN, true); } document.title = "Sign in – Warpforge Revival"; }
+  if (out) { if (location.pathname !== LOGIN) { wanted = pageOf(location.pathname); goto(LOGIN, true); } document.title = "Sign in – WF-Revival"; }
   else if (!pageOf(location.pathname)) { show(wanted || "Home", true); wanted = ""; }
-  else document.title = TITLES[pageOf(location.pathname)] + " – Warpforge Revival";
+  else document.title = TITLES[pageOf(location.pathname)] + " – WF-Revival";
   $("viewLogin").classList.toggle("hidden", !out); $("tabs").classList.toggle("hidden", out); $("app").classList.toggle("hidden", out);
   if (out && document.activeElement === document.body) $("author").focus();
 }
@@ -2851,7 +2851,7 @@ async function showBug(id) {
   let r;
   try { r = await call("BugGet", { id }); } catch (e) { box.textContent = ""; return say("Could not load " + id + ": " + e.message, "bad"); }
   box.textContent = "";
-  document.title = r.id + " – Bug reports – Warpforge Revival";
+  document.title = r.id + " – Bug reports – WF-Revival";
   const back = el("a", { href: "/bugs", text: "← All reports", onclick: e => { if (plainClick(e)) { e.preventDefault(); history.pushState(null, "", "/bugs"); loadBugs(); } } });
   box.append(back, el("h2", { text: r.id + "  " + r.title }),
     el("div", { class: "bugMeta" }, bugBadge(r.status), " ", [BUG_CATEGORIES[r.category], BUG_SEVERITIES[r.severity], r.kind !== "manual" ? "sent after a " + r.kind : "",
@@ -3698,7 +3698,7 @@ async function showGuide(which) {
 }
 function show(which, replace) {                // a page name from PAGES
   if (me) goto(PAGES[which], replace);
-  if (me) document.title = TITLES[which] + " – Warpforge Revival";
+  if (me) document.title = TITLES[which] + " – WF-Revival";
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
