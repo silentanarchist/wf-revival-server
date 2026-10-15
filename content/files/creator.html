@@ -279,7 +279,7 @@
       <input id="r_new" type="password" maxlength="200" autocomplete="new-password"></div>
     <div class="field"><label for="r_new2">New password again</label>
       <input id="r_new2" type="password" maxlength="200" autocomplete="new-password"></div>
-    <p class="hint">Resetting signs this account out of every browser, computer and phone.</p>
+    <p class="hint">Resetting signs this account out of every browser, computer and Android device.</p>
     <button class="primary" id="recoverGo" type="submit">Reset password</button>
     <p class="switch"><a href="#" id="recoverBack">Back to sign in</a></p>
   </form>
@@ -519,7 +519,7 @@
       <p id="p_link"></p>
       <div id="p_gameLogin" class="hidden">
         <p class="hint">A <strong>game login file</strong> lets the game sign in as this game account without Steam – for another computer, or when Steam is not working – so you keep your decks and progress. Put the file in the game's folder under <code>UserData\WarpforgeRevival\</code> and start the game. While the file is there the game always signs in with it.</p>
-        <p class="hint">You normally do not need it: signing in from the game's own sign-in window writes this file for you. Treat it like a password: anyone who has the file can play as you. Changing your password cancels every file and game sign-in at once; signing out in the game cancels that computer's or phone's. <span id="p_gameLoginAt"></span></p>
+        <p class="hint">You normally do not need it: signing in from the game's own sign-in window writes this file for you. Treat it like a password: anyone who has the file can play as you. Changing your password cancels every file and game sign-in at once; signing out in the game cancels that computer's or device's. <span id="p_gameLoginAt"></span></p>
         <p class="note"><strong>No admin will ever ask you for your game login file.</strong> Anyone who asks for it is trying to take over your account. Do not send it, and tell us at <a href="mailto:wf-revival@silentanarchist.com">wf-revival@silentanarchist.com</a>.</p>
         <form id="gameLoginForm">
           <div class="row"><div class="field"><label for="p_glPass">Your password</label><input id="p_glPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
@@ -3218,7 +3218,7 @@ async function loadPeople() {
           p.resetUntil ? el("button", { class: "small", text: "Cancel code", onclick: () => cancelResetCode(p.name) }) : null),
         el("div", { class: "hint" }, p.player ? `Linked to game player ${p.playerName} ` : "Not linked to a game player",
           p.player && !locked ? (oneAccount
-            ? el("button", { class: "small", text: "Sign out of game", title: "Signs this account out of the game on every computer and phone. It keeps its game player.", onclick: () => setAccount(p.name, { unlink: true }, "signed out of the game everywhere") })
+            ? el("button", { class: "small", text: "Sign out of game", title: "Signs this account out of the game on every computer and Android device. It keeps its game player.", onclick: () => setAccount(p.name, { unlink: true }, "signed out of the game everywhere") })
             : el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") })) : null)),
       el("div", { class: "actions", style: "align-items:center; gap:14px" }, field("Site access", access),
         el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin"), toggle("owner", "Owner")),
