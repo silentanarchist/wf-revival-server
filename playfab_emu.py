@@ -1573,6 +1573,8 @@ class PlayFabEmulator:
     # from mod 0.13.24: the Offence card pick (0 off, 1 on) and who goes first (0 the game decides,
     # 1 the challenger, 2 the friend challenged); messages from older mods carry neither
     CHALLENGE_RULE_FIELDS_NEW = dict(CHALLENGE_RULE_FIELDS, offenseCards=(0, 1, 1), firstPlayer=(0, 2, 1))
+    # from mod 0.13.33: unspent mana carried over to the next turn (at most this much)
+    CHALLENGE_RULE_FIELDS_0133 = dict(CHALLENGE_RULE_FIELDS_NEW, manaAccumulation=(0, 5, 1))
     CHALLENGE_RULE_EVENT = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
     def _private_rules_ok(self, data):
@@ -1594,7 +1596,8 @@ class PlayFabEmulator:
         v = rr["v"]
         if not isinstance(v, dict):
             return False
-        fields = next((f for f in (self.CHALLENGE_RULE_FIELDS_NEW, self.CHALLENGE_RULE_FIELDS) if set(v) == set(f)), None)
+        fields = next((f for f in (self.CHALLENGE_RULE_FIELDS_0133, self.CHALLENGE_RULE_FIELDS_NEW, self.CHALLENGE_RULE_FIELDS)
+                       if set(v) == set(f)), None)
         if fields is None:
             return False
         for k, (lo, hi, step) in fields.items():
@@ -5411,7 +5414,8 @@ class PlayFabEmulator:
                           "overtimeTurn": (0, 200), "turnSeconds": (0, 600)}
     # from mod 0.13.24, sent together: whether the Offence card pick ran, and whether a challenge's rules
     # forced who went first (replays from older mods have neither)
-    REPLAY_RULE_OPTIONAL = {"offenseCards": (0, 1), "forcedFirst": (0, 1)}
+    # and from 0.13.33 the unspent mana carried over to the next turn; any of these may be missing
+    REPLAY_RULE_OPTIONAL = {"offenseCards": (0, 1), "forcedFirst": (0, 1), "manaAccumulation": (0, 10)}
     REPLAY_RULE_EVENT = re.compile(r"[A-Za-z0-9_.-]{1,64}")
     REPLAY_RULE_CARDS = re.compile(r"[A-Za-z0-9._-]{1,80}")
 
@@ -5428,7 +5432,7 @@ class PlayFabEmulator:
             return None
         rules = raw["rules"]
         ranges = dict(self.REPLAY_RULE_RANGES, **self.REPLAY_RULE_OPTIONAL)
-        if not isinstance(rules, dict) or set(rules) not in (set(self.REPLAY_RULE_RANGES), set(ranges)):
+        if not isinstance(rules, dict) or not set(self.REPLAY_RULE_RANGES) <= set(rules) <= set(ranges):
             return None
         for k, (lo, hi) in ranges.items():
             if k in rules and (not whole(rules[k]) or not lo <= rules[k] <= hi):
