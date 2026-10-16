@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- The server reads this date: changing it asks every account to agree again at its next password sign-in. -->
-<meta name="terms-version" content="2026-10-11.2">
+<meta name="terms-version" content="2026-10-16">
 <title>Terms and Privacy - WF-Revival</title>
 <style>
   :root { --bg: #14161a; --panel: #1d2026; --line: #343a45; --text: #e6e3da; --dim: #9aa0aa; --accent: #c9a24a; }
@@ -30,7 +30,7 @@
 <header><a href="/">WF-Revival</a></header>
 <main>
 <h1>Terms and Privacy notice</h1>
-<p class="dim">Last changed 11 October 2026 (evening: bug report attachments are now removed 30 days after a report is closed; deleting a banned account cannot be cancelled). When these change, you are asked to agree again the next time you sign in with your password.</p>
+<p class="dim">Last changed 16 October 2026 (the server now keeps its own record of matches between players for 30 days, and you can share a match as a replay code). When these change, you are asked to agree again the next time you sign in with your password.</p>
 
 <div class="box">
 <p><strong>In short:</strong> Warpforge Revival is a free fan project run by volunteers. You need to be 16 or older. Be decent in chat
@@ -85,6 +85,8 @@ for any loss that causes. We will try to give notice on Discord before anything 
 <tr><td>Account name and a scrambled copy (hash) of your password. The password itself is never stored.</td><td>Signing you in</td><td>Until you delete your account</td></tr>
 <tr><td>Your roles, whether you agreed to these terms and when, and when the account was made or changed</td><td>Running the site</td><td>Until you delete your account</td></tr>
 <tr><td>Your game player: in-game name, friend code, friends list, decks, collection, progress, match history and match recordings</td><td>Playing the game</td><td>Until you delete your account (recordings drop off as newer matches replace them)</td></tr>
+<tr><td>The server's own record of each match you play against another player: who played (player id and in-game name), every move each player made, and when</td><td>Checking reported matches and cheating</td><td>30 days. A match someone made a replay code of is kept as long as the code exists</td></tr>
+<tr><td>Replay codes you make: a copy of that match's recording, both players' in-game names and warlords, the result and when it was played. Anyone with the code can watch the match and see these details</td><td>Sharing a replay</td><td>Until you remove the code on your Profile page or delete your account</td></tr>
 <tr><td>Cards and artwork you make</td><td>The card creator</td><td>Drafts and rejected cards until you delete them or your account; approved cards as long as the project runs</td></tr>
 <tr><td>Chat messages</td><td>So the chat has a history</td><td>Only the newest 500 messages on the whole server are kept</td></tr>
 <tr><td>Chat reports (who reported whom, and the message)</td><td>Moderation</td><td>The newest 500 reports on the whole server</td></tr>
@@ -114,9 +116,9 @@ for any loss that causes. We will try to give notice on Discord before anything 
 <ul>
   <li>Your account is signed out everywhere at once and is deleted after <strong>7 days</strong>. Signing in again within those 7 days cancels the deletion.</li>
   <li><strong>Exception for banned accounts:</strong> if an account is banned when it is set to be deleted, the deletion cannot be cancelled by signing in or resetting the password, even if the ban is lifted afterwards. Only an admin can stop it.</li>
-  <li><strong>Deleted:</strong> your account, your game player (with its decks, collection, progress, friends list and recordings), your drafts and rejected cards and their artwork.</li>
+  <li><strong>Deleted:</strong> your account, your game player (with its decks, collection, progress, friends list and recordings), your replay codes, your drafts and rejected cards and their artwork.</li>
   <li><strong>Changed, not deleted:</strong> your approved cards stay in the game credited to "deleted account"; your chat messages still kept are emptied and shown as from "deleted account"; bug reports you sent stay, without their log, screenshot and crash dump, as from "deleted account".</li>
-  <li><strong>Kept:</strong> matches you played against other people stay in their match history. Chat reports and bans stay as moderation records.</li>
+  <li><strong>Kept:</strong> matches you played against other people stay in their match history, and replay codes they made of those matches keep working. The server's record of your matches stays until it is 30 days old (longer while another player's replay code holds it). Chat reports and bans stay as moderation records.</li>
   <li>Connection logs and backups that still contain your data are removed as they age out (14 days for logs, about 10 days for backups).</li>
 </ul>
 <p>Admins can also delete an account, following the same steps (and the same exception for banned accounts).</p>
