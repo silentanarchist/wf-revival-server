@@ -5530,6 +5530,13 @@ class PlayFabEmulator:
                                     name, player["PlayFabId"])
                     else:
                         kept["revivalRules"] = snapshot
+                if "revivalCards" in data:
+                    cards = self._replay_cards(data.get("revivalCards"))
+                    if cards is None:
+                        log.warning("replay %s of %s: the card list sent with it is not in the expected form; kept without it",
+                                    name, player["PlayFabId"])
+                    else:
+                        kept["revivalCards"] = cards
                 body = json.dumps(kept, separators=(",", ":"))
                 if len(body) > self.REPLAY_MAX_BYTES:
                     log.warning("replay %s of %s not kept: %d bytes", name, player["PlayFabId"], len(body))
@@ -5649,7 +5656,8 @@ class PlayFabEmulator:
                 ("ownName", "enemyName", "ownHero", "enemyHero", "result", "matchType")}}
 
     def _matches_held(self):
-        return {d.get("match") for d in self._codes_all().values() if isinstance(d.get("match"), str)}
+        held = {d.get("match") for d in self._codes_all().values() if isinstance(d.get("match"), str)}
+        return held | self._preports_holding()
 
     def _matches_prune(self):
         """Deletes match records past MATCH_KEEP_DAYS that nothing holds."""
@@ -5785,6 +5793,405 @@ class PlayFabEmulator:
             return err("ServiceUnavailable", "could not remove it, try again", 1123, 503)
         log.info("replay code %s removed by %s", code, me.get("name"))
         return ok({"removed": self._code_show(code)})
+
+    # ---------------------------------------------------------------- player reports (mod 0.13.39)
+    # A player reports another player for one match in their battle log (Revival/PlayerReport), or the
+    # mod's anti-cheat (the game's own Anti-Cheat Toolkit detectors, switched on by the mod during
+    # matches) reports the player whose game raised the alarm (Revival/CheatAlarm, report-only). Each
+    # report is data/player_reports/<R-000001>.json; its evidence (copies of both players' recordings of
+    # that match) sits in data/player_reports/<id>/. The match's server record (data/matches) is held
+    # while the report is open and for MATCH_KEEP_DAYS after it was closed. Admins see the reports on
+    # the website's Moderation page with a review of the match (PREPORT_* calls below).
+    PREPORT_REASONS = ("cheating", "unsportsmanlike", "stalling", "other")
+    PREPORT_ID = re.compile(r"R-\d{6}")
+    ALARM_KINDS = ("tamper", "speed")
+    PREPORT_LOG_MAX = 256 * 1024
+
+    def _preport_dir(self):
+        return os.path.join(self.store.root, "player_reports")
+
+    def _preport_load(self, rid):
+        if not self.PREPORT_ID.fullmatch(str(rid or "")):
+            return None
+        try:
+            with open(os.path.join(self._preport_dir(), rid + ".json"), encoding="utf-8") as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            return None
+        return d if isinstance(d, dict) else None
+
+    def _preport_save(self, d):
+        os.makedirs(self._preport_dir(), exist_ok=True)
+        path = os.path.join(self._preport_dir(), d["id"] + ".json")
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(d, f, separators=(",", ":"))
+        os.replace(path + ".tmp", path)
+
+    def _preport_all(self):
+        out = []
+        try:
+            names = sorted(os.listdir(self._preport_dir()))
+        except OSError:
+            return out
+        for n in names:
+            if n.endswith(".json") and self.PREPORT_ID.fullmatch(n[:-5]):
+                d = self._preport_load(n[:-5])
+                if d:
+                    out.append(d)
+        return out
+
+    def _preport_new_id(self):
+        top = 0
+        try:
+            for n in os.listdir(self._preport_dir()):
+                m = re.fullmatch(r"R-(\d{6})\.json", n)
+                if m:
+                    top = max(top, int(m.group(1)))
+        except OSError:
+            pass
+        return "R-%06d" % (top + 1)
+
+    def _preports_holding(self):
+        """Match records held by reports: open ones, and closed ones for MATCH_KEEP_DAYS after closing."""
+        held, oldest = set(), time.time() - self.MATCH_KEEP_DAYS * 86400
+        for d in self._preport_all():
+            m = (d.get("match") or {}).get("matchId")
+            if not isinstance(m, str):
+                continue
+            closed = d.get("closedAt")
+            if not d.get("closed") or not closed:
+                held.add(m)
+                continue
+            try:
+                if datetime.strptime(closed[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp() >= oldest:
+                    held.add(m)
+            except ValueError:
+                held.add(m)
+        return held
+
+    def _replay_cards(self, raw):
+        """{"v": 1, "cards": [[in-match id, card id, 1 own / 0 opponent's], ...]} as sent with a recording, or None."""
+        if not isinstance(raw, dict) or set(raw) != {"v", "cards"} or raw["v"] != 1 or not isinstance(raw["cards"], list) \
+                or len(raw["cards"]) > 600:
+            return None
+        out = []
+        for c in raw["cards"]:
+            if not (isinstance(c, list) and len(c) == 3 and isinstance(c[0], int) and not isinstance(c[0], bool) and 0 <= c[0] <= 100000
+                    and isinstance(c[1], str) and re.fullmatch(r"[A-Za-z0-9._-]{1,64}", c[1]) and c[2] in (0, 1) and not isinstance(c[2], bool)):
+                return None
+            out.append([c[0], c[1], c[2]])
+        return {"v": 1, "cards": out}
+
+    def _preport_copy_recording(self, rid, pfid, index, as_name):
+        """Copies a player's kept recording into the report's evidence folder. True when copied."""
+        if not (pfid and self.RECORD_NAME.fullmatch(str(index or ""))):
+            return False
+        src = os.path.join(self._replay_dir(pfid), index + ".json")
+        if not os.path.isfile(src):
+            return False
+        d = os.path.join(self._preport_dir(), rid)
+        os.makedirs(d, exist_ok=True)
+        shutil.copyfile(src, os.path.join(d, as_name))
+        return True
+
+    def _entry_for_match(self, pfid, match_id):
+        """recordingIndex of the entry in pfid's history linked to that match record, or None."""
+        p = self.store.load(pfid) if pfid and re.fullmatch(r"[0-9A-F]{16}", pfid) else None
+        links = (p or {}).get("MatchLinks")
+        if not isinstance(links, dict) or not match_id:
+            return None
+        return next((k for k, v in links.items() if v == match_id), None)
+
+    def api_Revival_PlayerReport(self, req, headers):
+        """{"player", "recordingIndex", "reason", "note", "log"?}: report the opponent of one match in the caller's battle log."""
+        me = self.store.from_session(headers)
+        if me is None:
+            return err("NotAuthorized", "sign in to the game first")
+        pfid = me["PlayFabId"]
+        reported = str(req.get("player") or "").strip().upper()
+        index = str(req.get("recordingIndex") or "")
+        reason = req.get("reason")
+        note = re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", "", str(req.get("note") or ""))[:500].strip()
+        if reason not in self.PREPORT_REASONS:
+            return err("InvalidParams", "pick a reason")
+        if not re.fullmatch(r"[0-9A-F]{16}", reported) or reported == pfid or self.store.load(reported) is None:
+            return err("InvalidParams", "no such player")
+        logtext = req.get("log")
+        if logtext is not None and (not isinstance(logtext, str) or len(logtext.encode("utf-8", "replace")) > self.PREPORT_LOG_MAX):
+            return err("InvalidParams", "the log is too large")
+        with self.store.lock:
+            player = self.store.load(pfid) or me
+            entry = next((e for e in self._battle_log(player) if str(e.get("recordingIndex")) == index), None)
+            if entry is None:
+                return err("NotFound", "that match is no longer in your battle log")
+            if str(entry.get("enemyId") or "").upper() != reported:
+                return err("InvalidParams", "that player was not your opponent in that match")
+            for d in self._preport_all():
+                if d.get("kind") == "player" and d.get("reporter") == pfid and d.get("reported") == reported \
+                        and (d.get("match") or {}).get("reporterIndex") == index:
+                    return ok({"id": d["id"], "already": True})
+            if not self._allow("preport-hour", pfid, 10, 3600) or not self._allow("preport-day", pfid, 30, 86400):
+                return err("TooManyAttempts", "too many reports - try again later", 1199, 429)
+            links = player.get("MatchLinks") if isinstance(player.get("MatchLinks"), dict) else {}
+            match_id = links.get(index)
+            rid = self._preport_new_id()
+            other_index = self._entry_for_match(reported, match_id)
+            won, lost = entry.get("matchWin") is True, entry.get("matchLose") is True
+            d = {"id": rid, "kind": "player", "at": now_iso(), "reporter": pfid, "reported": reported,
+                 "reason": reason, "note": note, "closed": False,
+                 "match": {"matchId": match_id, "reporterIndex": index, "reportedIndex": other_index,
+                           "matchType": entry.get("matchType"), "reporterHero": str(entry.get("ownHeroName") or "")[:20],
+                           "reportedHero": str(entry.get("enemyHeroName") or "")[:20],
+                           "reporterResult": "won" if won else "lost" if lost else "draw"},
+                 "evidence": {"reporter": self._preport_copy_recording(rid, pfid, index, "reporter-replay.json"),
+                              "reported": self._preport_copy_recording(rid, reported, other_index, "reported-replay.json")}}
+            if isinstance(logtext, str) and logtext:
+                os.makedirs(os.path.join(self._preport_dir(), rid), exist_ok=True)
+                with open(os.path.join(self._preport_dir(), rid, "reporter-log.txt"), "w", encoding="utf-8") as f:
+                    f.write(self._bug_scrub(logtext, headers))
+                d["evidence"]["log"] = True
+            self._preport_save(d)
+        log.info("player report %s: %s reported %s (%s)%s", rid, pfid, reported, reason, "" if match_id else "; no server record of the match")
+        return ok({"id": rid})
+
+    def api_Revival_CheatAlarm(self, req, headers):
+        """{"kind": "tamper" | "speed", "detail"}: the game's own anti-cheat raised an alarm in this player's match
+        (sent by the flagged player's own mod; report-only). Alarms of one kind in one match are counted on one report."""
+        me = self.store.from_session(headers)
+        if me is None:
+            return err("NotAuthorized", "sign in to the game first")
+        pfid = me["PlayFabId"]
+        kind = req.get("kind")
+        if kind not in self.ALARM_KINDS:
+            return err("InvalidParams", "unknown alarm")
+        detail = re.sub(r"[\x00-\x1f\x7f]", " ", str(req.get("detail") or ""))[:200]
+        match_id = photon_emu.find_match([pfid], 2 * 3600) if hasattr(photon_emu, "find_match") else None
+        with self.store.lock:
+            for d in self._preport_all():
+                a = d.get("auto") or {}
+                if d.get("kind") == "auto" and d.get("reported") == pfid and a.get("kind") == kind and not d.get("closed") \
+                        and (d.get("match") or {}).get("matchId") == match_id:
+                    a["count"] = int(a.get("count") or 1) + 1
+                    a["lastAt"] = now_iso()
+                    d["auto"] = a
+                    self._preport_save(d)
+                    return ok({"id": d["id"], "count": a["count"]})
+            if not self._allow("cheatalarm", pfid, 30, 86400):
+                return err("TooManyAttempts", "too many alarms today", 1199, 429)
+            rid = self._preport_new_id()
+            d = {"id": rid, "kind": "auto", "at": now_iso(), "reporter": "", "reported": pfid,
+                 "reason": "cheating", "note": "", "closed": False,
+                 "auto": {"kind": kind, "count": 1, "firstAt": now_iso(), "lastAt": now_iso(), "detail": detail},
+                 "match": {"matchId": match_id}, "evidence": {}}
+            self._preport_save(d)
+        log.warning("anti-cheat alarm %s for %s (%s); report %s", kind, pfid, detail[:80], rid)
+        return ok({"id": rid, "count": 1})
+
+    # -- admin side (website Moderation page)
+    ACTION_NAMES = {0: "undefined", 1: "attack", 2: "createMinion", 3: "drawCard", 4: "minionDeath", 5: "playCardFromHand",
+                    6: "showEnemyCard", 7: "reorderMinionsInPlay", 8: "doDamage", 9: "doMultiDamage", 10: "heal", 11: "playAnim",
+                    12: "playHeroPower", 13: "backlash", 14: "endTurn", 15: "addEffect", 16: "removeEffect", 17: "stun",
+                    18: "changeHealth", 19: "changeAttack", 20: "summonUnit", 21: "abilityIconAnim", 22: "jamUnit",
+                    23: "createHandCard", 24: "replaceHeroPower", 25: "addHandEffect", 26: "recallToHand", 27: "transformUnit",
+                    28: "discardFromHand", 29: "copyUnitInCemetery", 30: "playActiveAbility", 31: "playActiveAbilityAnim",
+                    32: "mulligan", 33: "returnToDeck", 34: "manaBuff", 35: "refillMana", 36: "remotePlayerAction",
+                    37: "stealFromHand", 38: "exchangeMinion", 39: "stealMinion", 40: "growthAnim", 41: "resetActions",
+                    42: "forceAttack", 43: "bloodThirstAnim", 44: "disappearUnit", 45: "destroyUnit", 46: "autoPlayFromHand",
+                    47: "removeEffectsFrom", 48: "createDeckCard", 49: "revealOrders", 50: "missAction", 51: "recallToDeck",
+                    52: "scriptedAttack", 53: "attackContinuation", 54: "resign", 55: "chatMessage", 56: "disappearFromHand",
+                    57: "displayFromHand", 58: "followAfterResolution", 59: "stealFromDeck", 60: "removeFromCemetery",
+                    61: "clearEndOfTurnEffects", 62: "triggerRelentless", 63: "triggerSacrifice", 64: "triggerRequiem",
+                    65: "triggerCourtesy", 66: "forceAttackFriendly", 67: "forceScriptedAttack", 68: "traitTriggerAnim",
+                    69: "triggerCodex", 70: "triggerPlayerCodex", 71: "setDeckCardTop", 72: "transformToRemnant", 73: "reanimate",
+                    74: "redirectedAttack", 75: "doMultiDamageAndDestroySelf", 76: "useWaystone"}
+
+    def _preport_who(self, users, banned, pfid):
+        if not pfid:
+            return {"player": "", "code": "", "name": "anti-cheat", "account": "", "banned": False}
+        p = self.store.load(pfid) or {}
+        _, account = self._creator_account_of_player(users, pfid)
+        return {"player": pfid, "code": self.friend_code(pfid), "name": p.get("DisplayName") or "",
+                "account": account["name"] if account else "", "banned": pfid in banned}
+
+    def api_Revival_CreatorPlayerReports(self, req, headers):
+        """Admins: player reports and anti-cheat alarms, newest first (closed ones only with "closed": true)."""
+        if self._creator_role(req) < 2:
+            return err("NotAuthorized", "only admins can see reports")
+        users = self._creator_users_view()
+        banned = self._banned_ids()
+        show_closed = req.get("closed") is True
+        all_reports = self._preport_all()
+        counts = {}
+        for d in all_reports:
+            counts[d.get("reported")] = counts.get(d.get("reported"), 0) + 1
+        out = []
+        for d in reversed(all_reports):
+            if d.get("closed") and not show_closed:
+                continue
+            out.append({k: d.get(k) for k in ("id", "kind", "at", "reason", "note", "closed", "closedBy", "closedAt", "auto", "match", "evidence")}
+                       | {"reporter": self._preport_who(users, banned, d.get("reporter")),
+                          "reported": self._preport_who(users, banned, d.get("reported")),
+                          "reportsAgainst": counts.get(d.get("reported"), 0)})
+        return ok({"reports": out[:300]})
+
+    def _preport_timeline(self, d):
+        """The match as both recordings tell it, merged by time, with card names where the recording carries them."""
+        rid = d["id"]
+        sides = []
+        ids = {"reporter": d.get("reporter") or "", "reported": d.get("reported") or ""}
+        for who, fname in (("reporter", "reporter-replay.json"), ("reported", "reported-replay.json")):
+            try:
+                with open(os.path.join(self._preport_dir(), rid, fname), encoding="utf-8") as f:
+                    kept = json.load(f)
+            except (OSError, ValueError):
+                continue
+            if isinstance(kept, dict) and isinstance(kept.get("record"), dict):
+                sides.append((who, kept))
+        if not sides:
+            # no copies (an automatic report, made during the match): the players' own recordings of that
+            # match, while they are still in their battle logs
+            match_id = (d.get("match") or {}).get("matchId")
+            players = [("reported", d.get("reported"))]
+            for e in (self._relay_summary(match_id) or {}).get("players", []):
+                if e.get("player") and e["player"] != d.get("reported"):
+                    players.append(("reporter", e["player"]))
+                    ids["reporter"] = e["player"]
+            for who, pfid in players[:2]:
+                index = self._entry_for_match(pfid, match_id)
+                if not index:
+                    continue
+                try:
+                    with open(os.path.join(self._replay_dir(pfid), index + ".json"), encoding="utf-8") as f:
+                        kept = json.load(f)
+                except (OSError, ValueError):
+                    continue
+                if isinstance(kept, dict) and isinstance(kept.get("record"), dict):
+                    sides.append((who, kept))
+        if not sides:
+            return None
+        who, kept = sides[0]
+        other = "reported" if who == "reporter" else "reporter"
+        rec = kept["record"]
+        names = {}
+        for s_who, s_kept in sides:
+            for uid, cid, own in ((s_kept.get("revivalCards") or {}).get("cards") or []):
+                names.setdefault(uid, cid)
+        rows = []
+        for log_key, side in (("playerLog", who), ("enemyLog", other)):
+            for a in rec.get(log_key) or []:
+                if not isinstance(a, dict):
+                    continue
+                t = a.get("typ")
+                rows.append({"t": a.get("ts"), "side": side, "n": a.get("num"),
+                             "action": self.ACTION_NAMES.get(t, str(t)), "card": names.get(a.get("act"), "#%s" % a.get("act") if a.get("act") else ""),
+                             "target": (names.get(a.get("tget"), "#%s" % a.get("tget")) if a.get("tgtd") else ""), "pos": a.get("pos")})
+        rows.sort(key=lambda r: (r["t"] if isinstance(r["t"], (int, float)) else 0, r["n"] if isinstance(r["n"], int) else 0))
+        mull = {"reporter" if who == "reporter" else "reported": rec.get("playerMulligan"), other: rec.get("enemyMulligan")}
+        disagree = None
+        if len(sides) == 2:
+            a_rec, b_rec = sides[0][1]["record"], sides[1][1]["record"]
+            # each side's own actions should match the other side's record of them
+            same = (len(a_rec.get("playerLog") or []) == len(b_rec.get("enemyLog") or []),
+                    len(a_rec.get("enemyLog") or []) == len(b_rec.get("playerLog") or []))
+            disagree = not all(same)
+        names = {k: (self.store.load(v) or {}).get("DisplayName", "") if v else "" for k, v in ids.items()}
+        return {"names": names, "from": who, "both": len(sides) == 2, "disagree": disagree, "rows": rows[:3000], "mulligans": mull,
+                "cardNames": bool(names), "first": rec.get("first")}
+
+    def _relay_summary(self, match_id):
+        """The server's own record of the match: joins/leaves and how many messages each player sent, when."""
+        if not isinstance(match_id, str) or not re.fullmatch(r"[0-9a-f]{16}", match_id):
+            return None
+        path = None
+        try:
+            for m in sorted(os.listdir(self._matches_dir())):
+                cand = os.path.join(self._matches_dir(), m, match_id + ".jsonl")
+                if os.path.isfile(cand):
+                    path = cand
+        except OSError:
+            return None
+        if not path:
+            return None
+        events, actors, per, sizes = [], {}, {}, {}
+        opened = None
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                k = e.get("k")
+                if k == "open":
+                    opened = e.get("at")
+                elif k in ("join", "back"):
+                    actors[e.get("a")] = e.get("p") or ""
+                if k in ("ev", "props"):
+                    a = e.get("a")
+                    per.setdefault(a, []).append(e.get("t") or 0)
+                    sizes[a] = sizes.get(a, 0) + len(e.get("d") or "") * 3 // 4
+                if k not in ("ev", "props") and len(events) < 200:
+                    pid = actors.get(e.get("a"), "")
+                    events.append({"t": e.get("t"), "k": k, "a": e.get("a"), "p": pid,
+                                   "name": (self.store.load(pid) or {}).get("DisplayName", "") if pid else ""})
+        out = []
+        for a, ts in per.items():
+            gaps = [b - x for x, b in zip(ts, ts[1:])]
+            out.append({"actor": a, "player": actors.get(a, ""), "name": (self.store.load(actors[a]) or {}).get("DisplayName", "") if actors.get(a) else "",
+                        "messages": len(ts), "bytes": sizes.get(a, 0),
+                        "firstMs": ts[0] if ts else None, "lastMs": ts[-1] if ts else None,
+                        "fastest": min(gaps) if gaps else None})
+        return {"id": match_id, "opened": opened, "players": out, "events": events}
+
+    def api_Revival_CreatorPlayerReportGet(self, req, headers):
+        """Admins: one report with its match review (timeline from the recordings, the server's record, the attached log)."""
+        if self._creator_role(req) < 2:
+            return err("NotAuthorized", "only admins can see reports")
+        d = self._preport_load(req.get("id"))
+        if not d:
+            return err("NotFound", "no such report")
+        users = self._creator_users_view()
+        banned = self._banned_ids()
+        out = dict(d, reporter=self._preport_who(users, banned, d.get("reporter")), reported=self._preport_who(users, banned, d.get("reported")))
+        try:
+            out["timeline"] = self._preport_timeline(d)
+        except Exception:
+            log.exception("report %s: timeline", d["id"])
+            out["timeline"] = None
+        try:
+            out["relay"] = self._relay_summary((d.get("match") or {}).get("matchId"))
+        except Exception:
+            log.exception("report %s: server record", d["id"])
+            out["relay"] = None
+        try:
+            with open(os.path.join(self._preport_dir(), d["id"], "reporter-log.txt"), encoding="utf-8") as f:
+                out["log"] = f.read()
+        except OSError:
+            out["log"] = ""
+        others = [{"id": x["id"], "at": x.get("at"), "kind": x.get("kind"), "reason": x.get("reason"), "closed": x.get("closed")}
+                  for x in self._preport_all() if x.get("reported") == d.get("reported") and x["id"] != d["id"]]
+        out["otherReports"] = others[-50:]
+        return ok(out)
+
+    def api_Revival_CreatorPlayerReportClose(self, req, headers):
+        """Admins: {"id", "closed": true/false, "outcome"?}: mark a report dealt with (or open it again)."""
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me or self._creator_role(req) < 2:
+                return err("NotAuthorized", "only admins can close reports")
+            d = self._preport_load(req.get("id"))
+            if not d:
+                return err("NotFound", "no such report")
+            closed = req.get("closed") is not False
+            d["closed"] = closed
+            if closed:
+                d["closedBy"], d["closedAt"] = me["name"], now_iso()
+                d["outcome"] = re.sub(r"[\x00-\x1f\x7f]", " ", str(req.get("outcome") or ""))[:300]
+            else:
+                for k in ("closedBy", "closedAt", "outcome"):
+                    d.pop(k, None)
+            self._preport_save(d)
+        log.info("player report %s %s by %s", d["id"], "closed" if closed else "reopened", me["name"])
+        return ok({"id": d["id"], "closed": closed})
 
     def _replays_version(self):
         try:

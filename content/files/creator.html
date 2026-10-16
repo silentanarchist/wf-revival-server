@@ -659,6 +659,13 @@
 
   <div id="viewModeration" class="hidden">
     <section>
+      <h2>Reported players</h2>
+      <p class="hint">Players reported with <strong>REPORT</strong> in a game's battle log, and automatic reports from the game's anti-cheat (it notices a game's memory being edited or the game being sped up; it only reports, it never blocks anyone). <strong>Review</strong> shows the match: the moves both players' games recorded, the server's own record of the match, and the reporter's game log if they sent it. Evidence is kept while the report is open and 30 days after it is done. <strong>Ban player</strong> bans the game player; with site accounts, ban the account on the <strong>People</strong> page instead.</p>
+      <div class="row"><label class="hint"><input type="checkbox" id="preportsClosed"> Show done reports too</label></div>
+      <div class="list" id="preports"></div>
+      <div id="preportView" class="box hidden" style="margin-top:12px"></div>
+    </section>
+    <section>
       <h2>Reported chat messages</h2>
       <p class="hint">Messages players reported with <strong>Report message</strong> in the game's global chat. <strong>Checked</strong> means the server still had the message and it matches; otherwise the text is what the reporter's game showed. To act on a report, ban the account on the <strong>People</strong> page (or its game player below). <strong>Done</strong> takes a report off this list.</p>
       <div class="row"><label class="hint"><input type="checkbox" id="reportsClosed"> Show done reports too</label></div>
@@ -3463,6 +3470,93 @@ async function loadReports() {
   if (!d.reports.length) list.append(el("p", { class: "hint", text: "No reports." }));
 }
 $("reportsClosed").onchange = loadReports;
+// Admins: reported players and anti-cheat alarms, with a review of the match.
+const PREPORT_REASONS = { cheating: "Cheating", unsportsmanlike: "Unsportsmanlike", stalling: "Stalling / AFK", other: "Other" };
+const ALARM_KINDS = { tamper: "game memory edited (tampering detector)", speed: "game sped up (speed-hack detector)" };
+function preportTitle(r) {
+  return r.kind === "auto"
+    ? `Anti-cheat: ${ALARM_KINDS[(r.auto || {}).kind] || "alarm"}${(r.auto || {}).count > 1 ? ` (${r.auto.count} times)` : ""}`
+    : `${PREPORT_REASONS[r.reason] || r.reason}${r.note ? ": \u201c" + r.note + "\u201d" : ""}`;
+}
+async function loadPlayerReports() {
+  let d;
+  try { d = await call("CreatorPlayerReports", { closed: $("preportsClosed").checked }); } catch (e) { return; }
+  const list = $("preports"); list.textContent = "";
+  for (const r of d.reports) {
+    const info = `${r.id} · ${(r.at || "").replace("T", " ").slice(0, 16)} UTC · ` +
+      (r.kind === "auto" ? "automatic" : "reported by " + reportWho(r.reporter)) +
+      (r.reportsAgainst > 1 ? ` · ${r.reportsAgainst} reports against this player` : "") +
+      ((r.match || {}).matchId ? "" : " · no server record of the match") +
+      (r.closed ? ` · done${r.closedBy ? " by " + r.closedBy : ""}` : "");
+    const review = el("button", { class: "small primary", type: "button", text: "Review", onclick: () => showPlayerReport(r.id) });
+    const done = el("button", { class: "small", type: "button", text: r.closed ? "Reopen" : "Done", onclick: async () => {
+      let outcome = "";
+      if (!r.closed) { outcome = prompt(`Close ${r.id}? What was done (optional, only admins see it):`, ""); if (outcome === null) return; }
+      try { await call("CreatorPlayerReportClose", { id: r.id, closed: !r.closed, outcome }); } catch (e) { say("Not changed: " + e.message, "bad"); }
+      loadPlayerReports();
+    } });
+    const ban = r.reported.banned || !r.reported.player ? null : el("button", { class: "small danger", type: "button", text: "Ban player",
+      onclick: async () => { await setBan(r.reported, true); loadPlayerReports(); } });
+    list.append(el("div", { class: "item" }, el("div", {},
+      el("span", { class: "title", text: reportWho(r.reported) }),
+      el("div", { text: preportTitle(r) }),
+      el("div", { class: "hint", text: info })), el("div", { class: "actions" }, review, ban, done)));
+  }
+  if (!d.reports.length) list.append(el("p", { class: "hint", text: "No player reports." }));
+}
+$("preportsClosed").onchange = loadPlayerReports;
+async function showPlayerReport(id) {
+  const box = $("preportView"); box.textContent = "Loading the review…"; box.classList.remove("hidden");
+  let d;
+  try { d = await call("CreatorPlayerReportGet", { id }); } catch (e) { box.textContent = sentence(e); return; }
+  box.textContent = "";
+  const close = el("button", { class: "small", type: "button", text: "Close review", onclick: () => box.classList.add("hidden") });
+  box.append(el("div", { class: "row", style: "justify-content:space-between; align-items:center" }, el("h3", { text: `Review of ${d.id}` }), close));
+  const m = d.match || {};
+  const sideName = { reporter: d.reporter.name || "reporter", reported: d.reported.name || "reported player" };
+  const add = (...parts) => box.append(...parts.filter(x => x));
+  add(el("p", { text: `Reported: ${reportWho(d.reported)}` }),
+    el("p", { text: d.kind === "auto" ? `Raised by the reported player's own game: ${ALARM_KINDS[(d.auto || {}).kind] || ""}${(d.auto || {}).detail ? " (" + d.auto.detail + ")" : ""}; first ${((d.auto || {}).firstAt || "").replace("T", " ").slice(0, 16)}, last ${((d.auto || {}).lastAt || "").replace("T", " ").slice(0, 16)} UTC.`
+                                       : `Reporter: ${reportWho(d.reporter)}. Reason: ${preportTitle(d)}` }),
+    m.reporterHero ? el("p", { class: "hint", text: `Match: ${cardName(m.reporterHero)} (${sideName.reporter}, ${m.reporterResult}) against ${cardName(m.reportedHero)} (${sideName.reported})${MATCH_KINDS[m.matchType] ? " · " + MATCH_KINDS[m.matchType] : ""}.` }) : null,
+    d.outcome ? el("p", { class: "hint", text: `Outcome: ${d.outcome} (${d.closedBy || ""})` }) : null);
+  if ((d.otherReports || []).length) box.append(el("p", { class: "hint", text: "Other reports against this player: " + d.otherReports.map(o => `${o.id} (${o.kind === "auto" ? "automatic" : PREPORT_REASONS[o.reason] || o.reason}${o.closed ? ", done" : ""})`).join(", ") }));
+  // the server's own record
+  box.append(el("h3", { text: "Server's record of the match" }));
+  const relay = d.relay;
+  if (!relay) box.append(el("p", { class: "hint", text: "The server has no record of this match (matches against the AI, matches before the records started, or one that has expired)." }));
+  else {
+    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...["Player", "Messages sent", "Data", "First / last (s)", "Fastest gap (ms)"].map(h => el("th", { text: h }))));
+    for (const p of relay.players) {
+      const name = p.player === d.reported.player ? sideName.reported : p.player === d.reporter.player ? sideName.reporter : (p.name || p.player || "actor " + p.actor);
+      t.append(el("tr", {}, el("td", { text: name }), el("td", { text: String(p.messages) }), el("td", { text: Math.round(p.bytes / 1024 * 10) / 10 + " KB" }),
+        el("td", { text: `${Math.round((p.firstMs || 0) / 1000)} / ${Math.round((p.lastMs || 0) / 1000)}` }), el("td", { text: p.fastest == null ? "–" : String(p.fastest) })));
+    }
+    box.append(el("p", { class: "hint", text: `Record ${relay.id}, opened ${(relay.opened || "").replace("T", " ").slice(0, 16)} UTC. Joins and drops: ` +
+      relay.events.map(e => `${Math.round((e.t || 0) / 1000)}s ${e.k}${e.p ? " " + (e.p === d.reported.player ? sideName.reported : e.p === d.reporter.player ? sideName.reporter : (e.name || e.p)) : ""}`).join(", ") }), t);
+  }
+  // the moves, from the recordings
+  box.append(el("h3", { text: "Moves" }));
+  const tl = d.timeline;
+  if (!tl) box.append(el("p", { class: "hint", text: "No recording of this match was found (a recording goes when its match leaves the player's battle log, unless it was reported first)." }));
+  else {
+    box.append(el("p", { class: "hint", text: (tl.both ? "Both players' recordings were kept. " + (tl.disagree ? "They DISAGREE on how many moves each player made: one game recorded something the other did not see." : "They agree on how many moves each player made.") : "Only one player's recording was kept.") +
+      (tl.cardNames ? "" : " Card names are missing: the recording was made by a mod older than 0.13.39, so cards show as numbers.") }));
+    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...["Time (s)", "Player", "Move", "Card", "Target", "Slot"].map(h => el("th", { text: h }))));
+    for (const r of tl.rows) {
+      const nm = id => !id ? "" : id.startsWith("#") ? id : cardName(id);
+      t.append(el("tr", {}, el("td", { text: String(r.t ?? "") }), el("td", { text: (tl.names || {})[r.side] || sideName[r.side] || r.side }), el("td", { text: r.action }),
+        el("td", { text: nm(r.card) }), el("td", { text: nm(r.target) }), el("td", { text: r.pos == null ? "" : String(r.pos) })));
+    }
+    box.append(el("div", { style: "max-height:420px; overflow:auto" }, t));
+  }
+  if (d.log) {
+    const pre = el("pre", { text: d.log, style: "max-height:320px; overflow:auto; white-space:pre-wrap" });
+    box.append(el("h3", { text: "Reporter's game log" }), pre,
+      el("button", { class: "small", type: "button", text: "Download log", onclick: () => { const a = el("a", { href: URL.createObjectURL(new Blob([d.log], { type: "text/plain" })), download: d.id + "-log.txt" }); a.click(); } }));
+  }
+  box.scrollIntoView({ block: "start" });
+}
 // Admins: the word filter.
 // ---------------------------------------------------------------- server settings (founding owner only)
 let cfg = null;
@@ -3797,7 +3891,7 @@ function show(which, replace) {                // a page name from PAGES
   if (list) loadList();
   if (which === "People") loadPeople();
   if (which === "Requests") loadRequests();
-  if (which === "Moderation") { loadReports(); loadBans(val("banQuery").trim()); loadWords(); }
+  if (which === "Moderation") { loadPlayerReports(); loadReports(); loadBans(val("banQuery").trim()); loadWords(); }
   if (which === "Uploads") loadUploads();
   if (which === "Unreleased") loadUnreleased();
   if (which === "Rules") loadRules();
