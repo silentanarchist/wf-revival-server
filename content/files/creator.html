@@ -516,7 +516,7 @@
     </section>
     <section id="p_replays">
       <h2>Replay codes</h2>
-      <p class="hint">A replay code lets anyone watch one of your matches. In the game, open your <strong>Profile</strong>'s battle log and press <strong>CODE</strong> next to a match: the code is copied, ready to paste into Discord or a message. To watch one, copy the code and press <strong>Paste code and watch</strong> in the game under <strong>Social &gt; Challenge</strong>. A code keeps working after the match leaves your battle log, until you remove it here. A match can only have a code while its recording is on the server.</p>
+      <p class="hint">A replay code lets anyone watch one of your matches. In the game, open your <strong>Profile</strong>'s battle log and press <strong>CODE</strong> next to a match: the code is copied, ready to paste into Discord or a message. To watch one, copy the code and press <strong>Watch a replay code</strong> in the game under <strong>Settings &gt; Mod</strong>. A code keeps working after the match leaves your battle log, until you remove it here. A match can only have a code while its recording is on the server.</p>
       <div class="list" id="replayCodeList"></div>
       <h2 style="margin-top:18px">Look up a code</h2>
       <div class="row" style="align-items:center; gap:10px">
@@ -3130,7 +3130,7 @@ async function findReplayCode() {
   try {
     const c = await call("CreatorReplayCodeLookup", { code });
     out.append(el("div", { class: "box" }, el("code", { text: c.code, style: "margin-right:10px" }), el("span", { text: replayLine(c) }),
-      el("p", { class: "hint", text: `Shared by ${c.owner || "a player"}. To watch it, copy the code and press Paste code and watch in the game under Social > Challenge.` })));
+      el("p", { class: "hint", text: `Shared by ${c.owner || "a player"}. To watch it, copy the code and press Watch a replay code in the game under Settings > Mod.` })));
   } catch (e) { out.append(el("p", { class: "hint", text: sentence(e) })); }
 }
 $("replayCodeFind").onclick = findReplayCode;
