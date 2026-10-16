@@ -3772,6 +3772,33 @@ class PlayFabEmulator:
             self._creator_users_save(users)
         return ok({"recoveryCode": code, "name": user["name"], "at": user["recoveryAt"]})
 
+    def api_Revival_GameRecoveryCode(self, req, headers):
+        """The game's Settings > Account (mod 0.13.35): a recovery code for the site account this game player
+        is linked to, made exactly like the Profile page's (it replaces any earlier one). Needs the account's
+        password, with the same wrong-password limits as signing in; the code goes back once and is never logged."""
+        player = self.store.from_session(headers)
+        if player is None:
+            return err("NotAuthorized", "sign in to the game first")
+        pfid = player["PlayFabId"]
+        where = self._address(headers)
+        with self.store.lock:
+            users = self._creator_users()
+            key, user = self._creator_account_of_player(users, pfid)
+            if not user:
+                return err("InvalidParams", "this game is not linked to a site account")
+            if self._creator_perms(user)["access"] == "banned":
+                return err("AccountBanned", "this account has been banned")
+            if not self._allow("signin-fail", where, 20, 900, count=False) or self._name_locked(user["name"], where, user):
+                return err("TooManyAttempts", "too many attempts - wait a few minutes and try again", 1199, 429)
+            if not self._creator_check_passphrase(user, req.get("passphrase")):
+                self._count_wrong_password(user["name"], where)
+                return err("InvalidPassword", "wrong password" if req.get("passphrase") else "enter your password first")
+            code = self._recovery_new()
+            user["recoveryHash"], user["recoveryAt"] = self._recovery_hash(code), now_iso()
+            self._creator_users_save(users)
+            log.info("recovery code made in the game for account %s", user["name"])
+        return ok({"recoveryCode": code, "name": user["name"], "at": user["recoveryAt"]})
+
     # ---- reset code from an admin: for someone who forgot the password and has no recovery code
     # Made on Admin > People by someone ranked above the account (never for one's own account),
     # shown once to that admin to pass on privately. Same form as a recovery code and used the same
