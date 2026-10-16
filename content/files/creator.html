@@ -56,6 +56,14 @@
   .guide .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
   .guide li { margin: 4px 0; }
   .guides .callout { background: #2b2414; border: 1px solid #6b5626; border-left: 5px solid var(--accent); padding: 12px 16px; margin: 12px 0 14px; }
+  .guides figure.shot { margin: 12px 0 16px; }
+  .guides figure.shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+  .guides figure.shot.tall { max-width: 400px; }
+  .guides figure.shot.mid { max-width: 560px; }
+  .guides figure.shot figcaption { color: var(--dim); font-size: 13px; margin-top: 4px; line-height: 1.4; }
+  .guides .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .guides .shots figure.shot { margin: 12px 0 4px; }
+  @media (max-width: 600px) { .guides table { display: block; overflow-x: auto; } }
   .guides .callout > strong:first-child { display: block; color: var(--accent); font-size: 17px; margin-bottom: 4px; }
   main { padding: 20px; max-width: 1280px; margin: 0 auto; }
   footer.site { max-width: 1280px; margin: 0 auto; padding: 16px 20px 28px; border-top: 1px solid var(--line, #333); color: var(--dim); font-size: 12px; line-height: 1.5; }
