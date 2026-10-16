@@ -6046,8 +6046,9 @@ class PlayFabEmulator:
                           "reportsAgainst": counts.get(d.get("reported"), 0)})
         return ok({"reports": out[:300]})
 
-    def _preport_timeline(self, d):
-        """The match as both recordings tell it, merged by time, with card names where the recording carries them."""
+    def _preport_sources(self, d):
+        """([(side, kept recording)], {side: player id}) for a report: the copies kept with it, or, with none (an automatic report,
+        made during the match), the players' own recordings of that match while still in their battle logs."""
         rid = d["id"]
         sides = []
         ids = {"reporter": d.get("reporter") or "", "reported": d.get("reported") or ""}
@@ -6079,6 +6080,11 @@ class PlayFabEmulator:
                     continue
                 if isinstance(kept, dict) and isinstance(kept.get("record"), dict):
                     sides.append((who, kept))
+        return sides, ids
+
+    def _preport_timeline(self, d):
+        """The match as both recordings tell it, merged by time, with card names where the recording carries them."""
+        sides, ids = self._preport_sources(d)
         if not sides:
             return None
         who, kept = sides[0]
@@ -6154,6 +6160,43 @@ class PlayFabEmulator:
                         "fastest": min(gaps) if gaps else None})
         return {"id": match_id, "opened": opened, "players": out, "events": events}
 
+    def _preport_codes(self, d, sides):
+        """{side: replay code} for each recording of the report, made the first time an admin opens it and kept
+        on the report. Played in the game like any code (Settings > Mod > Watch a replay code). The codes belong
+        to the report, not to a player, so they are not on anyone's Profile page or count against their codes."""
+        codes = dict(d.get("replayCodes") or {})
+        made = False
+        m = d.get("match") or {}
+        for who, kept in sides:
+            c = codes.get(who)
+            if c and self._code_load(c):
+                continue
+            os.makedirs(self._codes_dir(), exist_ok=True)
+            for _ in range(20):
+                c = "".join(self.CODE_ALPHABET[b % 32] for b in os.urandom(8))
+                target = os.path.join(self._codes_dir(), c + ".json")
+                if not os.path.exists(target):
+                    break
+            else:
+                continue
+            reporter_view = who == "reporter"
+            info = {"ownName": "", "enemyName": "", "matchType": m.get("matchType"),
+                    "ownHero": str(m.get("reporterHero" if reporter_view else "reportedHero") or "")[:20],
+                    "enemyHero": str(m.get("reportedHero" if reporter_view else "reporterHero") or "")[:20],
+                    "result": "", "view": who}
+            rec = {"owner": "", "ownerName": "report " + d["id"], "report": d["id"], "recordingIndex": "",
+                   "created": now_iso(), "played": d.get("at") or "", "match": m.get("matchId"), "info": info, "kept": kept}
+            with open(target + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(rec, f, separators=(",", ":"))
+            os.replace(target + ".tmp", target)
+            codes[who] = c
+            made = True
+            log.info("replay code %s made for report %s (%s's recording)", c, d["id"], who)
+        if made:
+            d["replayCodes"] = codes
+            self._preport_save(d)
+        return {k: self._code_show(v) for k, v in codes.items() if k in dict(sides)}
+
     def api_Revival_CreatorPlayerReportGet(self, req, headers):
         """Admins: one report with its match review (timeline from the recordings, the server's record, the attached log)."""
         if self._creator_role(req) < 2:
@@ -6169,6 +6212,13 @@ class PlayFabEmulator:
         except Exception:
             log.exception("report %s: timeline", d["id"])
             out["timeline"] = None
+        try:
+            with self.store.lock:
+                fresh = self._preport_load(d["id"]) or d
+                out["replayCodes"] = self._preport_codes(fresh, self._preport_sources(fresh)[0])
+        except Exception:
+            log.exception("report %s: replay codes", d["id"])
+            out["replayCodes"] = {}
         try:
             out["relay"] = self._relay_summary((d.get("match") or {}).get("matchId"))
         except Exception:

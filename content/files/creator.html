@@ -3545,6 +3545,21 @@ async function showPlayerReport(id) {
     box.append(el("p", { class: "hint", text: `Record ${relay.id}, opened ${(relay.opened || "").replace("T", " ").slice(0, 16)} UTC. Joins and drops: ` +
       relay.events.map(e => `${Math.round((e.t || 0) / 1000)}s ${e.k}${e.p ? " " + (e.p === d.reported.player ? sideName.reported : e.p === d.reporter.player ? sideName.reporter : (e.name || e.p)) : ""}`).join(", ") }), t);
   }
+  // replay codes for the recordings kept with the report: watch the match in the game
+  const codes = d.replayCodes || {};
+  box.append(el("h3", { text: "Watch it in the game" }));
+  if (!Object.keys(codes).length) box.append(el("p", { class: "hint", text: "No recording of this match to watch." }));
+  else {
+    box.append(el("p", { class: "hint", text: "Copy a code, then in the game press Watch a replay code under Settings > Mod. Each recording shows the match from that player's side. These codes belong to the report: they are not on the players' Profile pages." }));
+    for (const who of ["reported", "reporter"]) if (codes[who]) {
+      const label = el("span", { text: `${((d.timeline || {}).names || {})[who] || sideName[who]}'s side: ` });
+      const code = el("code", { text: codes[who], style: "font-size:1.15em; user-select:all" });
+      const copy = el("button", { class: "small", type: "button", text: "Copy", style: "margin-left:10px", onclick: async () => {
+        try { await navigator.clipboard.writeText(codes[who]); copy.textContent = "Copied"; setTimeout(() => { copy.textContent = "Copy"; }, 2000); }
+        catch (e) { copy.textContent = "Select it and copy"; } } });
+      box.append(el("p", {}, label, code, copy));
+    }
+  }
   // the moves, from the recordings
   box.append(el("h3", { text: "Moves" }));
   const tl = d.timeline;
