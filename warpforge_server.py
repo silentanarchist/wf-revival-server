@@ -38,6 +38,7 @@ import importlib
 
 import select
 import shutil
+import signal
 import socket
 import ssl
 
@@ -890,6 +891,29 @@ def zipped_file(root, rel):
 CREATOR_PAGES = {"/", "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords", "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu"}
 
 
+CTRL_C_WINDOW = 5      # seconds: a second Ctrl+C within this stops the server
+
+
+def ctrl_c_guard():
+    """A single Ctrl+C in the server's window (easy to press by accident when copying text) no longer stops
+    the server: it says how to stop it, and a second Ctrl+C within CTRL_C_WINDOW seconds does. Closing the
+    window, Ctrl+Break and the stop task still stop it at once."""
+    last = [0.0]
+
+    def handler(signum, frame):
+        now = time.monotonic()
+        if now - last[0] <= CTRL_C_WINDOW:
+            log.info("Ctrl+C pressed twice: stopping the server")
+            raise KeyboardInterrupt
+        last[0] = now
+        log.warning("Ctrl+C: the server is still running. Press Ctrl+C again within %d seconds to stop it "
+                    "(to copy text from this window, select it first)", CTRL_C_WINDOW)
+    try:
+        signal.signal(signal.SIGINT, handler)
+    except (ValueError, OSError):
+        pass
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", default="0.0.0.0", help="address to listen on (default all)")
@@ -929,6 +953,7 @@ def main():
     Handler.certificates.context()
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     log.info("%s listening on %s:%d (content: %s)", SERVER_NAME, args.host, args.port, args.content)
+    ctrl_c_guard()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
