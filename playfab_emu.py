@@ -2120,13 +2120,10 @@ class PlayFabEmulator:
             if cancelled:
                 log.info("account %s signed in again: its deletion is cancelled", user["name"])
             self._remember_address(user, where)
-            if self._creator_perms(user)["access"] == "requested":
-                # A new account that an admin has not approved yet: nothing on the site or in the
-                # game until then (it is saved, so it appears on the People page).
-                self._creator_users_save(users)
-                if new_request:
-                    self._discord_request(user["name"])
-                return err("AccountNotApproved", "your account is waiting for an admin to approve it - try again once it is approved", 1002, 403)
+            # A new account that an admin has not approved yet signs in to the site with Guides and its
+            # Profile only (_creator_account_limited); no game and nothing else on the site until then.
+            if new_request:
+                self._discord_request(user["name"])
             token = uuid.uuid4().hex + uuid.uuid4().hex
             user["sessions"] = (user.get("sessions", []) + [hashlib.sha256(token.encode()).hexdigest()])[-5:]
             self._creator_users_save(users)
@@ -2303,7 +2300,7 @@ class PlayFabEmulator:
     def api_Revival_CreatorDeleteAccount(self, req, headers):
         """The signed-in account asks to be deleted: {"passphrase", "confirm": its own name}."""
         with self.store.lock:
-            me = self._creator_account(req)
+            me = self._creator_account_limited(req)
             if not me or self._creator_perms(me)["access"] == "banned":
                 return err("NotAuthorized", "sign in first")
             if not self._creator_check_passphrase(me, req.get("passphrase")):
@@ -2647,10 +2644,10 @@ class PlayFabEmulator:
         return ok({"id": bug_id, "url": (base + "/bugs?id=" + bug_id) if base else ""})
 
     def api_Revival_Guides(self, req, headers):
-        """The install guides for the site's Guides page: any signed-in account that has been let in
-        (not one still waiting for approval, not a banned one). Text from content/files/guides.html."""
-        me = self._creator_account(req)
-        if not me or self._creator_perms(me)["access"] != "approved":
+        """The install guides for the site's Guides page: any signed-in account, one still waiting for
+        approval included (not a banned one). Text from content/files/guides.html."""
+        me = self._creator_account_limited(req)
+        if not me:
             return err("NotAuthorized", "sign in first")
         try:
             with open(os.path.join(self.content_root, "files", "guides.html"), encoding="utf-8") as f:
@@ -2928,6 +2925,12 @@ class PlayFabEmulator:
         # an account set back to "requested" by an admin is signed out of the site meanwhile
         return None if user is None or self._creator_perms(user)["access"] == "requested" else user
 
+    def _creator_account_limited(self, req):
+        """The signed-in account for the pages an account waiting for approval may use too (Guides
+        and its own Profile: name, password, recovery code, deleting it), or None. Banned: None."""
+        user = self._creator_session_owner(req)
+        return None if user is None or self._creator_perms(user)["access"] == "banned" else user
+
     def _creator_role(self, req):
         """2 admin, 1 reviewer, 0 anyone else or not signed in."""
         user = self._creator_account(req)
@@ -3104,6 +3107,13 @@ class PlayFabEmulator:
         return out
 
     def api_Revival_CreatorList(self, req, headers):
+        waiting = self._creator_account_limited(req)
+        if waiting and self._creator_perms(waiting)["access"] == "requested":
+            # Guides and Profile only: no cards, no role, no game account details
+            return ok({"cards": [], "role": 0, "released": False, "name": waiting["name"], "rulesVersion": "",
+                       "account": {"access": "requested", "admin": False, "fixed": False, "owner": False, "player": "",
+                                   "reviewer": False, "tester": False,
+                                   "recoveryAt": waiting.get("recoveryAt") or "" if waiting.get("recoveryHash") else ""}})
         with self.store.lock:
             cards = self._creator_load()
             me = self._creator_user(req)
@@ -3480,7 +3490,9 @@ class PlayFabEmulator:
             elif op != "status":
                 return err("InvalidParams", "unknown request")
             perms = dict(self._creator_perms(linked), name=linked["name"]) if linked else None
-        return ok({"linked": perms["name"] if perms else "", "account": perms, "signedOut": signed_out})
+            # whether the account has a recovery code (mod 0.13.40 reminds the player to make one); never the code
+            recovery = bool(linked.get("recoveryHash")) if linked else False
+        return ok({"linked": perms["name"] if perms else "", "account": perms, "signedOut": signed_out, "recovery": recovery})
 
     # ---- bans
     # A player is banned when the site account linked to them is banned (People page), or when an
@@ -3663,7 +3675,7 @@ class PlayFabEmulator:
         if self._word_filter().found(new):
             return err("InvalidParams", "that username contains a word that is not allowed here")
         with self.store.lock:
-            me = self._creator_account(req)
+            me = self._creator_account_limited(req)
             if not me or self._creator_perms(me)["access"] == "banned":
                 return err("NotAuthorized", "sign in first")
             if not self._creator_check_passphrase(me, req.get("passphrase")):
@@ -3715,7 +3727,7 @@ class PlayFabEmulator:
             return err("InvalidParams", "the password cannot contain spaces")
         token = str(req.get("session") or "")
         with self.store.lock:
-            me = self._creator_account(req)
+            me = self._creator_account_limited(req)
             if not me or self._creator_perms(me)["access"] == "banned":
                 return err("NotAuthorized", "sign in first")
             if not self._creator_check_passphrase(me, req.get("passphrase")):
@@ -3755,7 +3767,7 @@ class PlayFabEmulator:
         """Makes a new recovery code for the signed-in account (replacing any earlier one), or with
         "remove" set, removes the account's code without making another."""
         with self.store.lock:
-            me = self._creator_account(req)
+            me = self._creator_account_limited(req)
             if not me or self._creator_perms(me)["access"] == "banned":
                 return err("NotAuthorized", "sign in first")
             if not self._creator_check_passphrase(me, req.get("passphrase")):

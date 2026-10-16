@@ -300,6 +300,7 @@
   <a id="tabAdmin" href="/people" class="hidden">Admin</a>
   <a id="tabGuides" href="/guides">Guides</a>
   <a id="tabBugs" href="/bugs" class="hidden">Bugs</a>
+  <a id="tabProfile" href="/profile" class="hidden">Profile</a>
 </nav>
 <nav id="adminTabs" class="sub hidden">
   <a id="tabPeople" href="/people" class="hidden">People</a>
@@ -465,6 +466,7 @@
   </div>
 
   <div id="viewProfile" class="hidden profile">
+    <p id="p_waiting" class="note hidden"><strong>Your account is waiting for an admin to approve it.</strong> Until then you can read the guides and look after your account here (username, password, recovery code). The game and the Card Creator open once it is approved: sign in to the game then with this username and password.</p>
     <section>
       <h2>Username</h2>
       <p class="hint">5 to 30 letters, digits, . ' - or _, no spaces. Your cards keep following you under the new name. In-game display names are separate and are not changed by this.</p>
@@ -535,7 +537,7 @@
           <button class="small hidden" id="laRemove" type="button">Remove from this browser</button>
         </div>
     </section>
-    <section>
+    <section id="p_game">
       <h2>Game account</h2>
       <p id="p_link"></p>
       <div id="p_gameLogin" class="hidden">
@@ -2459,7 +2461,9 @@ async function sign() {
   try {
     const d = await call("CreatorSignIn", Object.assign({ name, passphrase, create: creating }, agree ? { agreeTerms: true } : {}));
     setSession(d.session); $("pass").value = ""; $("pass2").value = ""; loginSay("");
-    say(creating ? `Account created. Welcome, ${d.name}.` : d.deletionCancelled ? "Welcome back. Your account will not be deleted after all." : "",
+    const waits = !!(d.account && d.account.access === "requested");
+    say(creating && waits ? `Account created. Welcome, ${d.name}. An admin has to approve it before you can play or use the Card Creator; meanwhile the guides and your profile are open.`
+        : creating ? `Account created. Welcome, ${d.name}.` : d.deletionCancelled ? "Welcome back. Your account will not be deleted after all." : "",
         creating || d.deletionCancelled ? "ok" : "");
     loginMode(false); await loadList();
   } catch (e) {
@@ -2839,17 +2843,23 @@ function loadOfficial(c, design) {
 // Profile: username, passphrase, and the game login file for a linked game account.
 let account = null;
 function drawProfile() {
+  $("p_waiting").classList.toggle("hidden", !limited);
+  for (const id of ["p_game", "p_decks", "p_replays", "p_cardArt"]) $(id).classList.toggle("hidden", limited);
+  if (limited) { drawRecovery(); return; }
   const linked = account && account.player;
   $("p_link").textContent = linked ? `Linked to game player ${account.playerName}.` : "Not linked to a game account. To link, open the game and go to Settings > Account, then enter this username and password.";
   $("p_gameLogin").classList.toggle("hidden", !linked);
   $("p_decks").classList.toggle("hidden", !linked);
   if (linked && !$("viewProfile").classList.contains("hidden")) loadDecks();
   if (!$("viewProfile").classList.contains("hidden")) loadReplayCodes();
+  drawRecovery();
+  $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
+}
+function drawRecovery() {
   const hasCode = !!(account && account.recoveryAt);
   $("p_recAt").textContent = hasCode ? `You have a recovery code, made on ${account.recoveryAt.slice(0, 10)}.` : "You do not have a recovery code.";
   $("p_recMake").textContent = hasCode ? "Make a new code (cancels the old one)" : "Make a recovery code";
   $("p_recRemove").classList.toggle("hidden", !hasCode);
-  $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
 }
 
 // Bug reports from the game (testers and above). The list, then one report at /bugs?id=B-0042.
@@ -3722,7 +3732,7 @@ async function loadUploads() {
       } })));
   }
 }
-async function signOut() { try { await call("CreatorSignOut"); } catch (e) {} setSession(""); say(""); $("p_recShow").classList.add("hidden"); $("p_recCode").textContent = ""; fill(null); show("Create"); await loadList(); }
+async function signOut() { try { await call("CreatorSignOut"); } catch (e) {} setSession(""); say(""); $("p_recShow").classList.add("hidden"); $("p_recCode").textContent = ""; limited = false; shownOnce = false; if (schema) fill(null); show("Create"); await loadList(); }
 async function discard(c) {
   if (!confirm(`Discard ${c.name}? It disappears from your list.`)) return;
   try { await call("CreatorDiscard", { id: c.id }); if (editingId === c.id) fill(null); say(`${c.name} discarded.`, "ok"); loadList(); }
@@ -3797,7 +3807,7 @@ function ownCardsInLists() {                   // custom cards can be picked by 
 async function loadList() {
   try {
     const d = await call("CreatorList");
-    account = d.account || null; drawProfile();
+    account = d.account || null; limited = !!(account && account.access === "requested"); drawProfile();
     rulesVersion = d.rulesVersion || ""; $("agree").closest(".agree").classList.toggle("hidden", !rulesVersion);
     allCards = d.cards.sort((a, b) => (b.updated || "").localeCompare(a.updated || "")); role = d.role; me = d.name;
     ownCardsInLists();
@@ -3818,6 +3828,15 @@ async function loadList() {
     $("tabList").classList.toggle("hidden", !role);
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
+    // an account waiting for approval: Guides and its Profile only
+    $("tabCreator").classList.toggle("hidden", limited); $("tabProfile").classList.toggle("hidden", !limited);
+    if (limited) {
+      gate();
+      const here = pageOf(location.pathname);
+      if (!$("viewLogin").classList.contains("hidden") || !here || !limitedOk(here) || !shownOnce) show(limitedOk(wanted) ? wanted : limitedOk(here) ? here : "Profile", true);
+      wanted = "";
+      return;
+    }
     if (me && !schema) { try { await loadMenus(); } catch (e) { say("The creator could not load its menus from the server: " + e.message, "bad"); } }
     gate();
     if (editingId) { const fresh = allCards.find(c => c.id === editingId); if (fresh) editingCard = fresh; }
@@ -3825,6 +3844,9 @@ async function loadList() {
     if (!$("viewHome").classList.contains("hidden")) drawHome();
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
 }
+// An account waiting for an admin's approval sees only the guides and its own profile.
+let limited = false, shownOnce = false;
+const limitedOk = page => !!page && (page === "Profile" || page in GUIDE_SECTIONS);
 // The Card Creator tab on the top ribbon opens the second ribbon with these pages; it remembers the last one.
 const CREATOR_GROUP = ["Create", "Mine", "Examples", "Cards", "Keywords", "Artwork", "Rules"];
 let lastCreatorPage = "Create";
@@ -3862,13 +3884,15 @@ async function showGuide(which) {
   }
 }
 function show(which, replace) {                // a page name from PAGES
+  if (limited && !limitedOk(which)) which = "Profile";
+  shownOnce = true;
   if (me) goto(PAGES[which], replace);
   if (me) document.title = TITLES[which] + " – WF-Revival";
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
   for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const t of ["Profile", "GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   const inAdmin = ADMIN_GROUP.includes(which);
