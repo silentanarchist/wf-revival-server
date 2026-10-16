@@ -12,6 +12,8 @@ byte is 0xFB is a Photon client and is handed to serve(); anything else is ordin
 
 Nothing here is shared with Photon: no code, no accounts, no servers of theirs.
 """
+import base64
+import json
 import logging
 import os
 import re
@@ -505,6 +507,7 @@ class Room(object):
         self.reserved = []                    # times at which a slot was promised to a searching player
         self.creator = None                   # the signed-in player who opened it, when known
         self.cache_full_noted = False
+        self.record = None                    # its MatchRecord (see below)
 
     def active(self):
         return [a for a in self.actors.values() if a.conn is not None]
@@ -526,6 +529,120 @@ class Room(object):
         return self.max_players <= 0 or len(self.actors) + len(self.reserved) < self.max_players
 
 
+# ----------------------------------------------------------------------------- match records
+# Every match is written down as the relay saw it: who joined, every event each player sent (its
+# serialised data, untouched) and property changes, with the time since the room opened. The copy
+# is the server's own, so a player's game cannot leave things out of it the way it could with the
+# recording it uploads; admins use it to review reported matches. One file per match,
+# data/matches/<YYYY-MM>/<id>.jsonl, one JSON object per line. The revival server sets MATCH_DIR at
+# start-up (without it nothing is written) and deletes records after MATCH_KEEP_DAYS unless a
+# replay code or a report holds them (playfab_emu). Nothing personal beyond player ids and names.
+MATCH_DIR = [None]
+MATCH_MAX_LINES = 20000                       # per match; a record that reaches either cap stops,
+MATCH_MAX_BYTES = 4 * 1024 * 1024             # with a last line saying so
+RECENT_MATCHES = []                           # newest last: {"id", "players": set, "opened", "last"}, at most 500
+MATCH_ID = re.compile(r"[0-9a-f]{16}")
+
+
+class MatchRecord(object):
+    """The record of one room. Joins are kept in memory until the room's first event, so rooms in
+    which nothing happened (a search nobody answered) leave no file."""
+
+    def __init__(self, room):
+        self.room_name = room.name
+        self.id = uuid.uuid4().hex[:16]
+        self.t0 = time.monotonic()
+        self.opened = time.time()
+        self.pending = []
+        self.f = None
+        self.lines = self.size = 0
+        self.stopped = False
+        self.players = set()
+        self.info = None
+        self.recent = None
+
+    def note(self, kind, **fields):
+        line = dict(t=int((time.monotonic() - self.t0) * 1000), k=kind, **{k: v for k, v in fields.items() if v is not None})
+        if kind == "ev" and self.f is None and not self.stopped:
+            self._open()
+        if self.f is None:
+            if not self.stopped and len(self.pending) < 200:
+                self.pending.append(line)
+            return
+        self._write(line)
+
+    def _open(self):
+        base = MATCH_DIR[0]
+        if not base:
+            self.stopped = True
+            return
+        try:
+            folder = os.path.join(base, time.strftime("%Y-%m", time.gmtime(self.opened)))
+            os.makedirs(folder, exist_ok=True)
+            self.f = open(os.path.join(folder, self.id + ".jsonl"), "a", encoding="utf-8")
+        except OSError as e:
+            log.warning("match record %s: cannot write (%s)", self.id, e)
+            self.stopped = True
+            return
+        self._write({"t": 0, "k": "open", "id": self.id, "room": self.room_name[:200],
+                     "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.opened)), "info": self.info})
+        for line in self.pending:
+            self._write(line)
+        self.pending = []
+        self.recent = {"id": self.id, "players": self.players, "opened": self.opened, "last": time.time()}
+        RECENT_MATCHES.append(self.recent)
+        del RECENT_MATCHES[:-500]
+
+    def _write(self, line):
+        if self.f is None:
+            return
+        text = json.dumps(line, separators=(",", ":"), default=str) + "\n"
+        if self.lines >= MATCH_MAX_LINES or self.size + len(text) > MATCH_MAX_BYTES:
+            if line.get("k") != "full":
+                self._write_raw(json.dumps({"t": line.get("t"), "k": "full"}) + "\n")
+            self.close()
+            self.stopped = True
+            return
+        self._write_raw(text)
+        self.lines += 1
+        self.size += len(text)
+        if self.recent is not None:
+            self.recent["last"] = time.time()
+
+    def _write_raw(self, text):
+        try:
+            self.f.write(text)
+            self.f.flush()
+        except (OSError, ValueError) as e:
+            log.warning("match record %s: write failed (%s)", self.id, e)
+            self.close()
+            self.stopped = True
+
+    def close(self):
+        if self.f is not None:
+            try:
+                self.f.close()
+            except OSError:
+                pass
+            self.f = None
+
+
+def _b64(data):
+    return base64.b64encode(bytes(data)).decode("ascii")
+
+
+def find_match(player_ids, since_seconds=3 * 3600):
+    """The id of the most recent recorded match that every one of `player_ids` took part in, or None."""
+    want = {p for p in player_ids if p}
+    now = time.time()
+    for e in reversed(RECENT_MATCHES):
+        if now - e["last"] > since_seconds:
+            continue
+        if want and want <= e["players"]:
+            return e["id"]
+    return None
+
+
 class Service(object):
     """All rooms of this server. One instance, shared by every connection."""
 
@@ -535,6 +652,26 @@ class Service(object):
         self.conns = set()
         self.started = time.monotonic()
         threading.Thread(target=self._janitor, name="photon-janitor", daemon=True).start()
+
+    def _record(self, room, kind, **fields):
+        """Notes something in the room's match record (made on first use). Never raises."""
+        try:
+            if room.record is None:
+                if kind == "close" or MATCH_DIR[0] is None:
+                    return
+                room.record = MatchRecord(room)
+                room.record.info = {k: (v if isinstance(v, (int, float, bool)) or v is None else str(v)[:120])
+                                    for k, v in list(room.custom().items())[:40]}
+            rec = room.record
+            if kind == "join" and fields.get("p"):
+                rec.players.add(fields["p"])
+            if kind == "close":
+                rec.note("close")
+                rec.close()
+                return
+            rec.note(kind, **fields)
+        except Exception:
+            log.exception("match record")
 
     def now_ms(self):
         return int((time.monotonic() - self.started) * 1000) & 0x7FFFFFFF
@@ -572,6 +709,7 @@ class Service(object):
             if self.rooms.get(room.name) is room:
                 del self.rooms[room.name]
                 log.info("room %s closed", room.name)
+                self._record(room, "close")
 
     # -- sending
     def _send_room(self, room, data, skip=None, only=None):
@@ -589,6 +727,7 @@ class Service(object):
             actor.props[A_INACTIVE] = True
             self._send_room(room, event(254, {254: actor.nr, 233: True, 252: self._actor_list(room)}))
             log.info("room %s: %s (actor %d) dropped; slot kept for %s ms", room.name, actor.name, actor.nr, room.player_ttl)
+            self._record(room, "drop", a=actor.nr)
         else:
             room.actors.pop(actor.nr, None)
             actor.conn = None
@@ -596,6 +735,7 @@ class Service(object):
                 room.cache = [c for c in room.cache if c[0] != actor.nr]
             self._send_room(room, event(254, {254: actor.nr, 252: self._actor_list(room)}))
             log.info("room %s: %s (actor %d) left; %d still in", room.name, actor.name, actor.nr, len(room.actors))
+            self._record(room, "leave", a=actor.nr)
         self._maybe_close(room, time.monotonic())
 
     def drop(self, conn):
@@ -721,6 +861,7 @@ class Service(object):
                 conn.send(event(ev_code, params))
             log.info("room %s: %s %s as actor %d (%d in room)", room.name, actor.name or conn.peer,
                      "is back" if back else "joined", actor.nr, len(room.actors))
+            self._record(room, "back" if back else "join", a=actor.nr, p=actor.player or conn.player, n=(actor.name or "")[:40])
 
     def _new_room(self, name, p):
         room = Room(name, (p.get(213) or "", plain(p.get(212)) or 0))
@@ -810,6 +951,8 @@ class Service(object):
                 elif group and a.nr != actor.nr and not (a.groups == "all" or (a.groups and group in a.groups)):
                     continue
                 a.conn.send(msg)
+            self._record(room, "ev", a=actor.nr, c=code, d=_b64(raw) if raw is not None else None,
+                         to=targets, r=receivers or None, g=group or None)
 
     def set_properties(self, conn, p):
         with self.lock:
@@ -841,6 +984,12 @@ class Service(object):
             if not target_nr:
                 self._ttl_from_props(room)
             conn.reply(252, {})
+            try:
+                packed = bytearray()
+                write(packed, props)
+                self._record(room, "props", a=actor.nr, of=target_nr or None, d=_b64(packed))
+            except Exception:
+                log.exception("match record: properties")
             msg = event(253, {253: target_nr, 251: props, 254: actor.nr})
             self._send_room(room, msg, skip=None if room.flags & FLAG_PROPS_TO_ALL else actor.nr)
 

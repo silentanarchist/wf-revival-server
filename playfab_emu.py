@@ -1336,6 +1336,8 @@ class PlayFabEmulator:
         # the match service asks for a match ticket whenever accounts are required - from the
         # start, not only once someone has signed in (re-read on every reload of this file)
         photon_emu.REQUIRE[0] = self._settings().get("requireAccount") is True
+        if hasattr(photon_emu, "MATCH_DIR"):          # an older match service (before a restart) keeps no records
+            photon_emu.MATCH_DIR[0] = self._matches_dir()
         if not photon_emu.REQUIRE[0]:
             # Steam and phone sign-ins carry no proof the server can check, so without accounts
             # anyone who knows a player's Steam id or device id can play as that player.
@@ -2362,6 +2364,12 @@ class PlayFabEmulator:
                 pass
             shutil.rmtree(self._replay_dir(pfid), ignore_errors=True)
         if players:
+            for code, d in self._codes_all().items():          # their replay codes (copies of their recordings)
+                if d.get("owner") in players:
+                    try:
+                        os.remove(os.path.join(self._codes_dir(), code + ".json"))
+                    except OSError:
+                        pass
             gone = set(players)
             for other in list(self._all_players()):
                 friends = self._friends(other)
@@ -4670,6 +4678,12 @@ class PlayFabEmulator:
                 self._account_sweep()
             except Exception:
                 log.exception("could not finish deleting accounts")
+        if time.time() - getattr(self, "_matches_pruned_at", 0) >= 3600:
+            self._matches_pruned_at = time.time()
+            try:
+                self._matches_prune()
+            except Exception:
+                log.exception("could not tidy the match records")
         if getattr(self, '_log_tidied', '') != now_iso()[:10]:          # once a day
             try:
                 self._log_tidy()
@@ -5333,6 +5347,11 @@ class PlayFabEmulator:
                 wins[own_hero] = wins.get(own_hero, 0) + 1
                 player.setdefault("UserData", {})["VictoryCounters"] = json.dumps(wins, separators=(",", ":"))
             entries = [entry] + self._battle_log(player)              # newest first
+            # the relay's own record of this match (vs players only), for reviews and replay codes
+            if not versus_ai and hasattr(photon_emu, "find_match"):
+                found = photon_emu.find_match([player["PlayFabId"], enemy_id])
+                if found:
+                    player.setdefault("MatchLinks", {})[entry["recordingIndex"]] = found
             kept, free = [], self.BATTLE_LOG_KEEP
             for e in entries:
                 if e.get("pinned"):
@@ -5340,6 +5359,10 @@ class PlayFabEmulator:
                 elif free > 0:
                     kept.append(e)
                     free -= 1
+            links = player.get("MatchLinks")
+            if isinstance(links, dict):
+                live = {str(e.get("recordingIndex")) for e in kept}
+                player["MatchLinks"] = {k: v for k, v in links.items() if k in live}
             self._battle_log_save(player, kept)
             self._replays_prune(player["PlayFabId"], kept)
         return kept
@@ -5501,8 +5524,18 @@ class PlayFabEmulator:
         shows as "replay cannot be loaded"."""
         data = self._fn_data(params)
         name = str(data.get("recordName") or "")
+        if not self.RECORD_NAME.fullmatch(name):
+            # a replay code (mod 0.13.35): the copy kept with the code, whoever's history it came from
+            code = self._code_norm(name)
+            if not code or not self._allow("replaylookup", player["PlayFabId"], 120, 3600):
+                return {}
+            shared = self._code_load(code)
+            kept = shared.get("kept") if shared else None
+            if not isinstance(kept, dict):
+                return {}
+            return self._recording_reply(kept)
         owner = str(data.get("targetPlayerId") or data.get("targetPlayerID") or player["PlayFabId"])
-        if not self.RECORD_NAME.fullmatch(name) or not re.fullmatch(r"[0-9A-F]{16}", owner):
+        if not re.fullmatch(r"[0-9A-F]{16}", owner):
             return {}
         try:
             with open(os.path.join(self._replay_dir(owner), name + ".json"), encoding="utf-8") as f:
@@ -5511,6 +5544,10 @@ class PlayFabEmulator:
             return {}
         if not isinstance(kept, dict):
             return {}
+        return self._recording_reply(kept)
+
+    def _recording_reply(self, kept):
+        """What recoverMatchRecording answers for a kept recording."""
         snapshot = self._replay_rules_snapshot(kept.get("revivalRules")) if "revivalRules" in kept else None
         if snapshot is not None:
             # played back under its own rules; the mod checks its rules number and card pack
@@ -5518,6 +5555,209 @@ class PlayFabEmulator:
         if str(kept.get("rules", "")) != self._replay_rules():
             return {}
         return {"recordingData": kept.get("record")}
+
+    # ---------------------------------------------------------------- match records and replay codes
+    # The match service writes every match it relays to data/matches/<YYYY-MM>/<id>.jsonl (see
+    # photon_emu, "match records"). They are deleted after MATCH_KEEP_DAYS unless something holds them:
+    # a replay code made from that match. A history entry knows its record through the player's
+    # MatchLinks ({recordingIndex: record id}).
+    #
+    # A replay code (mod 0.13.35) shares one recording: the owner asks for one in the battle log, gets
+    # e.g. "K7M2-QX9P", and anyone can type it in Social > Challenge to watch. The recording is copied
+    # aside with the code (data/replay_codes/<CODE>.json), so it stays when the match drops off the
+    # owner's history. The game fetches it through its own recoverMatchRecording with the code as the
+    # record name. Codes use Crockford's base 32 (no I, L, O, U); typing is forgiving (dashes, spaces,
+    # lower case, O for 0, I or L for 1).
+    MATCH_KEEP_DAYS = 30
+    CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    REPLAY_CODE = re.compile(r"[0-9A-HJKMNP-TV-Z]{8}")
+    CODES_PER_PLAYER = 200
+
+    def _matches_dir(self):
+        return os.path.join(self.store.root, "matches")
+
+    def _codes_dir(self):
+        return os.path.join(self.store.root, "replay_codes")
+
+    @classmethod
+    def _code_norm(cls, text):
+        """The code in its stored form (8 characters), or "" when the text is not one."""
+        t = re.sub(r"[\s-]", "", str(text or "")).upper()[:16]
+        t = t.translate(str.maketrans({"O": "0", "I": "1", "L": "1"}))
+        return t if cls.REPLAY_CODE.fullmatch(t) else ""
+
+    @staticmethod
+    def _code_show(code):
+        return code[:4] + "-" + code[4:]
+
+    def _code_load(self, code):
+        if not self.REPLAY_CODE.fullmatch(code or ""):
+            return None
+        try:
+            with open(os.path.join(self._codes_dir(), code + ".json"), encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _codes_all(self):
+        """{code: its file's contents} for every replay code."""
+        out = {}
+        try:
+            names = os.listdir(self._codes_dir())
+        except OSError:
+            return out
+        for n in names:
+            if n.endswith(".json") and self.REPLAY_CODE.fullmatch(n[:-5]):
+                d = self._code_load(n[:-5])
+                if d:
+                    out[n[:-5]] = d
+        return out
+
+    def _code_public(self, code, d):
+        """What anyone may see about a code: the match, not the recording."""
+        info = d.get("info") if isinstance(d.get("info"), dict) else {}
+        return {"code": self._code_show(code), "created": d.get("created") or "", "played": d.get("played") or "",
+                "owner": d.get("ownerName") or "", **{k: info.get(k) for k in
+                ("ownName", "enemyName", "ownHero", "enemyHero", "result", "matchType")}}
+
+    def _matches_held(self):
+        return {d.get("match") for d in self._codes_all().values() if isinstance(d.get("match"), str)}
+
+    def _matches_prune(self):
+        """Deletes match records past MATCH_KEEP_DAYS that nothing holds."""
+        root = self._matches_dir()
+        try:
+            months = os.listdir(root)
+        except OSError:
+            return
+        oldest = time.time() - self.MATCH_KEEP_DAYS * 86400
+        held = None
+        gone = 0
+        for m in months:
+            folder = os.path.join(root, m)
+            if not re.fullmatch(r"\d{4}-\d{2}", m) or not os.path.isdir(folder):
+                continue
+            for n in os.listdir(folder):
+                path = os.path.join(folder, n)
+                if not n.endswith(".jsonl"):
+                    continue
+                try:
+                    if os.stat(path).st_mtime >= oldest:
+                        continue
+                except OSError:
+                    continue
+                if held is None:
+                    held = self._matches_held()
+                if n[:-6] in held:
+                    continue
+                try:
+                    os.remove(path)
+                    gone += 1
+                except OSError:
+                    pass
+            try:
+                os.rmdir(folder)                      # only when empty
+            except OSError:
+                pass
+        if gone:
+            log.info("match records: %d older than %d days deleted", gone, self.MATCH_KEEP_DAYS)
+
+    def api_Revival_ReplayCode(self, req, headers):
+        """{"recordingIndex"} of a match in the caller's history -> its replay code (the same code each time)."""
+        p = self.store.from_session(headers)
+        if p is None:
+            return err("NotAuthorized", "sign in to the game first")
+        pfid = p["PlayFabId"]
+        index = str(req.get("recordingIndex") or "")
+        if not self.RECORD_NAME.fullmatch(index):
+            return err("InvalidParams", "no such match")
+        with self.store.lock:
+            player = self.store.load(pfid) or p
+            entry = next((e for e in self._battle_log(player) if str(e.get("recordingIndex")) == index), None)
+            if entry is None:
+                return err("NotFound", "that match is no longer in your history")
+            mine = [(c, d) for c, d in self._codes_all().items() if d.get("owner") == pfid]
+            for c, d in mine:
+                if d.get("recordingIndex") == index:
+                    return ok(self._code_public(c, d))
+            path = os.path.join(self._replay_dir(pfid), index + ".json")
+            try:
+                with open(path, encoding="utf-8") as f:
+                    kept = json.load(f)
+                played = datetime.fromtimestamp(os.stat(path).st_mtime, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except (OSError, ValueError):
+                return err("NotFound", "this match has no recording on the server to share")
+            if not isinstance(kept, dict):
+                return err("NotFound", "this match has no recording to share")
+            if len(mine) >= self.CODES_PER_PLAYER:
+                return err("TooMany", f"you have {self.CODES_PER_PLAYER} replay codes; remove some on the website's Profile page first", 1199, 429)
+            if not self._allow("replaycode", pfid, 30, 3600):
+                return err("TooManyAttempts", "too many replay codes - try again later", 1199, 429)
+            won, lost = entry.get("matchWin") is True, entry.get("matchLose") is True
+            info = {"ownName": str(entry.get("ownName") or "")[:40], "enemyName": str(entry.get("enemyName") or "")[:40],
+                    "ownHero": str(entry.get("ownHeroName") or "")[:20], "enemyHero": str(entry.get("enemyHeroName") or "")[:20],
+                    "result": "won" if won else "lost" if lost else "draw", "matchType": entry.get("matchType")}
+            links = player.get("MatchLinks") if isinstance(player.get("MatchLinks"), dict) else {}
+            os.makedirs(self._codes_dir(), exist_ok=True)
+            for _ in range(20):
+                code = "".join(self.CODE_ALPHABET[b % 32] for b in os.urandom(8))
+                target = os.path.join(self._codes_dir(), code + ".json")
+                if not os.path.exists(target):
+                    break
+            else:
+                return err("ServiceUnavailable", "could not make a code, try again", 1123, 503)
+            d = {"owner": pfid, "ownerName": str(player.get("DisplayName") or "")[:40], "recordingIndex": index,
+                 "created": now_iso(), "played": played, "match": links.get(index), "info": info, "kept": kept}
+            with open(target + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(d, f, separators=(",", ":"))
+            os.replace(target + ".tmp", target)
+            log.info("replay code %s made by %s for match %s", code, pfid, index)
+        return ok(self._code_public(code, d))
+
+    def api_Revival_CreatorReplayCodes(self, req, headers):
+        """The site's Profile page: the replay codes of the signed-in account's game player."""
+        me = self._creator_account(req)
+        if not me or self._creator_perms(me)["access"] == "banned":
+            return err("NotAuthorized", "sign in first")
+        pfid = me.get("player")
+        if not pfid:
+            return ok({"codes": [], "linked": False})
+        codes = [self._code_public(c, d) for c, d in self._codes_all().items() if d.get("owner") == pfid]
+        codes.sort(key=lambda c: c["created"], reverse=True)
+        return ok({"codes": codes, "linked": True, "max": self.CODES_PER_PLAYER})
+
+    def api_Revival_CreatorReplayCodeLookup(self, req, headers):
+        """{"code"} -> what the match was (for anyone signed in). Watching happens in the game."""
+        me = self._creator_account(req)
+        if not me or self._creator_perms(me)["access"] == "banned":
+            return err("NotAuthorized", "sign in first")
+        if not self._allow("codelookup", me.get("name") or "?", 120, 3600):
+            return err("TooManyAttempts", "too many look-ups - try again later", 1199, 429)
+        code = self._code_norm(req.get("code"))
+        d = self._code_load(code) if code else None
+        if not d:
+            return err("NotFound", "no replay has that code")
+        return ok(self._code_public(code, d))
+
+    def api_Revival_CreatorReplayCodeRemove(self, req, headers):
+        """{"code"}: the owner (through the linked game player) or an admin takes a code back."""
+        me = self._creator_account(req)
+        if not me:
+            return err("NotAuthorized", "sign in first")
+        perms = self._creator_perms(me)
+        code = self._code_norm(req.get("code"))
+        d = self._code_load(code) if code else None
+        if not d:
+            return err("NotFound", "no replay has that code")
+        if not ((me.get("player") and d.get("owner") == me.get("player") and perms["access"] != "banned") or perms["admin"]):
+            return err("NotAuthorized", "that is not your replay code")
+        try:
+            os.remove(os.path.join(self._codes_dir(), code + ".json"))
+        except OSError:
+            return err("ServiceUnavailable", "could not remove it, try again", 1123, 503)
+        log.info("replay code %s removed by %s", code, me.get("name"))
+        return ok({"removed": self._code_show(code)})
 
     def _replays_version(self):
         try:

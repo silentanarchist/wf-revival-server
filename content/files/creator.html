@@ -514,6 +514,17 @@
         <input type="file" id="deckFile" accept=".txt,.wfdeck,text/plain" class="hidden">
       </div>
     </section>
+    <section id="p_replays">
+      <h2>Replay codes</h2>
+      <p class="hint">A replay code lets anyone watch one of your matches. In the game, open your <strong>Profile</strong>'s battle log and press <strong>CODE</strong> next to a match: the code is copied, ready to paste into Discord or a message. To watch one, copy the code and press <strong>Paste code and watch</strong> in the game under <strong>Social &gt; Challenge</strong>. A code keeps working after the match leaves your battle log, until you remove it here. A match can only have a code while its recording is on the server.</p>
+      <div class="list" id="replayCodeList"></div>
+      <h2 style="margin-top:18px">Look up a code</h2>
+      <div class="row" style="align-items:center; gap:10px">
+        <input id="replayCodeQuery" maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
+        <button type="button" class="small" id="replayCodeFind">Look up</button>
+      </div>
+      <div id="replayCodeFound" style="margin-top:8px"></div>
+    </section>
     <section id="p_cardArt" class="localArt">
       <h2>Card art and text from your game</h2>
       <p><span id="laStatus">Checking…</span></p>
@@ -2826,6 +2837,7 @@ function drawProfile() {
   $("p_gameLogin").classList.toggle("hidden", !linked);
   $("p_decks").classList.toggle("hidden", !linked);
   if (linked && !$("viewProfile").classList.contains("hidden")) loadDecks();
+  if (!$("viewProfile").classList.contains("hidden")) loadReplayCodes();
   const hasCode = !!(account && account.recoveryAt);
   $("p_recAt").textContent = hasCode ? `You have a recovery code, made on ${account.recoveryAt.slice(0, 10)}.` : "You do not have a recovery code.";
   $("p_recMake").textContent = hasCode ? "Make a new code (cancels the old one)" : "Make a recovery code";
@@ -3082,6 +3094,48 @@ function drawDecks() {
     box.append(item);
   }
 }
+// Profile: replay codes of the linked game player (made in the game's battle log), and a look-up for any code.
+const MATCH_KINDS = { 170: "Classic", 200: "Skirmish", 10: "Ranked", 110: "Draft", 80: "Event or challenge", 90: "Practice" };
+let replayAsk = 0;
+function replayLine(c) {
+  const result = { won: "won", lost: "lost", draw: "drew" }[c.result] || "played";
+  const who = `${c.ownName || "?"} (${cardName(c.ownHero || "") || "?"}) ${result} against ${c.enemyName || "?"} (${cardName(c.enemyHero || "") || "?"})`;
+  const when = (c.played || c.created || "").slice(0, 10);
+  return `${who}${MATCH_KINDS[c.matchType] ? " · " + MATCH_KINDS[c.matchType] : ""}${when ? " · " + when : ""}`;
+}
+function drawReplayCodes(d) {
+  const list = $("replayCodeList"); list.textContent = "";
+  if (!d.linked) { list.append(el("p", { class: "hint", text: "Link your game account (in the game: Settings > Account) to see the codes you made." })); return; }
+  if (!d.codes.length) { list.append(el("p", { class: "hint", text: "You have not made any replay codes yet." })); return; }
+  for (const c of d.codes) {
+    const copy = el("button", { class: "small", type: "button", text: "Copy code", onclick: async e => {
+      try { await navigator.clipboard.writeText(c.code); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work: select the code and copy it by hand.", "bad"); } } });
+    const remove = el("button", { class: "small", type: "button", text: "Remove", onclick: async () => {
+      if (!confirm(`Remove replay code ${c.code}? Anyone who has it will no longer be able to watch this match.`)) return;
+      try { await call("CreatorReplayCodeRemove", { code: c.code }); say(`Replay code ${c.code} removed.`, "ok"); loadReplayCodes(); } catch (e) { say(sentence(e), "bad"); } } });
+    list.append(el("div", { class: "box" }, el("code", { text: c.code, style: "font-size:1.15em; user-select:all; margin-right:10px" }),
+      el("span", { text: replayLine(c) }), el("div", { class: "row", style: "gap:8px; margin-top:6px" }, copy, remove)));
+  }
+  if (d.codes.length >= (d.max || 200)) list.append(el("p", { class: "hint", text: `That is the most codes one player can have (${d.max}); remove one to make another.` }));
+}
+async function loadReplayCodes() {
+  const ask = ++replayAsk;
+  try { const d = await call("CreatorReplayCodes"); if (ask === replayAsk) drawReplayCodes(d); }
+  catch (e) { if (ask !== replayAsk) return; $("replayCodeList").textContent = ""; $("replayCodeList").append(el("p", { class: "hint", text: sentence(e) })); }
+}
+async function findReplayCode() {
+  const out = $("replayCodeFound"); out.textContent = "";
+  const code = val("replayCodeQuery").trim();
+  if (!code) return;
+  try {
+    const c = await call("CreatorReplayCodeLookup", { code });
+    out.append(el("div", { class: "box" }, el("code", { text: c.code, style: "margin-right:10px" }), el("span", { text: replayLine(c) }),
+      el("p", { class: "hint", text: `Shared by ${c.owner || "a player"}. To watch it, copy the code and press Paste code and watch in the game under Social > Challenge.` })));
+  } catch (e) { out.append(el("p", { class: "hint", text: sentence(e) })); }
+}
+$("replayCodeFind").onclick = findReplayCode;
+$("replayCodeQuery").onkeydown = e => { if (e.key === "Enter") findReplayCode(); };
+
 async function loadDecks() {
   const ask = ++deckAsk;
   try { const d = await call("CreatorDecks"); if (ask !== deckAsk) return; decks = d.decks; drawDecks(); }

@@ -74,6 +74,17 @@ direct connection to that port, so it does not go through an https proxy (the se
 on the game port carries it, below). If the match service
 should be reached on a different port, set `"matchPort"` in the settings file.
 
+**Match records.** The match service writes down every match it passes between two players:
+who joined, each player's actions as sent, and the time of each. One file per match in
+`data/matches/<year-month>/`. They are the server's own copy (a player's game cannot leave
+anything out of it), for reviewing reported matches. Records are deleted after 30 days unless a
+replay code was made from the match. Restart the server once after updating `photon_emu.py`.
+
+**Replay codes.** In the game's battle log a player can make a short code for one of their
+matches (e.g. `K7M2-QX9P`); anyone can watch it from Social > Challenge. The recording is copied
+to `data/replay_codes/` with the code, so it lasts after the match leaves the player's history.
+Players see and remove their codes on the website's Profile page (admins can remove any).
+
 ### https
 
 **The card creator** takes passwords, so put it behind https. Any reverse proxy works; for
