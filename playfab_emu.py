@@ -18,6 +18,7 @@ import logging
 import os
 import random
 import shutil
+import struct
 import threading
 import time
 import unicodedata
@@ -6160,6 +6161,209 @@ class PlayFabEmulator:
                         "fastest": min(gaps) if gaps else None})
         return {"id": match_id, "opened": opened, "players": out, "events": events}
 
+    # The game's match messages, as the server relayed them. Each move is a PUN RPC (event 200):
+    # {0: view id, 2: time, 5: method index, 4: [arguments]}, serialised in Photon's binary form.
+    # The method index is the place in the game's RPC list, which is sorted by name without regard
+    # to case (worked out from the decompiled game and checked against a real match, 2026-10-16).
+    PUN_RPCS = ["Chat", "DestroyRpc", "InstantiateRpc", "PickupItemInit", "PunPickup", "PunPickupSimple",
+                "AckStartGame", "CardReorder", "CardSeen", "ChatMessage", "DeckData", "ReceivedRandomNumbers",
+                "EnemyDesync", "EnemyForfeit", "EnemyMulligan", "MatchFinished", "MulliganAck", "PlayerAction",
+                "RandomNumbers", "RequestMulliganResend", "ResendLostActions", "StartGame", "WrongPlayMode", "WrongRoom"]
+
+    @staticmethod
+    def _photon_read(b, i=0, t=None, depth=0):
+        """One value of Photon's binary serialisation (protocol 1.6): (value, next offset). Raises ValueError on
+        anything it does not know or that runs past the end; the data comes from players' games."""
+        if depth > 12:
+            raise ValueError("too deep")
+        def need(n):
+            if i + n > len(b):
+                raise ValueError("short")
+        if t is None:
+            need(1); t = chr(b[i]); i += 1
+        rd = PlayFabEmulator._photon_read
+        if t == "*":
+            return None, i
+        if t in "bo":
+            need(1); return (b[i] if t == "b" else bool(b[i])), i + 1
+        fmt = {"k": (">h", 2), "i": (">i", 4), "l": (">q", 8), "f": (">f", 4), "d": (">d", 8)}.get(t)
+        if fmt:
+            need(fmt[1]); return struct.unpack(fmt[0], b[i:i + fmt[1]])[0], i + fmt[1]
+        if t in "shzyD":
+            need(2 if t != "D" else 4)
+        if t == "s":
+            n = struct.unpack(">H", b[i:i + 2])[0]; i += 2; need(n)
+            return b[i:i + n].decode("utf-8", "replace"), i + n
+        if t == "x":
+            need(4); n = struct.unpack(">i", b[i:i + 4])[0]; i += 4
+            if n < 0: raise ValueError("bad length")
+            need(n); return None, i + n                                   # byte arrays are not used by these messages
+        if t == "h":
+            n = struct.unpack(">H", b[i:i + 2])[0]; i += 2; out = {}
+            for _ in range(n):
+                k, i = rd(b, i, None, depth + 1); v, i = rd(b, i, None, depth + 1)
+                if isinstance(k, (int, str)): out[k] = v
+            return out, i
+        if t == "z":
+            n = struct.unpack(">H", b[i:i + 2])[0]; i += 2; out = []
+            for _ in range(n):
+                v, i = rd(b, i, None, depth + 1); out.append(v)
+            return out, i
+        if t == "y":
+            n = struct.unpack(">H", b[i:i + 2])[0]; i += 2; need(1); et = chr(b[i]); i += 1; out = []
+            for _ in range(n):
+                v, i = rd(b, i, et, depth + 1); out.append(v)
+            return out, i
+        if t == "D":
+            kt, vt = chr(b[i]), chr(b[i + 1]); i += 2; need(2)
+            n = struct.unpack(">H", b[i:i + 2])[0]; i += 2; out = {}
+            for _ in range(n):
+                k, i = rd(b, i, None if kt == "*" else kt, depth + 1); v, i = rd(b, i, None if vt == "*" else vt, depth + 1)
+                out[str(k)] = v
+            return out, i
+        raise ValueError("unknown type")
+
+    def _relay_game(self, match_id):
+        """The match as the server relayed it, per player: deck, offence card and mulligan, the moves (by move
+        number), plus the shuffle numbers, who went first, and forfeits / match-finished / desync messages.
+        None without a record. Messages that cannot be read are counted, never trusted."""
+        if not isinstance(match_id, str) or not re.fullmatch(r"[0-9a-f]{16}", match_id):
+            return None
+        path = None
+        try:
+            for m in sorted(os.listdir(self._matches_dir())):
+                cand = os.path.join(self._matches_dir(), m, match_id + ".jsonl")
+                if os.path.isfile(cand):
+                    path = cand
+        except OSError:
+            return None
+        if not path:
+            return None
+        actors, players, rng, first, unread, other = {}, {}, {}, None, 0, []
+        def me(a):
+            pid = actors.get(a, "")
+            return players.setdefault(pid, {"deck": None, "env": None, "mulligan": None, "moves": {}, "resent": 0, "conflicts": []}) if pid else None
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                k, a = e.get("k"), e.get("a")
+                if k in ("join", "back") and isinstance(e.get("p"), str):
+                    actors[a] = e["p"]
+                    continue
+                if k not in ("ev", "props"):
+                    continue
+                try:
+                    v, _ = self._photon_read(base64.b64decode(str(e.get("d") or ""), validate=True))
+                except Exception:
+                    unread += 1
+                    continue
+                pl = me(a)
+                if k == "props":
+                    if isinstance(v, dict) and v.get("FirstPlayer") is not None and actors.get(a):
+                        first = actors[a]
+                    continue
+                if e.get("c") != 200 or not isinstance(v, dict) or pl is None:
+                    continue
+                idx, args = v.get(5), v.get(4) if isinstance(v.get(4), list) else []
+                name = self.PUN_RPCS[idx] if isinstance(idx, int) and 0 <= idx < len(self.PUN_RPCS) else "rpc%s" % idx
+                if name == "PlayerAction" and len(args) == 7:
+                    mv = {"typ": args[0], "act": args[1], "tget": args[2], "tgtd": bool(args[3]), "pos": args[4], "num": args[5], "at": args[6]}
+                    old = pl["moves"].get(mv["num"])
+                    if old is None:
+                        pl["moves"][mv["num"]] = dict(mv, t=e.get("t"))
+                    elif {x: old[x] for x in mv} != mv:
+                        pl["conflicts"].append(mv["num"])         # the same move number sent twice, differently
+                    else:
+                        pl["resent"] += 1
+                elif name == "DeckData" and args and isinstance(args[0], str) and pl["deck"] is None:
+                    try:
+                        pl["deck"] = json.loads(args[0])
+                    except ValueError:
+                        pl["deck"] = "unreadable"
+                elif name == "EnemyMulligan" and len(args) == 2 and pl["mulligan"] is None:
+                    pl["mulligan"], pl["env"] = list(args[0] or []), args[1]
+                elif name == "RandomNumbers" and len(args) == 2 and isinstance(args[1], list):
+                    rng.setdefault(actors.get(a, ""), {})[args[0]] = args[1]
+                elif name in ("EnemyForfeit", "MatchFinished", "EnemyDesync", "WrongRoom", "WrongPlayMode", "ResendLostActions"):
+                    other.append({"t": e.get("t"), "what": name, "player": actors.get(a, "")})
+        numbers = None
+        for pid, parts in rng.items():
+            joined = [n for i in sorted(parts) for n in parts[i]]
+            if numbers is None or len(joined) > len(numbers):
+                numbers = joined
+        return {"id": match_id, "players": players, "rng": numbers, "first": first, "unread": unread, "events": other[:100]}
+
+    def _preport_compare(self, sides, ids, match_id):
+        """Each player's own recording against what the server relayed: shuffle numbers, who went first, decks,
+        offence cards, mulligans and every move. None without a server record."""
+        relay = self._relay_game(match_id)
+        if not relay:
+            return None
+        keys = ("typ", "act", "tget", "tgtd", "pos", "at")
+        other_side = {"reporter": "reported", "reported": "reporter"}
+        checks, diffs = [], []
+        def add(what, side, ok, note=""):
+            row = next((c for c in checks if c["what"] == what), None)
+            if row is None:
+                row = {"what": what, "results": {}}
+                checks.append(row)
+            row["results"][side] = {"ok": ok, "note": note}
+        for side, kept in sides:
+            rec = kept.get("record") if isinstance(kept, dict) else None
+            if not isinstance(rec, dict):
+                continue
+            mine, theirs = ids.get(side, ""), ids.get(other_side[side], "")
+            sp = {"player": relay["players"].get(mine) or {}, "enemy": relay["players"].get(theirs) or {}}
+            if relay["rng"] is not None:
+                add("Shuffle numbers", side, rec.get("rngNum") == relay["rng"])
+            if relay["first"]:
+                add("Who went first", side, bool(rec.get("first")) == (relay["first"] == mine))
+            for who, label in (("player", "own"), ("enemy", "opponent's")):
+                srv = sp[who]
+                deck = rec.get("playerData" if who == "player" else "oppData")
+                if isinstance(deck, str):
+                    try:
+                        deck = json.loads(deck)
+                    except ValueError:
+                        pass
+                if srv.get("deck") is not None:
+                    add("Deck (%s)" % label, side, deck == srv["deck"])
+                if srv.get("env") is not None:
+                    add("Offence card (%s)" % label, side, rec.get("playerEnviromentalCard" if who == "player" else "enemyEnviromentalCard") == srv["env"])
+                if srv.get("mulligan") is not None:
+                    add("Mulligan (%s)" % label, side, list(rec.get("playerMulligan" if who == "player" else "enemyMulligan") or []) == srv["mulligan"])
+                moves = {a.get("num"): a for a in (rec.get("playerLog" if who == "player" else "enemyLog") or [])
+                         if isinstance(a, dict) and a.get("typ") != 54}           # a resign is a forfeit message, not a move
+                served = srv.get("moves") or {}
+                bad = 0
+                for num in sorted(set(moves) | set(served), key=lambda n: n if isinstance(n, int) else -1):
+                    r, s2 = moves.get(num), served.get(num)
+                    if r is not None and s2 is not None and all(r.get(x) == s2.get(x) for x in keys):
+                        continue
+                    bad += 1
+                    if len(diffs) < 200:
+                        diffs.append({"recording": side, "mover": side if who == "player" else other_side[side], "num": num,
+                                      "server": {x: s2.get(x) for x in keys} if s2 else None,
+                                      "recorded": {x: r.get(x) for x in keys} if r else None})
+                add("Moves (%s)" % label, side, bad == 0, "%d of %d differ" % (bad, max(len(moves), len(served))) if bad else "%d moves" % len(served))
+        notes = []
+        for pid, p in relay["players"].items():
+            if p.get("conflicts"):
+                notes.append({"player": pid, "what": "sent the same move number twice with different contents", "moves": p["conflicts"][:20]})
+        cards = {}
+        for _, kept in sides:
+            for c in ((kept.get("revivalCards") or {}).get("cards") or []) if isinstance(kept, dict) else []:
+                if isinstance(c, list) and len(c) == 3:
+                    cards.setdefault(str(c[0]), c[1])
+        for dd in diffs:
+            for k in ("server", "recorded"):
+                if dd[k]:
+                    dd[k]["action"] = self.ACTION_NAMES.get(dd[k]["typ"], str(dd[k]["typ"]))
+        return {"checks": checks, "diffs": diffs, "events": relay["events"], "unread": relay["unread"], "notes": notes, "cards": cards}
+
     def _preport_codes(self, d, sides):
         """{side: replay code} for each recording of the report, made the first time an admin opens it and kept
         on the report. Played in the game like any code (Settings > Mod > Watch a replay code). The codes belong
@@ -6224,6 +6428,13 @@ class PlayFabEmulator:
         except Exception:
             log.exception("report %s: server record", d["id"])
             out["relay"] = None
+        try:
+            sides, ids = self._preport_sources(d)
+            out["compare"] = self._preport_compare(sides, ids, (d.get("match") or {}).get("matchId"))
+            out["compareIds"] = ids
+        except Exception:
+            log.exception("report %s: comparing with the server's record", d["id"])
+            out["compare"] = None
         try:
             with open(os.path.join(self._preport_dir(), d["id"], "reporter-log.txt"), encoding="utf-8") as f:
                 out["log"] = f.read()

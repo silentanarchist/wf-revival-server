@@ -3545,6 +3545,33 @@ async function showPlayerReport(id) {
     box.append(el("p", { class: "hint", text: `Record ${relay.id}, opened ${(relay.opened || "").replace("T", " ").slice(0, 16)} UTC. Joins and drops: ` +
       relay.events.map(e => `${Math.round((e.t || 0) / 1000)}s ${e.k}${e.p ? " " + (e.p === d.reported.player ? sideName.reported : e.p === d.reporter.player ? sideName.reporter : (e.name || e.p)) : ""}`).join(", ") }), t);
   }
+  // each player's own recording against what the server relayed (decks, shuffle, first player, mulligans, moves)
+  const cmp = d.compare, cmpIds = d.compareIds || {};
+  const nameOf = who => ((d.timeline || {}).names || {})[who] || sideName[who];
+  const byPlayer = pid => pid === cmpIds.reported ? nameOf("reported") : pid === cmpIds.reporter ? nameOf("reporter") : pid;
+  box.append(el("h3", { text: "Recordings checked against the server's record" }));
+  if (!cmp) box.append(el("p", { class: "hint", text: "Nothing to check: the server has no record of this match, or no recording was kept." }));
+  else {
+    const recs = ["reported", "reporter"].filter(w => cmp.checks.some(c => c.results[w]));
+    box.append(el("p", { class: "hint", text: "What each player's own game recorded, against what that game actually sent through the server. A difference means a recording was changed, or a game recorded something it never sent." }));
+    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, el("th", { text: "" }), ...recs.map(w => el("th", { text: `${nameOf(w)}'s recording` }))));
+    for (const c of cmp.checks) t.append(el("tr", {}, el("td", { text: c.what }), ...recs.map(w => {
+      const r = c.results[w];
+      return el("td", { text: !r ? "–" : r.ok ? "same" + (r.note ? " (" + r.note + ")" : "") : "DIFFERENT" + (r.note ? " (" + r.note + ")" : ""), style: r && !r.ok ? "color:var(--bad, #e66); font-weight:bold" : "" });
+    })));
+    box.append(t);
+    const evs = (cmp.events || []).map(e => `${Math.round((e.t || 0) / 1000)}s ${({ EnemyForfeit: "resigned", MatchFinished: "match over", EnemyDesync: "OUT OF SYNC", ResendLostActions: "asked for lost moves again", WrongRoom: "wrong room", WrongPlayMode: "wrong mode" })[e.what] || e.what} (${byPlayer(e.player)})`);
+    if (evs.length) box.append(el("p", { class: "hint", text: "Other messages: " + evs.join(", ") }));
+    for (const n of cmp.notes || []) box.append(el("p", { style: "color:var(--bad, #e66)", text: `${byPlayer(n.player)} ${n.what}: move ${n.moves.join(", ")}.` }));
+    if (cmp.unread) box.append(el("p", { class: "hint", text: `${cmp.unread} message(s) in the server's record could not be read.` }));
+    if ((cmp.diffs || []).length) {
+      const card = id => !id ? "" : cmp.cards[String(id)] ? cardName(cmp.cards[String(id)]) : "#" + id;
+      const mv = m => !m ? "(nothing)" : `${m.action} ${card(m.act)}${m.tgtd ? " → " + (card(m.tget) || "no target") : ""}${m.pos ? " slot " + m.pos : ""}${m.at ? " attack " + m.at : ""}`;
+      const dt = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...["Recording", "Move by", "Move #", "The server saw", "The recording says"].map(h => el("th", { text: h }))));
+      for (const x of cmp.diffs) dt.append(el("tr", {}, el("td", { text: nameOf(x.recording) }), el("td", { text: nameOf(x.mover) }), el("td", { text: String(x.num) }), el("td", { text: mv(x.server) }), el("td", { text: mv(x.recorded) })));
+      box.append(el("div", { style: "max-height:320px; overflow:auto" }, dt));
+    }
+  }
   // replay codes for the recordings kept with the report: watch the match in the game
   const codes = d.replayCodes || {};
   box.append(el("h3", { text: "Watch it in the game" }));
