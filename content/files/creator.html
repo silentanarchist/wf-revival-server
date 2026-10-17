@@ -495,6 +495,16 @@
       <div class="row" style="justify-content:space-between; align-items:center"><h2 id="r_title" style="margin:0">Replay</h2><button type="button" class="small" id="r_close">Close</button></div>
       <div id="r_viewer"></div>
     </section>
+    <section id="p_replays">
+      <h2>Look up a code</h2>
+      <p class="hint">Someone shared a code with you? Look it up, or read the match as text.</p>
+      <div class="row" style="align-items:center; gap:10px">
+        <input id="replayCodeQuery" maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
+        <button type="button" class="small" id="replayCodeFind">Look up</button>
+        <button type="button" class="small" id="replayCodeView">View as text</button>
+      </div>
+      <div id="replayCodeFound" style="margin-top:8px"></div>
+    </section>
     <section id="r_matches">
       <h2>Your matches</h2>
       <p class="hint">Your game's battle log, newest first, and the replay codes you made (a code keeps working after its match leaves the battle log). <strong>View as text</strong> lists who played what, turn by turn, from the recording on the server. To make a code, press <strong>CODE</strong> next to a match in the game's battle log (Profile). Card names come from your own game's card export (Profile &gt; Card art and text from your game); without it, cards show by their id.</p>
@@ -506,16 +516,6 @@
         <div class="field"><label for="r_sort">Sort</label><select id="r_sort"><option value="new">Newest first</option><option value="old">Oldest first</option></select></div>
       </div>
       <div class="list" id="r_matchList"></div>
-    </section>
-    <section id="p_replays">
-      <h2>Look up a code</h2>
-      <p class="hint">Someone shared a code with you? Look it up, or read the match as text.</p>
-      <div class="row" style="align-items:center; gap:10px">
-        <input id="replayCodeQuery" maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
-        <button type="button" class="small" id="replayCodeFind">Look up</button>
-        <button type="button" class="small" id="replayCodeView">View as text</button>
-      </div>
-      <div id="replayCodeFound" style="margin-top:8px"></div>
     </section>
   </div>
 
