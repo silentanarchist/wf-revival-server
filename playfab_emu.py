@@ -4044,7 +4044,8 @@ class PlayFabEmulator:
     #                    cancel on the website; needs Discord two-factor sign-in (seen when linking), a Discord account
     #                    at least minAccountDays old, at most one a day; admins are told in their channel
     #   /account         which site account and game player this Discord account is linked to
-    #   /approve @user   admins (by their site rank): approve that player's waiting account
+    #   /approve name    admins (by their site rank): approve a waiting account by its website name (suggests waiting
+    #                    accounts while typing, to admins only)
     # Roles: each linked member gets the Discord roles that match their site account (Approved, Tester, Reviewer, Admin as
     # named in the settings), when they link and when an admin changes the account. Roles are only added, never taken
     # away (owner, 2026-10-17), unless the settings say "removeRoles": true. Roles the settings do not name are never
@@ -4065,24 +4066,36 @@ class PlayFabEmulator:
         cached = self.__dict__.get("_discord_bot_cache")
         if cached and cached[0] == stamps:
             return cached[1]
-        bot = self._discord_bot_read()
+        why = []
+        bot = self._discord_bot_read(why)
+        if bot is None and stamps[1] is not None:            # set up halfway: say what is missing (never the values)
+            log.warning("discord bot: not started - %s", "; ".join(why) or "settings incomplete")
         self._discord_bot_cache = (stamps, bot)
         return bot
 
-    def _discord_bot_read(self):
+    def _discord_bot_read(self, why):
         app = self._discord_app()
         try:
             with open(os.path.join(self.store.root, "discord-app.json"), encoding="utf-8") as f:
                 token = str((json.load(f) or {}).get("botToken") or "")
             with open(os.path.join(self.store.root, self.DISCORD_BOT_FILE), encoding="utf-8") as f:
                 cfg = json.load(f)
-        except (OSError, ValueError, AttributeError):
+        except (OSError, ValueError, AttributeError) as e:
+            why.append("a settings file could not be read (%s)" % type(e).__name__)
             return None
-        if app is None or not isinstance(cfg, dict) or not re.fullmatch(r"[A-Za-z0-9._\-]{50,100}", token):
+        if app is None:
+            why.append("Discord linking (discord-app.json clientId/clientSecret, creatorUrl) is not set up")
+        if not isinstance(cfg, dict):
+            why.append("discord-bot.json is not an object")
+            return None
+        if not re.fullmatch(r"[A-Za-z0-9._\-]{50,100}", token):
+            why.append("botToken in discord-app.json is missing or not in the form of a bot token (%d characters)" % len(token))
+        if app is None or why:
             return None
         guild, key = str(cfg.get("guildId") or ""), str(cfg.get("publicKey") or "")
         roles = cfg.get("roles") if isinstance(cfg.get("roles"), dict) else {}
         if not re.fullmatch(r"\d{15,22}", guild) or not re.fullmatch(r"[0-9a-f]{64}", key):
+            why.append("guildId or publicKey in discord-bot.json is not valid")
             return None
         def num(k, d, lo, hi):
             v = cfg.get(k, d)
@@ -4116,7 +4129,8 @@ class PlayFabEmulator:
         {"name": "account", "description": "Show which WF-Revival account your Discord is linked to", "type": 1},
         {"name": "approve", "description": "Admins: approve a player's waiting WF-Revival account", "type": 1,
          "default_member_permissions": "268435456",
-         "options": [{"type": 6, "name": "player", "description": "The player whose account to approve", "required": True}]},
+         "options": [{"type": 3, "name": "account", "description": "Their WF-Revival account name (as on the website)", "required": True,
+                      "autocomplete": True, "max_length": 30}]},
     ]
 
     def _discord_startup(self):
@@ -4232,6 +4246,8 @@ class PlayFabEmulator:
             return 400, {"error": "bad request"}
         if it.get("type") == 1:                                       # Discord checking the address
             return 200, {"type": 1}
+        if it.get("type") == 4:                                       # typing in /approve: suggest waiting accounts
+            return self._discord_suggest(bot, it)
         if it.get("type") != 2:
             return self._discord_say("That is not something this bot does.")
         if str(it.get("guild_id") or "") != bot["guild"]:
@@ -4261,18 +4277,33 @@ class PlayFabEmulator:
         return self._discord_say(f"Linked to the WF-Revival account **{u['name']}**" + (f", game player **{player}**" if player else ", not linked to a game player yet")
                                  + {"requested": " (waiting for an admin to approve it)", "banned": " (banned)"}.get(access, "") + ".")
 
+    def _discord_suggest(self, bot, it):
+        """Autocomplete for /approve: accounts waiting for approval whose name starts with (or holds) what was typed,
+        only for linked site admins (anyone else gets no suggestions)."""
+        user = ((it.get("member") or {}).get("user") or it.get("user") or {})
+        key, me = self._discord_account_of(str(user.get("id") or ""))
+        if str(it.get("guild_id") or "") != bot["guild"] or not me or not self._creator_perms(me)["admin"]:
+            return 200, {"type": 8, "data": {"choices": []}}
+        typed = ""
+        for o in (it.get("data") or {}).get("options") or []:
+            if isinstance(o, dict) and o.get("focused"):
+                typed = str(o.get("value") or "").strip().lower()[:30]
+        waiting = sorted((u["name"] for u in self._creator_users_view().values() if self._creator_perms(u)["access"] == "requested"),
+                         key=lambda n: (not n.lower().startswith(typed), n.lower()))
+        names = [n for n in waiting if typed in n.lower()][:25]
+        return 200, {"type": 8, "data": {"choices": [{"name": n, "value": n} for n in names]}}
+
     def _discord_cmd_approve(self, bot, did, data):
         key, me = self._discord_account_of(did)
         if not me or not self._creator_perms(me)["admin"]:
             return self._discord_say("Only WF-Revival admins (with a linked Discord) can approve accounts.")
         opts = {o.get("name"): o.get("value") for o in data.get("options") or [] if isinstance(o, dict)}
-        target = str(opts.get("player") or "")
+        name = " ".join(str(opts.get("account") or "").split())[:30]
         with self.store.lock:
             users = self._creator_users()
-            tkey = next((k for k, u in users.items() if (u.get("discord") or {}).get("id") == target), None)
-            if not tkey:
-                return self._discord_say("That Discord user has not linked a WF-Revival account. They link on their Profile page; until then, approve them on the site's Requests page.")
-            t = users[tkey]
+            t = users.get(name.lower())
+            if not t:
+                return self._discord_say(f"There is no account named `{name}` on the website.")
             access = self._creator_perms(t)["access"]
             if access != "requested":
                 return self._discord_say(f"{t['name']} is not waiting for approval ({access}).")
@@ -4281,7 +4312,7 @@ class PlayFabEmulator:
             self._creator_users_save(users)
         log.info("account %s approved by %s through Discord", t["name"], me["name"])
         self._discord_sync_later(t["name"])
-        return self._discord_say(f"{t['name']} is approved.")
+        return self._discord_say(f"{t['name']} is approved. They can now sign in to the game with that account.")
 
     def _discord_cmd_reset(self, bot, did, token):
         key, u = self._discord_account_of(did)
