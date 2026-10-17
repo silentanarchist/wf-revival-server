@@ -343,18 +343,28 @@ class Handler(BaseHTTPRequestHandler):
     @classmethod
     def current_playfab(cls):
         """Reload playfab_emu.py automatically when it changes on disk (no server restart needed)."""
-        mtime = os.path.getmtime(playfab_emu.__file__)
-        if mtime != cls.playfab_mtime:
+        try:
+            mtime = os.path.getmtime(playfab_emu.__file__)
+        except OSError:
+            return cls.playfab
+        # A file still being copied in is left alone until it has not changed for RELOAD_SETTLE seconds
+        # (a half-written copy must never be loaded); the running version answers meanwhile.
+        if mtime != cls.playfab_mtime and (cls.playfab is None or time.time() - mtime >= cls.RELOAD_SETTLE):
             with cls.reload_lock:
                 if mtime != cls.playfab_mtime:
+                    if cls.playfab is not None:
+                        log.info("playfab_emu.py changed: loading it")
                     try:
                         mod = importlib.reload(playfab_emu)
                         cls.playfab = mod.PlayFabEmulator(**cls.playfab_args)
                         log.info("loaded playfab_emu.py")
-                    except Exception:
+                    except BaseException:
+                        # BaseException: nothing a new copy of the file does may stop the server
                         log.exception("playfab_emu.py failed to load; keeping the previous version")
                     cls.playfab_mtime = mtime
         return cls.playfab
+
+    RELOAD_SETTLE = 3
 
     # Limits, so one connection cannot tie the server up:
     timeout = 30                        # seconds a web request may take to arrive (not match connections)
@@ -914,6 +924,33 @@ def ctrl_c_guard():
         pass
 
 
+def crash_reports(folder):
+    """So a server that stops leaves a reason behind (2026-10-17: it twice closed with nothing in
+    logs/server.log, only in the window, which closes): errors nothing else catches go to the log with their
+    traceback, and a crash of Python itself (no traceback possible) is written to logs/crash.log."""
+    import faulthandler
+    import sys
+    try:
+        os.makedirs(folder, exist_ok=True)
+        crash_reports.file = open(os.path.join(folder, "crash.log"), "a", encoding="utf-8")
+        crash_reports.file.write("\n=== server started %s (pid %d) ===\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), os.getpid()))
+        crash_reports.file.flush()
+        faulthandler.enable(file=crash_reports.file, all_threads=True)
+    except OSError as e:
+        log.warning("crash reports: could not open logs/crash.log: %s", e)
+
+    def unhandled(kind, value, tb):
+        log.critical("unhandled error", exc_info=(kind, value, tb))
+    sys.excepthook = unhandled
+
+    def thread_unhandled(info):
+        if info.exc_type is SystemExit:
+            return
+        log.critical("unhandled error in thread %s", getattr(info.thread, "name", "?"),
+                     exc_info=(info.exc_type, info.exc_value, info.exc_traceback))
+    threading.excepthook = thread_unhandled
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", default="0.0.0.0", help="address to listen on (default all)")
@@ -929,6 +966,7 @@ def main():
     ap.add_argument("--key", default="", help="the private key file for --cert")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    crash_reports(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs"))
 
     Handler.pack = CardPack(os.path.join(args.content, "cards"))
     Handler.files_dir = os.path.join(args.content, "files")
@@ -957,7 +995,10 @@ def main():
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        pass
+        log.info("server stopped (Ctrl+C)")
+    except BaseException:
+        log.critical("the server stopped because of an error", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":
