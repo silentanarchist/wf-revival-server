@@ -988,6 +988,52 @@ class CardCompiler:
 # page request, and this file reloads itself when it changes, so a page added or moved here goes live
 # without restarting the server (matches in progress are not dropped). The site's single page
 # (creator.html) shows the tab named in the address.
+# ---- Ed25519 signature check (RFC 8032), for the requests Discord sends to the bot's interactions address. Plain Python
+# (the server needs no extra packages); a check takes a few milliseconds.
+_P = 2**255 - 19
+_Q = 2**252 + 27742317777372353535851937790883648493
+def _inv(x): return pow(x, _P - 2, _P)
+_D = -121665 * _inv(121666) % _P
+_I = pow(2, (_P - 1) // 4, _P)
+def _xrecover(y, sign):
+    if y >= _P: return None
+    x2 = (y * y - 1) * _inv(_D * y * y + 1) % _P
+    if x2 == 0: return None if sign else 0
+    x = pow(x2, (_P + 3) // 8, _P)
+    if (x * x - x2) % _P: x = x * _I % _P
+    if (x * x - x2) % _P: return None
+    if (x & 1) != sign: x = _P - x
+    return x
+_GY = 4 * _inv(5) % _P
+_G = (_xrecover(_GY, 0), _GY, 1, _xrecover(_GY, 0) * _GY % _P)
+def _add(p, q):
+    a = (p[1] - p[0]) * (q[1] - q[0]) % _P; b = (p[1] + p[0]) * (q[1] + q[0]) % _P
+    c = 2 * p[3] * q[3] * _D % _P; d = 2 * p[2] * q[2] % _P
+    e, f, g, h = b - a, d - c, d + c, b + a
+    return (e * f % _P, g * h % _P, f * g % _P, e * h % _P)
+def _mul(s, p):
+    q = (0, 1, 1, 0)
+    while s:
+        if s & 1: q = _add(q, p)
+        p = _add(p, p); s >>= 1
+    return q
+def _dec(b):
+    if len(b) != 32: return None
+    y = int.from_bytes(b, "little"); sign = y >> 255; y &= (1 << 255) - 1
+    x = _xrecover(y, sign)
+    return None if x is None else (x, y, 1, x * y % _P)
+def _eq(p, q): return (p[0] * q[2] - q[0] * p[2]) % _P == 0 and (p[1] * q[2] - q[1] * p[2]) % _P == 0
+def ed25519_verify(public, message, signature):
+    if len(public) != 32 or len(signature) != 64: return False
+    A = _dec(public); R = _dec(signature[:32])
+    if A is None or R is None: return False
+    s = int.from_bytes(signature[32:], "little")
+    if s >= _Q: return False
+    k = int.from_bytes(hashlib.sha512(signature[:32] + public + message).digest(), "little") % _Q
+    return _eq(_mul(s, _G), _add(R, _mul(k, A)))
+
+
+
 SITE_PAGES = {
     "/": "creator.html",
     "/terms": "terms.html",                       # Terms and Privacy: open to everyone, no account needed
@@ -3167,7 +3213,8 @@ class PlayFabEmulator:
                        "account": {"access": "requested", "admin": False, "fixed": False, "owner": False, "player": "",
                                    "reviewer": False, "tester": False,
                                    "recoveryAt": waiting.get("recoveryAt") or "" if waiting.get("recoveryHash") else "",
-                                   "discord": self._discord_view(waiting), "discordReady": self._discord_app() is not None}})
+                                   "discord": self._discord_view(waiting), "discordReady": self._discord_app() is not None,
+                                   "discordReset": (waiting.get("discordReset") or {}).get("due") or 0}})
         with self.store.lock:
             cards = self._creator_load()
             me = self._creator_user(req)
@@ -3182,6 +3229,7 @@ class PlayFabEmulator:
                                    gameLogins=len(self._game_login_hashes(account)),
                                    recoveryAt=account.get("recoveryAt") or "" if account.get("recoveryHash") else "",
                                    discord=self._discord_view(account), discordReady=self._discord_app() is not None,
+                                   discordReset=(account.get("discordReset") or {}).get("due") or 0,
                                    playerName=((self.store.load(account["player"]) or {}).get("DisplayName") or account["player"])
                                    if account.get("player") else "") if account and me else None,
                    "rulesVersion": self._creator_rules_version()})
@@ -3958,10 +4006,14 @@ class PlayFabEmulator:
             other = next((u for k, u in users.items() if k != me["name"].lower() and (u.get("discord") or {}).get("id") == did), None)
             if other:
                 return err("NotAllowed", "that Discord account is already linked to another account here")
+            before = (mine.get("discord") or {}).get("id")
             mine["discord"] = {"id": did, "name": name, "shown": shown, "mfa": who.get("mfa_enabled") is True,
                                "created": self._discord_created(did), "linkedAt": now_iso()}
             self._creator_users_save(users)
         log.info("discord: %s linked a Discord account (2FA %s)", me["name"], "on" if who.get("mfa_enabled") else "off")
+        if before and before != did:
+            self._discord_sync_later(me["name"], forget=before)
+        self._discord_sync_later(me["name"])
         return ok({"discord": self._discord_view(mine)})
 
     def api_Revival_CreatorDiscordUnlink(self, req, headers):
@@ -3974,12 +4026,359 @@ class PlayFabEmulator:
             if bad:
                 return bad
             users = self._creator_users()
-            had = users[me["name"].lower()].pop("discord", None) is not None
+            gone = users[me["name"].lower()].pop("discord", None)
+            had = gone is not None
+            had_id = (gone or {}).get("id") if isinstance(gone, dict) else None
             if had:
                 self._creator_users_save(users)
         if had:
             log.info("discord: %s unlinked their Discord account", me["name"])
+            self._discord_sync_later(me["name"], forget=had_id)
         return ok({"removed": had})
+
+    # ---- the Discord bot (slash commands). Discord sends each command to /playfab/Revival/DiscordInteractions, signed
+    # with the application's key; nothing runs on our side between commands. Settings: data/discord-bot.json (not secret:
+    # guildId, the application's publicKey, which Discord role goes with which site role, the reset timings); the bot
+    # token is botToken in data/discord-app.json, never logged. Commands, all answered so only the asker sees them:
+    #   /password-reset  a one-time password reset code for the linked account, after a wait the signed-in owner can
+    #                    cancel on the website; needs Discord two-factor sign-in (seen when linking), a Discord account
+    #                    at least minAccountDays old, at most one a day; admins are told in their channel
+    #   /account         which site account and game player this Discord account is linked to
+    #   /approve @user   admins (by their site rank): approve that player's waiting account
+    # Roles: each linked member's Discord roles follow their site account (Approved, Tester, Reviewer, Admin as named in
+    # the settings), set when they link or unlink and when an admin changes the account. Roles the settings do not name
+    # are never touched, and members who are not linked are left alone.
+    DISCORD_BOT_FILE = "discord-bot.json"
+
+    def _discord_bot(self):
+        """The bot's settings with its token, or None while it is not set up. Read again only when a file changes
+        (this is asked on every request)."""
+        stamps = []
+        for f in (os.path.join(self.store.root, "discord-app.json"), os.path.join(self.store.root, self.DISCORD_BOT_FILE),
+                  os.path.join(self.content_root, "files", "revival-settings.json")):
+            try:
+                st = os.stat(f)
+                stamps.append((st.st_mtime_ns, st.st_size))
+            except OSError:
+                stamps.append(None)
+        cached = self.__dict__.get("_discord_bot_cache")
+        if cached and cached[0] == stamps:
+            return cached[1]
+        bot = self._discord_bot_read()
+        self._discord_bot_cache = (stamps, bot)
+        return bot
+
+    def _discord_bot_read(self):
+        app = self._discord_app()
+        try:
+            with open(os.path.join(self.store.root, "discord-app.json"), encoding="utf-8") as f:
+                token = str((json.load(f) or {}).get("botToken") or "")
+            with open(os.path.join(self.store.root, self.DISCORD_BOT_FILE), encoding="utf-8") as f:
+                cfg = json.load(f)
+        except (OSError, ValueError, AttributeError):
+            return None
+        if app is None or not isinstance(cfg, dict) or not re.fullmatch(r"[A-Za-z0-9._\-]{50,100}", token):
+            return None
+        guild, key = str(cfg.get("guildId") or ""), str(cfg.get("publicKey") or "")
+        roles = cfg.get("roles") if isinstance(cfg.get("roles"), dict) else {}
+        if not re.fullmatch(r"\d{15,22}", guild) or not re.fullmatch(r"[0-9a-f]{64}", key):
+            return None
+        def num(k, d, lo, hi):
+            v = cfg.get(k, d)
+            return v if isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi else d
+        return {"app": app[0], "token": token, "guild": guild, "key": bytes.fromhex(key), "site": app[2].rsplit("/", 1)[0],
+                "roles": {k: str(v) for k, v in roles.items() if k in ("approved", "tester", "reviewer", "admin") and isinstance(v, str) and v.strip()},
+                "wait": num("resetWaitSeconds", 120, 30, 600), "valid": num("resetMinutes", 30, 5, 120),
+                "minAge": num("minAccountDays", 30, 0, 3650)}
+
+    def _discord_rest(self, bot, method, path, body=None):
+        """A request to Discord's API as the bot. (status, JSON or None); never raises."""
+        import urllib.request, urllib.error
+        data = json.dumps(body).encode() if body is not None else None
+        headers = {"Authorization": "Bot " + bot["token"], "User-Agent": "WarpforgeRevival (server, 1.0)"}
+        if data is not None:
+            headers["Content-Type"] = "application/json"
+        rq = urllib.request.Request(self.DISCORD_API + path, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(rq, timeout=10) as resp:
+                raw = resp.read(262144)
+                return resp.status, (json.loads(raw) if raw else None)
+        except urllib.error.HTTPError as e:
+            return e.code, None
+        except Exception as e:
+            log.warning("discord bot: %s %s failed (%s)", method, path.split("?")[0], type(e).__name__)
+            return 0, None
+
+    DISCORD_COMMANDS = [
+        {"name": "password-reset", "description": "Get a one-time code to reset your WF-Revival password (linked accounts only)", "type": 1},
+        {"name": "account", "description": "Show which WF-Revival account your Discord is linked to", "type": 1},
+        {"name": "approve", "description": "Admins: approve a player's waiting WF-Revival account", "type": 1,
+         "default_member_permissions": "268435456",
+         "options": [{"type": 6, "name": "player", "description": "The player whose account to approve", "required": True}]},
+    ]
+
+    def _discord_startup(self):
+        """Once per loaded copy of this file (and again when the bot settings change): register the slash commands and
+        bring every linked member's roles in line. In the background; requests never wait for it."""
+        bot = self._discord_bot()
+        if bot is None:
+            return
+        stamp = hashlib.sha256(json.dumps([bot["app"], bot["guild"], bot["roles"], self.DISCORD_COMMANDS], sort_keys=True).encode()).hexdigest()
+        if self.__dict__.get("_discord_started") == stamp:
+            return
+        self._discord_started = stamp
+        def run():
+            status, _ = self._discord_rest(bot, "PUT", f"/applications/{bot['app']}/guilds/{bot['guild']}/commands", self.DISCORD_COMMANDS)
+            log.info("discord bot: slash commands %s (HTTP %s)", "registered" if status == 200 else "NOT registered", status)
+            for u in list(self._creator_users_view().values()):
+                if (u.get("discord") or {}).get("id"):
+                    self._discord_sync(bot, u["name"])
+                    time.sleep(0.3)
+        threading.Thread(target=run, name="discord-startup", daemon=True).start()
+
+    def _discord_role_ids(self, bot):
+        """{site role: Discord role id} from the role names in the settings (Discord's list read at most every 10 minutes)."""
+        cache = self.__dict__.get("_discord_roles_cache")
+        if cache and cache[0] > time.time() and cache[1] == bot["guild"]:
+            return cache[2]
+        status, roles = self._discord_rest(bot, "GET", f"/guilds/{bot['guild']}/roles")
+        if status != 200 or not isinstance(roles, list):
+            return {}
+        by_name = {str(r.get("name") or "").lower(): str(r.get("id")) for r in roles if isinstance(r, dict)}
+        ids = {k: by_name[v.lower()] for k, v in bot["roles"].items() if v.lower() in by_name}
+        missing = [v for k, v in bot["roles"].items() if k not in ids]
+        if missing:
+            log.warning("discord bot: no Discord role named %s", ", ".join(missing))
+        self._discord_roles_cache = (time.time() + 600, bot["guild"], ids)
+        return ids
+
+    def _discord_sync_later(self, name, forget=None):
+        bot = self._discord_bot()
+        if bot is not None:
+            threading.Thread(target=self._discord_sync, args=(bot, name, forget), name="discord-roles", daemon=True).start()
+
+    def _discord_sync(self, bot, name, forget=None):
+        """Sets one account's linked Discord member's roles from the site account. forget: a Discord id just unlinked,
+        whose roles managed here are taken away."""
+        try:
+            user = self._creator_users_view().get(str(name).lower())
+            did = forget or ((user or {}).get("discord") or {}).get("id")
+            if not did:
+                return
+            want = set()
+            if user and not forget:
+                perms = self._creator_perms(user)
+                if perms["access"] == "approved":
+                    want.add("approved")
+                    if perms["admin"]:
+                        want.add("admin")
+                    if user.get("tester"):
+                        want.add("tester")
+                    if user.get("reviewer") or user.get("role") == "reviewer":
+                        want.add("reviewer")
+            ids = self._discord_role_ids(bot)
+            status, member = self._discord_rest(bot, "GET", f"/guilds/{bot['guild']}/members/{did}")
+            if status != 200 or not isinstance(member, dict):
+                return                                   # not in our Discord server (or Discord did not answer)
+            has = set(str(r) for r in member.get("roles") or [])
+            changed = []
+            for role, rid in ids.items():
+                if role in want and rid not in has:
+                    s, _ = self._discord_rest(bot, "PUT", f"/guilds/{bot['guild']}/members/{did}/roles/{rid}")
+                    changed.append(f"+{role}" if s == 204 else f"+{role} FAILED ({s})")
+                elif role not in want and rid in has:
+                    s, _ = self._discord_rest(bot, "DELETE", f"/guilds/{bot['guild']}/members/{did}/roles/{rid}")
+                    changed.append(f"-{role}" if s == 204 else f"-{role} FAILED ({s})")
+            if changed:
+                log.info("discord bot: roles of %s: %s", name, " ".join(changed))
+        except Exception:
+            log.exception("discord bot: role sync for %s", name)
+
+    def _discord_account_of(self, did):
+        """(key, account) linked to a Discord id, or (None, None)."""
+        for k, u in self._creator_users_view().items():
+            if (u.get("discord") or {}).get("id") == did:
+                return k, u
+        return None, None
+
+    @staticmethod
+    def _discord_say(text):
+        """An answer only the person who used the command sees."""
+        return 200, {"type": 4, "data": {"content": text[:1900], "flags": 64, "allowed_mentions": {"parse": []}}}
+
+    def _discord_interaction(self, headers, body):
+        bot = self._discord_bot()
+        if bot is None:
+            return 404, {"error": "not found"}
+        sig, stamp = str(headers.get("X-Signature-Ed25519") or ""), str(headers.get("X-Signature-Timestamp") or "")
+        try:
+            good = re.fullmatch(r"[0-9a-f]{128}", sig) and re.fullmatch(r"\d{1,12}", stamp) \
+                and ed25519_verify(bot["key"], stamp.encode() + (body or b""), bytes.fromhex(sig))
+        except Exception:
+            good = False
+        if not good:
+            return 401, {"error": "invalid request signature"}
+        if abs(time.time() - int(stamp)) > 300:
+            return 401, {"error": "stale request"}
+        try:
+            it = json.loads(body)
+        except ValueError:
+            return 400, {"error": "bad request"}
+        if not isinstance(it, dict):
+            return 400, {"error": "bad request"}
+        if it.get("type") == 1:                                       # Discord checking the address
+            return 200, {"type": 1}
+        if it.get("type") != 2:
+            return self._discord_say("That is not something this bot does.")
+        if str(it.get("guild_id") or "") != bot["guild"]:
+            return self._discord_say("Use this command in the WF-Revival Discord server.")
+        user = ((it.get("member") or {}).get("user") or it.get("user") or {})
+        did = str(user.get("id") or "")
+        name = str((it.get("data") or {}).get("name") or "")
+        log.info("discord bot: /%s from Discord user %s", name, did)
+        try:
+            if name == "account":
+                return self._discord_cmd_account(bot, did)
+            if name == "password-reset":
+                return self._discord_cmd_reset(bot, did, str(it.get("token") or ""))
+            if name == "approve":
+                return self._discord_cmd_approve(bot, did, it.get("data") or {})
+        except Exception:
+            log.exception("discord bot: /%s", name)
+            return self._discord_say("Something went wrong on the server; try again later.")
+        return self._discord_say("Unknown command.")
+
+    def _discord_cmd_account(self, bot, did):
+        key, u = self._discord_account_of(did)
+        if not u:
+            return self._discord_say(f"Your Discord is not linked to a WF-Revival account. Link it on your Profile page: {bot['site']}/profile")
+        player = (self.store.load(u["player"]) or {}).get("DisplayName") if u.get("player") else ""
+        access = self._creator_perms(u)["access"]
+        return self._discord_say(f"Linked to the WF-Revival account **{u['name']}**" + (f", game player **{player}**" if player else ", not linked to a game player yet")
+                                 + {"requested": " (waiting for an admin to approve it)", "banned": " (banned)"}.get(access, "") + ".")
+
+    def _discord_cmd_approve(self, bot, did, data):
+        key, me = self._discord_account_of(did)
+        if not me or not self._creator_perms(me)["admin"]:
+            return self._discord_say("Only WF-Revival admins (with a linked Discord) can approve accounts.")
+        opts = {o.get("name"): o.get("value") for o in data.get("options") or [] if isinstance(o, dict)}
+        target = str(opts.get("player") or "")
+        with self.store.lock:
+            users = self._creator_users()
+            tkey = next((k for k, u in users.items() if (u.get("discord") or {}).get("id") == target), None)
+            if not tkey:
+                return self._discord_say("That Discord user has not linked a WF-Revival account. They link on their Profile page; until then, approve them on the site's Requests page.")
+            t = users[tkey]
+            access = self._creator_perms(t)["access"]
+            if access != "requested":
+                return self._discord_say(f"{t['name']} is not waiting for approval ({access}).")
+            t["access"] = "approved"
+            t["changedBy"], t["changedAt"] = me["name"], now_iso()
+            self._creator_users_save(users)
+        log.info("account %s approved by %s through Discord", t["name"], me["name"])
+        self._discord_sync_later(t["name"])
+        return self._discord_say(f"{t['name']} is approved.")
+
+    def _discord_cmd_reset(self, bot, did, token):
+        key, u = self._discord_account_of(did)
+        if not u:
+            return self._discord_say(f"Your Discord is not linked to a WF-Revival account, so there is nothing to reset. If you can still sign in, link it on your Profile page ({bot['site']}/profile).")
+        perms = self._creator_perms(u)
+        d = u.get("discord") or {}
+        if perms["access"] == "banned" or (u.get("deleteSticks") and u.get("deleteAt")):
+            return self._discord_say("This account cannot be reset.")
+        if not d.get("mfa"):
+            return self._discord_say("Password resets through Discord need two-factor sign-in on your Discord account. Switch it on in Discord (User Settings > My Account), then link your Discord again on your Profile page. Without it, ask an admin.")
+        try:
+            made = datetime.fromisoformat(str(d.get("created") or "").replace("Z", "+00:00"))
+        except ValueError:
+            made = None
+        if made is None or made.tzinfo is None or (datetime.now(timezone.utc) - made).days < bot["minAge"]:
+            return self._discord_say(f"Your Discord account is younger than {bot['minAge']} days, so it cannot be used for a password reset. Ask an admin.")
+        if (u.get("discordReset") or {}).get("due", 0) > self._now_ms():
+            return self._discord_say("A reset is already on its way: the code appears here when the wait is over.")
+        if not self._allow("discord-reset", key, 1, 86400, count=False):
+            return self._discord_say("You already asked for a password reset in the last 24 hours. Ask an admin if you need another.")
+        if not re.fullmatch(r"[A-Za-z0-9._\-]{20,600}", token):
+            return self._discord_say("Discord did not send what is needed; try again.")
+        self._allow("discord-reset", key, 1, 86400)
+        rid = base64.urlsafe_b64encode(os.urandom(9)).decode()
+        due = self._now_ms() + bot["wait"] * 1000
+        with self.store.lock:
+            users = self._creator_users()
+            if key not in users:
+                return self._discord_say("This account no longer exists.")
+            users[key]["discordReset"] = {"id": rid, "due": due, "at": now_iso()}
+            self._creator_users_save(users)
+        t = threading.Timer(bot["wait"], self._discord_reset_fire, args=(bot, key, rid, token))
+        t.daemon = True
+        t.start()
+        log.info("discord bot: password reset asked for %s; code in %d s unless cancelled", u["name"], bot["wait"])
+        self._discord_admin_note(f"Password reset asked through Discord for the account `{u['name']}` (Discord {d.get('name') or did}). The code goes out in {bot['wait']} seconds unless the owner cancels it on the website.")
+        wait = f"{bot['wait'] // 60} minute{'s' if bot['wait'] >= 120 else ''}" if bot["wait"] >= 60 else f"{bot['wait']} seconds"
+        return self._discord_say(f"A one-time password reset code for **{u['name']}** will appear here in {wait} (only you see it). "
+                                 "If you are signed in to the website, a notice there lets you cancel this. If you did not ask for this, it was not you: sign in on the website and cancel it.")
+
+    def _discord_reset_fire(self, bot, key, rid, token):
+        """The wait is over: make the code (unless the owner cancelled) and show it to the asker."""
+        try:
+            with self.store.lock:
+                users = self._creator_users()
+                u = users.get(key)
+                pending = (u or {}).get("discordReset") or {}
+                if not u or pending.get("id") != rid:
+                    text = "The password reset was cancelled on the website. No code was made."
+                    code = None
+                else:
+                    u.pop("discordReset", None)
+                    code = self._recovery_new()
+                    until = datetime.fromtimestamp(time.time() + bot["valid"] * 60, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    u["adminResetHash"], u["adminResetUntil"] = self._recovery_hash(code), until
+                    u["adminResetBy"], u["adminResetAt"] = "Discord /password-reset", now_iso()
+                    self._creator_users_save(users)
+                    text = (f"Your one-time password reset code for **{u['name']}**: `{code}`\n"
+                            f"On {bot['site']}/login press **Forgot your password?**, enter your username, this code and a new password. "
+                            f"It works once, for {bot['valid']} minutes. Using it signs you out everywhere.")
+            import urllib.request
+            rq = urllib.request.Request(f"{self.DISCORD_API}/webhooks/{bot['app']}/{token}",
+                                        data=json.dumps({"content": text, "flags": 64, "allowed_mentions": {"parse": []}}).encode(),
+                                        headers={"Content-Type": "application/json", "User-Agent": "WarpforgeRevival (server, 1.0)"}, method="POST")
+            with urllib.request.urlopen(rq, timeout=10) as resp:
+                pass
+            log.info("discord bot: password reset for %s %s", key, "code shown" if code else "cancelled")
+        except Exception as e:
+            log.warning("discord bot: password reset for %s could not be finished (%s)", key, type(e).__name__)
+
+    def _discord_admin_note(self, text):
+        """A line in the admins' Discord channel (the account-requests webhook), in the background."""
+        got = self._discord_settings()
+        if got is None:
+            return
+        def run():
+            import urllib.request
+            try:
+                rq = urllib.request.Request(got[0], data=json.dumps({"content": text[:1900], "username": "Warpforge Revival",
+                                                                     "allowed_mentions": {"parse": []}}).encode(),
+                                            headers={"Content-Type": "application/json", "User-Agent": "WarpforgeRevival (server, 1.0)"}, method="POST")
+                urllib.request.urlopen(rq, timeout=15).close()
+            except Exception as e:
+                log.warning("discord: admin note not posted (%s)", type(e).__name__)
+        threading.Thread(target=run, daemon=True).start()
+
+    def api_Revival_CreatorDiscordResetCancel(self, req, headers):
+        """The website's "cancel" for a password reset asked through Discord."""
+        with self.store.lock:
+            me = self._creator_account_limited(req)
+            if not me:
+                return err("NotAuthorized", "sign in first")
+            users = self._creator_users()
+            had = users[me["name"].lower()].pop("discordReset", None) is not None
+            if had:
+                self._creator_users_save(users)
+        if had:
+            log.info("discord bot: %s cancelled a password reset asked through Discord", me["name"])
+            self._discord_admin_note(f"The password reset asked through Discord for `{me['name']}` was cancelled by the account's owner on the website.")
+        return ok({"cancelled": had})
 
     @staticmethod
     def _discord_view(user):
@@ -4592,6 +4991,7 @@ class PlayFabEmulator:
             user["changedBy"], user["changedAt"] = me["name"], now_iso()
             self._creator_users_save(users)
             perms = self._creator_perms(user)
+        self._discord_sync_later(user["name"])
         return ok(dict(perms, name=user["name"], deleteAt=user.get("deleteAt") or ""))
 
     def api_Revival_CreatorDiscard(self, req, headers):
@@ -4739,6 +5139,9 @@ class PlayFabEmulator:
 
     def handle(self, path, headers, body_bytes):
         api = path[len("/playfab/"):].split("?")[0]
+        if api == "Revival/DiscordInteractions":
+            return self._discord_interaction(headers, body_bytes)
+        self._discord_startup()
         try:
             req = json.loads(body_bytes or b"{}")
         except ValueError:

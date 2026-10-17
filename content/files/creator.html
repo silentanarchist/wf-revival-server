@@ -583,8 +583,9 @@
     </section>
     <section id="p_discord">
       <h2>Discord</h2>
+      <div id="p_discordReset" class="note bad hidden"><strong>A password reset was asked for through Discord.</strong> <span id="p_discordResetWhen"></span> If that was not you, cancel it now and change your password. <button type="button" id="p_discordResetCancel" class="danger small">Cancel the reset</button></div>
       <p id="p_discordState"></p>
-      <p class="hint">Linking your Discord account to this one lets our Discord server know who you are here. Coming next: if you lose your password and recovery code, our Discord bot can send you a reset code, and your roles here show in our Discord. You do not sign in with Discord; we only see your Discord username and whether it has two-factor sign-in on. Your password is asked to link or unlink.</p>
+      <p class="hint">Linking your Discord account to this one lets our Discord server know who you are here. If you lose your password and recovery code, type <strong>/password-reset</strong> in our Discord server: after a short wait the bot shows you a one-time reset code (it needs two-factor sign-in on your Discord account). <strong>/account</strong> there shows which account your Discord is linked to. Your roles here (Approved, Tester, Reviewer, Admin) show in our Discord too. You do not sign in with Discord; we only see your Discord username and whether it has two-factor sign-in on. Your password is asked to link or unlink.</p>
       <div class="row" style="gap:10px">
         <button type="button" id="p_discordLink">Link Discord</button>
         <button type="button" id="p_discordUnlink" class="hidden">Unlink Discord</button>
@@ -2924,6 +2925,7 @@ function drawDiscord() {
   $("p_discordLink").textContent = d ? "Link a different Discord account" : "Link Discord";
   $("p_discordLink").disabled = !ready;
   $("p_discordUnlink").classList.toggle("hidden", !d);
+  drawDiscordReset();
 }
 async function linkDiscord() {
   const d = await confirmWithPassword("Link Discord", "Discord asks you to allow WF-Revival to see your username, then sends you back here.",
@@ -2938,6 +2940,24 @@ async function unlinkDiscord() {
   if (!d) return;
   if (d instanceof Error) return say("Not unlinked: " + d.message + ".", "bad");
   say("Discord unlinked.", "ok"); loadList();
+}
+// A password reset asked through Discord (/password-reset) waits a little; the owner can cancel it here.
+let resetWarned = 0;
+function drawDiscordReset() {
+  const due = account && account.discordReset;
+  const live = !!due && due > Date.now() - 5000;
+  $("p_discordReset").classList.toggle("hidden", !live);
+  if (!live) return;
+  $("p_discordResetWhen").textContent = `The code is shown on Discord at ${new Date(due).toLocaleTimeString()}.`;
+  if (resetWarned !== due) { resetWarned = due; say("A password reset was asked for through Discord. If that was not you, cancel it on your Profile page (Discord section) now.", "bad"); }
+  setTimeout(() => { if (account && account.discordReset === due) { account.discordReset = 0; drawDiscordReset(); } }, Math.max(0, due - Date.now()) + 1000);
+}
+async function cancelDiscordReset() {
+  try {
+    const d = await call("CreatorDiscordResetCancel");
+    say(d.cancelled ? "Password reset cancelled. No code will be made. If you did not ask for it, change your password." : "There was no reset waiting (it may already have been shown).", d.cancelled ? "ok" : "info");
+  } catch (e) { say(sentence(e), "bad"); }
+  loadList();
 }
 // Back from Discord's page (/discord-linked?code=...&state=...): finish the link, then show the Profile.
 async function finishDiscord(q) {
@@ -4208,7 +4228,7 @@ async function start() {
     $("deckCode").value = await f.text(); importDeck();
   });
   $("gameLoginForm").addEventListener("submit", e => { e.preventDefault(); gameLogin(); });
-  $("p_discordLink").onclick = linkDiscord; $("p_discordUnlink").onclick = unlinkDiscord;
+  $("p_discordLink").onclick = linkDiscord; $("p_discordUnlink").onclick = unlinkDiscord; $("p_discordResetCancel").onclick = cancelDiscordReset;
   $("recoveryForm").addEventListener("submit", e => { e.preventDefault(); recoveryCode(); });
   $("p_recRemove").onclick = removeRecoveryCode;
   $("recoverForm").addEventListener("submit", e => { e.preventDefault(); recover(); });
