@@ -1350,6 +1350,8 @@ class PlayFabEmulator:
         photon_emu.REQUIRE[0] = self._settings().get("requireAccount") is True
         if hasattr(photon_emu, "MATCH_DIR"):          # an older match service (before a restart) keeps no records
             photon_emu.MATCH_DIR[0] = self._matches_dir()
+        if hasattr(photon_emu, "TICKET_FILE"):        # match tickets kept across restarts (by fingerprint)
+            photon_emu.TICKET_FILE[0] = os.path.join(self.store.root, "match-tickets.json")
         if not photon_emu.REQUIRE[0]:
             # Steam and phone sign-ins carry no proof the server can check, so without accounts
             # anyone who knows a player's Steam id or device id can play as that player.

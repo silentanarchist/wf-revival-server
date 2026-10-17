@@ -13,6 +13,7 @@ byte is 0xFB is a Photon client and is handed to serve(); anything else is ordin
 Nothing here is shared with Photon: no code, no accounts, no servers of theirs.
 """
 import base64
+import hashlib
 import json
 import logging
 import os
@@ -456,25 +457,72 @@ def _ttl(v):
 OP_TICKET = 160
 TICKET_SECONDS = 1800
 REQUIRE = [True]              # closed until the game server has read its settings (it sets this at start-up)
-_tickets = {}                                 # ticket -> (player id, expires at)
+# Tickets are kept by fingerprint (sha256, never the ticket itself) and, once the game server has set
+# TICKET_FILE (data/match-tickets.json), on disk too, so a restart of the server does not turn away the games
+# that were already open (before 2026-10-17 they were refused every 2 s until their ticket ran out).
+TICKET_FILE = [None]
+_tickets = {}                                 # sha256(ticket) -> (player id, expires at, unix seconds)
 _tickets_lock = threading.Lock()
+_tickets_loaded = [None]                      # the file the tickets were last read from
+
+
+def _fingerprint(ticket):
+    return hashlib.sha256(ticket.encode("utf-8")).hexdigest()
+
+
+def _tickets_sync():
+    """Reads the kept tickets once per file (call with _tickets_lock held)."""
+    path = TICKET_FILE[0]
+    if not path or _tickets_loaded[0] == path:
+        return
+    _tickets_loaded[0] = path
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            kept = json.load(f)
+        now = time.time()
+        for k, v in (kept.items() if isinstance(kept, dict) else []):
+            if isinstance(v, list) and len(v) == 2 and float(v[1]) > now:
+                _tickets.setdefault(str(k), (str(v[0]), float(v[1])))
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        log.warning("match tickets: could not read %s: %s", path, e)
+
+
+def _tickets_save():
+    """Writes the tickets still valid (call with _tickets_lock held)."""
+    path = TICKET_FILE[0]
+    if not path:
+        return
+    try:
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({k: [who, until] for k, (who, until) in _tickets.items()}, f)
+        os.replace(tmp, path)
+    except Exception as e:
+        log.warning("match tickets: could not write %s: %s", path, e)
 
 
 def grant(player_id):
     """A match ticket for a signed-in player (valid TICKET_SECONDS, usable for every connection)."""
     ticket = uuid.uuid4().hex + uuid.uuid4().hex
-    now = time.monotonic()
+    now = time.time()
     with _tickets_lock:
+        _tickets_sync()
         for k in [k for k, (_, until) in _tickets.items() if until < now]:
             del _tickets[k]
-        _tickets[ticket] = (player_id, now + TICKET_SECONDS)
+        _tickets[_fingerprint(ticket)] = (player_id, now + TICKET_SECONDS)
+        _tickets_save()
     return ticket
 
 
 def _redeem(ticket):
+    if not isinstance(ticket, str) or not ticket:
+        return None
     with _tickets_lock:
-        found = _tickets.get(ticket) if isinstance(ticket, str) else None
-    if found and found[1] >= time.monotonic():
+        _tickets_sync()
+        found = _tickets.get(_fingerprint(ticket))
+    if found and found[1] >= time.time():
         return found[0]
     return None
 FLAG_DELETE_NULL, FLAG_PROPS_TO_ALL = 16, 32
