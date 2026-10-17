@@ -1561,8 +1561,12 @@ class PlayFabEmulator:
             last = self._chat[-1]["id"] if self._chat else 0
             private = [{"from": m["from"], "data": m["data"]} for m in photon_emu.PRIVATE.pop(me, [])
                        if m["t"] > time.time() - self.PRIVATE_SECONDS]
+        try:
+            waiting = len(self._requests(self.store.load(me) or {})[0])
+        except Exception:
+            waiting = 0
         return ok({"messages": out, "last": max(last, since, 0), "history": since < 0,
-                   "friends": self._friend_statuses(me), "private": private})
+                   "friends": self._friend_statuses(me), "private": private, "friendRequests": waiting})
 
     # ---- private messages between two players (challenging a friend to a match)
     # The game sent these through the publisher's chat service, which the revival does not use.
@@ -2410,6 +2414,15 @@ class PlayFabEmulator:
             for other in list(self._all_players()):
                 friends = self._friends(other)
                 kept = [f for f in friends if not (isinstance(f, dict) and f.get("id") in gone)]
+                incoming, outgoing = self._requests(other)
+                waiting = len(incoming) + len(outgoing)
+                for g in gone:
+                    incoming.pop(g, None)
+                    outgoing.pop(g, None)
+                if len(incoming) + len(outgoing) != waiting:
+                    self._set_requests(other, incoming, outgoing)
+                    if len(kept) == len(friends):
+                        self.store.save(other)
                 if len(kept) != len(friends):
                     self._save_friends(other, kept)
             self._chat_forget(gone)
@@ -4970,6 +4983,13 @@ class PlayFabEmulator:
         with self.store.lock:
             p.update(self.store.load(p["PlayFabId"]) or {})
             for k, v in (req.get("Data") or {}).items():
+                if k == "FriendsData":
+                    # since friend requests (mod 0.14.0) the server keeps the list: the game's upload (an older mod
+                    # deleting a friend) may only take names off it, never add any
+                    kept = self._friends_subset(p, v)
+                    if kept is not None:
+                        p["UserData"]["FriendsData"] = json.dumps({"friendList": kept}, separators=(",", ":"))
+                    continue
                 if v is None:
                     p["UserData"].pop(k, None)
                 else:
@@ -5108,6 +5128,18 @@ class PlayFabEmulator:
         player.setdefault("UserData", {})["FriendsData"] = json.dumps({"friendList": friends}, separators=(",", ":"))
         player["DataVersion"] = player.get("DataVersion", 0) + 1
         self.store.save(player)
+
+    def _friends_subset(self, player, uploaded):
+        """The player's saved friends that are also in an uploaded FriendsData (JSON text), or None to leave the list
+        alone (unreadable upload)."""
+        try:
+            up = json.loads(uploaded).get("friendList") if isinstance(uploaded, str) else None
+        except (ValueError, AttributeError):
+            return None
+        if not isinstance(up, list):
+            return None
+        ids = {f.get("id") for f in up if isinstance(f, dict)}
+        return [f for f in self._friends(player) if isinstance(f, dict) and f.get("id") in ids]
 
     def _fresh_friends(self, player):
         """The saved friend list with each friend's current name (names can change)."""
@@ -5663,21 +5695,165 @@ class PlayFabEmulator:
         return {}
 
     def cs_AddFriend(self, player, params):
-        """Adds a friend by id (the game looks the id up from a name or friend code first). Only to
-        this player's own list: the other player sees them only once they add them back."""
+        """The game's own "add friend" (old mods; the mod's list refresh sends an empty id). Since mod 0.14.0 adding
+        someone sends them a friend request instead of putting them on your list: they appear on both lists once
+        they accept (Revival/FriendRequests). Answers with this player's current list, as the game expects."""
         params = self._cs_args(params)
-        wanted = [v for v in (params or {}).values() if isinstance(v, str)] if isinstance(params, dict) else [str(params or "")]
+        wanted = [v for v in (params or {}).values() if isinstance(v, str) and v.strip()] if isinstance(params, dict) else [str(params or "")]
+        wanted = [w for w in wanted if w.strip()]
         other = next((p for p in (self._find_player(w) for w in wanted) if p), None)
+        if other and other["PlayFabId"] != player["PlayFabId"] and self._allow("friend-request", player["PlayFabId"], 30, 3600):
+            self._friend_request(player["PlayFabId"], other["PlayFabId"])
         with self.store.lock:
             player.update(self.store.load(player["PlayFabId"]) or {})
-            mine = self._fresh_friends(player)
-            before = json.dumps(self._friends(player), sort_keys=True)
-            if other and other["PlayFabId"] != player["PlayFabId"]:
-                if all(f["id"] != other["PlayFabId"] for f in mine):
-                    mine.append({"name": other.get("DisplayName") or "", "id": other["PlayFabId"]})
-            if json.dumps(mine, sort_keys=True) != before:      # the game also polls this to refresh its list
-                self._save_friends(player, mine)
-        return mine
+            return self._fresh_friends(player)
+
+    # ---- friend requests (mod 0.14.0): adding someone asks them; both lists change when they accept.
+    # Kept on each player file as FriendRequests {"in": {id: ms}, "out": {id: ms}} (server only, never sent whole).
+    FRIEND_REQUEST_DAYS = 30        # an unanswered request is dropped after this long
+    FRIEND_REQUESTS_IN = 50         # at most this many waiting for one player
+    FRIEND_REQUESTS_OUT = 30        # at most this many sent and waiting
+
+    def _requests(self, player):
+        """The player's waiting requests (in, out), expired ones left out. Changes nothing on disk."""
+        r = player.get("FriendRequests") if isinstance(player.get("FriendRequests"), dict) else {}
+        cut = self._now_ms() - self.FRIEND_REQUEST_DAYS * 86400000
+        def side(k):
+            d = r.get(k) if isinstance(r.get(k), dict) else {}
+            return {i: int(t) for i, t in d.items() if isinstance(i, str) and re.fullmatch(r"[0-9A-F]{16}", i)
+                    and isinstance(t, (int, float)) and t > cut}
+        return side("in"), side("out")
+
+    def _set_requests(self, player, incoming, outgoing):
+        if incoming or outgoing:
+            player["FriendRequests"] = {"in": incoming, "out": outgoing}
+        else:
+            player.pop("FriendRequests", None)
+
+    def _make_friends(self, a, b):
+        """Puts two loaded players on each other's lists and drops any request between them (store lock held)."""
+        for me, other in ((a, b), (b, a)):
+            friends = [f for f in self._friends(me) if isinstance(f, dict)]
+            if all(f.get("id") != other["PlayFabId"] for f in friends):
+                friends.append({"name": other.get("DisplayName") or "", "id": other["PlayFabId"]})
+            incoming, outgoing = self._requests(me)
+            incoming.pop(other["PlayFabId"], None)
+            outgoing.pop(other["PlayFabId"], None)
+            self._set_requests(me, incoming, outgoing)
+            self._save_friends(me, friends)       # saves the player file (requests included)
+
+    def _friend_request(self, me_id, other_id):
+        """me asks other to be friends. Returns "friends" (now friends: they had asked you, or had already added
+        you), "already" (already friends), "sent", "pending" (sent before), or an error sentence."""
+        with self.store.lock:
+            me = self.store.load(me_id)
+            other = self.store.load(other_id)
+            if not me or not other:
+                return "No player with that friend code"
+            mine = {f.get("id") for f in self._friends(me) if isinstance(f, dict)}
+            theirs = {f.get("id") for f in self._friends(other) if isinstance(f, dict)}
+            if other_id in mine and me_id in theirs:
+                return "already"
+            my_in, my_out = self._requests(me)
+            their_in, their_out = self._requests(other)
+            # they asked you first, or they already have you on their list (friends from before requests)
+            if other_id in my_in or me_id in theirs:
+                self._make_friends(me, other)
+                log.info("friends: %s and %s are now friends", me_id, other_id)
+                return "friends"
+            if other_id in my_out and me_id in their_in:
+                return "pending"
+            if len(my_out) >= self.FRIEND_REQUESTS_OUT:
+                return "You have too many friend requests waiting for an answer"
+            if len(their_in) >= self.FRIEND_REQUESTS_IN:
+                return "That player has too many friend requests waiting"
+            now = self._now_ms()
+            my_out[other_id] = now
+            their_in[me_id] = now
+            self._set_requests(me, my_in, my_out)
+            self._set_requests(other, their_in, their_out)
+            self.store.save(me)
+            self.store.save(other)
+        log.info("friends: %s sent a friend request to %s", me_id, other_id)
+        return "sent"
+
+    def _request_list(self, ids_ms):
+        out = []
+        for pfid, at in sorted(ids_ms.items(), key=lambda kv: -kv[1]):
+            p = self.store.load(pfid)
+            if p:
+                out.append({"id": pfid, "name": p.get("DisplayName") or "", "code": self.friend_code(pfid), "at": at})
+        return out
+
+    def api_Revival_FriendRequests(self, req, headers):
+        """The mod's Friends > Requests page (game session). {"op": ...}:
+        list                -> {"incoming": [{id, name, code, at}], "outgoing": [...]}
+        send   {"code"}     -> {"result": "sent" | "pending" | "friends" | "already", "name"}
+        accept {"id"}       -> {"name", "friends": your list}
+        decline / cancel {"id"} -> {}  (a request to you / one you sent)
+        remove {"id"}       -> {"friends": your list}  (takes you off each other's lists)"""
+        me = self.store.session_player_id(headers)
+        if not me or not self.store.load(me):
+            return err("NotAuthenticated", "sign in first", 1074, 401)
+        op = str(req.get("op") or "")
+        if op not in ("list", "send", "accept", "decline", "cancel", "remove"):
+            return err("InvalidParams", "unknown operation")
+        if not self._allow("friend-requests", me, 120, 60):
+            return err("TooManyRequests", "too many requests; wait a moment", 1199, 429)
+        if op == "list":
+            with self.store.lock:
+                p = self.store.load(me) or {}
+                incoming, outgoing = self._requests(p)
+            return ok({"incoming": self._request_list(incoming), "outgoing": self._request_list(outgoing)})
+        if op == "send":
+            code = str(req.get("code") or "").strip()[:64]
+            other = self._find_player(code) if code else None
+            if not other:
+                return err("InvalidParams", "No player with that friend code")
+            if other["PlayFabId"] == me:
+                return err("InvalidParams", "That is your own friend code")
+            if not self._allow("friend-request", me, 30, 3600):
+                return err("TooManyRequests", "Too many friend requests in the last hour; try again later", 1199, 429)
+            result = self._friend_request(me, other["PlayFabId"])
+            if result not in ("sent", "pending", "friends", "already"):
+                return err("NotAllowed", result)
+            return ok({"result": result, "name": other.get("DisplayName") or ""})
+        other_id = str(req.get("id") or "")
+        if not re.fullmatch(r"[0-9A-F]{16}", other_id) or other_id == me:
+            return err("InvalidParams", "unknown player")
+        with self.store.lock:
+            p = self.store.load(me)
+            other = self.store.load(other_id)
+            if not p:
+                return err("NotAuthenticated", "sign in first", 1074, 401)
+            my_in, my_out = self._requests(p)
+            their_in, their_out = self._requests(other) if other else ({}, {})
+            if op == "accept":
+                if not other or other_id not in my_in:
+                    return err("NotAllowed", "That friend request is no longer waiting")
+                self._make_friends(p, other)
+                log.info("friends: %s accepted %s; now friends", me, other_id)
+                return ok({"name": other.get("DisplayName") or "", "friends": self._fresh_friends(p)})
+            if op in ("decline", "cancel"):
+                mine, theirs = (my_in, their_out) if op == "decline" else (my_out, their_in)
+                mine.pop(other_id, None)
+                theirs.pop(me, None)
+                self._set_requests(p, my_in, my_out)
+                self.store.save(p)
+                if other:
+                    self._set_requests(other, their_in, their_out)
+                    self.store.save(other)
+                return ok({})
+            # remove: off both lists (friends are two-way since requests)
+            for a, b in ((p, other_id), (other, me)):
+                if not a:
+                    continue
+                friends = self._friends(a)
+                kept = [f for f in friends if not (isinstance(f, dict) and f.get("id") == b)]
+                if len(kept) != len(friends):
+                    self._save_friends(a, kept)
+            log.info("friends: %s removed %s (both lists)", me, other_id)
+            return ok({"friends": self._fresh_friends(p)})
 
     def cs_ChangePlayerName(self, player, params):
         params = self._cs_args(params)
