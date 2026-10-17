@@ -297,6 +297,7 @@
 <div id="tabs" class="hidden">
 <nav id="mainTabs">
   <a id="tabCreator" href="/creator">Card Creator</a>
+  <a id="tabDecks" href="/decks" class="hidden">Decks</a>
   <a id="tabAdmin" href="/people" class="hidden">Admin</a>
   <a id="tabGuides" href="/guides">Guides</a>
   <a id="tabBugs" href="/bugs" class="hidden">Bugs</a>
@@ -465,6 +466,23 @@
     </div>
   </div>
 
+  <div id="viewDecks" class="hidden profile">
+    <p id="d_unlinked" class="note hidden">Your decks show here once this account is linked to your game: open the game, go to Settings &gt; Account, and sign in with this username and password.</p>
+    <section id="p_decks" class="hidden">
+      <h2>Your decks</h2>
+      <p class="hint">The decks saved on your linked game account. <strong>Copy code</strong> or <strong>Download</strong> a deck to share it or keep a backup; anyone can import it here or in the game. These are the game's own deck codes: in the game, <strong>Import Deck</strong> on the decks screen takes a code from here, and a deck's <strong>Share</strong> button copies one you can paste below.</p>
+      <div class="list" id="deckList"></div>
+      <h2 style="margin-top:18px">Import a deck</h2>
+      <p class="hint">Paste a deck code, or choose a deck file. The deck is added as a new deck – nothing you already have is replaced. Decks imported here show up in the game the next time the game starts; to get one straight away, paste the code into the game's own Import Deck box instead.</p>
+      <textarea id="deckCode" rows="3" spellcheck="false" autocapitalize="none" placeholder="Paste a deck code" style="width:100%"></textarea>
+      <div class="row" style="align-items:center; gap:10px; margin-top:8px">
+        <button type="button" id="deckImport">Import deck</button>
+        <button type="button" class="small" id="deckFileBtn">Choose a deck file…</button>
+        <input type="file" id="deckFile" accept=".txt,.wfdeck,text/plain" class="hidden">
+      </div>
+    </section>
+  </div>
+
   <div id="viewProfile" class="hidden profile">
     <p id="p_waiting" class="note hidden"><strong>Your account is waiting for an admin to approve it.</strong> Until then you can read the guides and look after your account here (username, password, recovery code). The game and the Card Creator open once it is approved: sign in to the game then with this username and password.</p>
     <section>
@@ -503,19 +521,6 @@
       </form>
       <div id="p_recShow" class="box hidden" style="margin-top:10px; border-color:var(--ok)">Your recovery code: <code id="p_recCode" style="font-size:1.2em; user-select:all"></code><br><span class="hint">It has also been downloaded. It will not be shown again.</span></div>
     </section>
-    <section id="p_decks" class="hidden">
-      <h2>Decks</h2>
-      <p class="hint">The decks saved on your linked game account. <strong>Copy code</strong> or <strong>Download</strong> a deck to share it or keep a backup; anyone can import it here or in the game. These are the game's own deck codes: in the game, <strong>Import Deck</strong> on the decks screen takes a code from here, and a deck's <strong>Share</strong> button copies one you can paste below.</p>
-      <div class="list" id="deckList"></div>
-      <h2 style="margin-top:18px">Import a deck</h2>
-      <p class="hint">Paste a deck code, or choose a deck file. The deck is added as a new deck – nothing you already have is replaced. Decks imported here show up in the game the next time the game starts; to get one straight away, paste the code into the game's own Import Deck box instead.</p>
-      <textarea id="deckCode" rows="3" spellcheck="false" autocapitalize="none" placeholder="Paste a deck code" style="width:100%"></textarea>
-      <div class="row" style="align-items:center; gap:10px; margin-top:8px">
-        <button type="button" id="deckImport">Import deck</button>
-        <button type="button" class="small" id="deckFileBtn">Choose a deck file…</button>
-        <input type="file" id="deckFile" accept=".txt,.wfdeck,text/plain" class="hidden">
-      </div>
-    </section>
     <section id="p_replays">
       <h2>Replay codes</h2>
       <p class="hint">A replay code lets anyone watch one of your matches. In the game, open your <strong>Profile</strong>'s battle log and press <strong>CODE</strong> next to a match: the code is copied, ready to paste into Discord or a message. To watch one, copy the code and press <strong>Watch a replay code</strong> in the game under <strong>Settings &gt; Mod</strong>. A code keeps working after the match leaves your battle log, until you remove it here. A match can only have a code while its recording is on the server.</p>
@@ -548,6 +553,15 @@
           <div class="row"><div class="field"><label for="p_glPass">Your password</label><input id="p_glPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
           <button type="submit">Download game login file</button>
         </form>
+      </div>
+    </section>
+    <section id="p_discord">
+      <h2>Discord</h2>
+      <p id="p_discordState"></p>
+      <p class="hint">Linking your Discord account to this one lets our Discord server know who you are here. Coming next: if you lose your password and recovery code, our Discord bot can send you a reset code, and your roles here show in our Discord. You do not sign in with Discord; we only see your Discord username and whether it has two-factor sign-in on. Your password is asked to link or unlink.</p>
+      <div class="row" style="gap:10px">
+        <button type="button" id="p_discordLink">Link Discord</button>
+        <button type="button" id="p_discordUnlink" class="hidden">Unlink Discord</button>
       </div>
     </section>
     <section class="dangerBox">
@@ -2483,7 +2497,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", GuideCardArt: "/guides/card-art", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile" };
+const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", GuideCardArt: "/guides/card-art", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile", Decks: "/decks" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -2855,16 +2869,58 @@ function loadOfficial(c, design) {
 let account = null;
 function drawProfile() {
   $("p_waiting").classList.toggle("hidden", !limited);
-  for (const id of ["p_game", "p_decks", "p_replays", "p_cardArt"]) $(id).classList.toggle("hidden", limited);
+  for (const id of ["p_game", "p_replays", "p_cardArt"]) $(id).classList.toggle("hidden", limited);
+  drawDiscord();
   if (limited) { drawRecovery(); return; }
   const linked = account && account.player;
   $("p_link").textContent = linked ? `Linked to game player ${account.playerName}.` : "Not linked to a game account. To link, open the game and go to Settings > Account, then enter this username and password.";
   $("p_gameLogin").classList.toggle("hidden", !linked);
-  $("p_decks").classList.toggle("hidden", !linked);
-  if (linked && !$("viewProfile").classList.contains("hidden")) loadDecks();
+  if (account && !$("viewDecks").classList.contains("hidden")) drawDecksPage();
   if (!$("viewProfile").classList.contains("hidden")) loadReplayCodes();
   drawRecovery();
   $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
+}
+// The Decks page (main ribbon): the decks on the linked game account, and importing one.
+function drawDecksPage() {
+  if (!account) { loadList(); return; }        // drawProfile calls back here once the account is known
+  const linked = !!account.player;
+  $("d_unlinked").classList.toggle("hidden", linked);
+  $("p_decks").classList.toggle("hidden", !linked);
+  if (linked) loadDecks();
+}
+// Profile > Discord: link (through Discord's own page) and unlink, both with the password.
+function drawDiscord() {
+  const d = account && account.discord;
+  const ready = !!(account && account.discordReady);
+  $("p_discordState").textContent = d
+    ? `Linked to Discord account ${d.name}${d.shown && d.shown !== d.name ? " (" + d.shown + ")" : ""} since ${d.linkedAt.slice(0, 10)}. Two-factor sign-in on Discord: ${d.mfa ? "on" : "off (it will be needed for password resets through Discord; switch it on in Discord, then link again)"}.`
+    : ready ? "No Discord account linked." : "Discord linking is not available on this server yet.";
+  $("p_discordLink").textContent = d ? "Link a different Discord account" : "Link Discord";
+  $("p_discordLink").disabled = !ready;
+  $("p_discordUnlink").classList.toggle("hidden", !d);
+}
+async function linkDiscord() {
+  const d = await confirmWithPassword("Link Discord", "Discord asks you to allow WF-Revival to see your username, then sends you back here.",
+    "Continue to Discord", passphrase => call("CreatorDiscordStart", { passphrase }));
+  if (!d) return;
+  if (d instanceof Error) return say("Not linked: " + d.message + ".", "bad");
+  location.href = d.url;
+}
+async function unlinkDiscord() {
+  const d = await confirmWithPassword("Unlink Discord", "Your Discord account will no longer be linked to this account.",
+    "Unlink", passphrase => call("CreatorDiscordUnlink", { passphrase }));
+  if (!d) return;
+  if (d instanceof Error) return say("Not unlinked: " + d.message + ".", "bad");
+  say("Discord unlinked.", "ok"); loadList();
+}
+// Back from Discord's page (/discord-linked?code=...&state=...): finish the link, then show the Profile.
+async function finishDiscord(q) {
+  if (q.get("error")) return say(q.get("error") === "access_denied" ? "Discord linking was cancelled." : "Discord did not link: " + q.get("error") + ".", "bad");
+  try {
+    const d = await call("CreatorDiscordFinish", { discordCode: q.get("code") || "", discordState: q.get("state") || "" });
+    say(`Discord account ${d.discord.name} linked.` + (d.discord.mfa ? "" : " Two-factor sign-in is off on that Discord account: password resets through Discord will need it."), "ok");
+  } catch (e) { say("Not linked: " + e.message + ".", "bad"); }
+  loadList();
 }
 function drawRecovery() {
   const hasCode = !!(account && account.recoveryAt);
@@ -3309,6 +3365,7 @@ async function loadPeople() {
             onclick: () => makeResetCode(p.name, !!p.resetUntil) }), " ",
           p.resetUntil ? el("button", { class: "small", text: "Cancel code", onclick: () => cancelResetCode(p.name) }) : null),
         el("div", { class: "hint" }, p.player ? `Linked to game player ${p.playerName} ` : "Not linked to a game player",
+          p.discord ? ` · Discord: ${p.discord} ` : "",
           p.player && !locked ? (oneAccount
             ? el("button", { class: "small", text: "Sign out of game", title: "Signs this account out of the game on every computer and Android device. It keeps its game player.", onclick: () => setAccount(p.name, { unlink: true }, "signed out of the game everywhere") })
             : el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") })) : null)),
@@ -3321,7 +3378,7 @@ async function loadPeople() {
           : el("button", { class: "small danger", text: "Delete", title: "Signs the account out everywhere and deletes it after 7 days (signing in again cancels it)",
               onclick: () => deleteAccount(p.name) })))));
     const row = box.lastElementChild;            // what the search box and the Show list match on
-    row.dataset.search = (p.name + " " + (p.playerName || "")).toLowerCase();
+    row.dataset.search = (p.name + " " + (p.playerName || "") + " " + (p.discord || "")).toLowerCase();
     row.dataset.tags = [p.online ? "online" : "", p.reviewer || p.admin || p.owner || p.fixed ? "staff" : "", p.tester ? "tester" : "", p.access === "banned" ? "banned" : ""].join(" ");
   }
   filterPeople();
@@ -3882,7 +3939,7 @@ async function loadList() {
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
     // an account waiting for approval: Guides and its Profile only
-    $("tabCreator").classList.toggle("hidden", limited); $("tabProfile").classList.toggle("hidden", !limited);
+    $("tabCreator").classList.toggle("hidden", limited); $("tabDecks").classList.toggle("hidden", limited); $("tabProfile").classList.toggle("hidden", !limited);
     if (limited) {
       gate();
       const here = pageOf(location.pathname);
@@ -3906,7 +3963,7 @@ let lastCreatorPage = "Create";
 // The Admin tab opens its own ribbon: admins see every page, reviewers only the review queue.
 const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Unreleased", "Server"];
 let lastAdminPage = "";
-const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", GuideCardArt: "Guide: Card art from your game", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile" };
+const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", GuideCardArt: "Guide: Card art from your game", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile", Decks: "Decks" };
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
 const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu", GuideCreator: "creator", GuideCardArt: "card-art" };
@@ -3944,8 +4001,8 @@ function show(which, replace) {                // a page name from PAGES
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Profile", "GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Decks", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["Profile", "Decks", "GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   const inAdmin = ADMIN_GROUP.includes(which);
@@ -3964,6 +4021,7 @@ function show(which, replace) {                // a page name from PAGES
   if (which === "Examples") showExamples();
   if (which === "Cards") showViewer();
   if (which === "Keywords") showKeywords();
+  if (which === "Decks") { say(""); drawDecksPage(); }
   if (which === "Profile") { say(""); loadList(); laStart(); if (location.hash === "#card-art") setTimeout(() => $("p_cardArt").scrollIntoView({ block: "start" }), 50); }
   if (list) loadList();
   if (which === "People") loadPeople();
@@ -4018,6 +4076,7 @@ async function start() {
     $("deckCode").value = await f.text(); importDeck();
   });
   $("gameLoginForm").addEventListener("submit", e => { e.preventDefault(); gameLogin(); });
+  $("p_discordLink").onclick = linkDiscord; $("p_discordUnlink").onclick = unlinkDiscord;
   $("recoveryForm").addEventListener("submit", e => { e.preventDefault(); recoveryCode(); });
   $("p_recRemove").onclick = removeRecoveryCode;
   $("recoverForm").addEventListener("submit", e => { e.preventDefault(); recover(); });
@@ -4072,10 +4131,14 @@ async function start() {
   for (const id of ["cvArmy", "cvKind", "cvShow"]) $(id).onchange = drawViewerList;
   window.addEventListener("popstate", () => { const page = pageOf(location.pathname); if (me && page) show(page, true); else gate(); });
   $("filter").onchange = drawList; $("refresh").onclick = loadList;
+  // back from Discord's "allow" page: the address carries the answer once; it is taken off at once
+  const fromDiscord = location.pathname === "/discord-linked" ? new URLSearchParams(location.search) : null;
+  if (fromDiscord) history.replaceState(null, "", "/profile");
   const first = location.hash === "#rules" ? "Rules" : pageOf(location.pathname);      // "#rules" is the older address of the rules
   if (session()) { try { await loadMenus(); } catch (e) { /* a stale session: the sign-in page follows */ } }
   if (first && first !== "Create") { wanted = first; if (session() && schema) show(first, true); }
   loadList();
+  if (fromDiscord && session()) finishDiscord(fromDiscord);
 }
 start();
 </script>

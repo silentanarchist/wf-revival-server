@@ -994,7 +994,8 @@ SITE_PAGES = {
     **{p: "creator.html" for p in (
         "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
         "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/unreleased",
-        "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu", "/guides/creator", "/guides/card-art")},
+        "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu", "/guides/creator", "/guides/card-art",
+        "/decks", "/discord-linked")},
     "/robots.txt": "robots.txt",                  # asks search engines and crawlers to keep out (all but /terms)
 }
 # Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
@@ -3165,7 +3166,8 @@ class PlayFabEmulator:
             return ok({"cards": [], "role": 0, "released": False, "name": waiting["name"], "rulesVersion": "",
                        "account": {"access": "requested", "admin": False, "fixed": False, "owner": False, "player": "",
                                    "reviewer": False, "tester": False,
-                                   "recoveryAt": waiting.get("recoveryAt") or "" if waiting.get("recoveryHash") else ""}})
+                                   "recoveryAt": waiting.get("recoveryAt") or "" if waiting.get("recoveryHash") else "",
+                                   "discord": self._discord_view(waiting), "discordReady": self._discord_app() is not None}})
         with self.store.lock:
             cards = self._creator_load()
             me = self._creator_user(req)
@@ -3179,6 +3181,7 @@ class PlayFabEmulator:
                    "account": dict(self._creator_perms(account), gameLoginAt=max([account.get("gameLoginAt") or ""] + [g.get("at") or "" for g in account.get("gameLogins") or [] if isinstance(g, dict)]),
                                    gameLogins=len(self._game_login_hashes(account)),
                                    recoveryAt=account.get("recoveryAt") or "" if account.get("recoveryHash") else "",
+                                   discord=self._discord_view(account), discordReady=self._discord_app() is not None,
                                    playerName=((self.store.load(account["player"]) or {}).get("DisplayName") or account["player"])
                                    if account.get("player") else "") if account and me else None,
                    "rulesVersion": self._creator_rules_version()})
@@ -3836,6 +3839,157 @@ class PlayFabEmulator:
             self._creator_users_save(users)
         return ok({"recoveryCode": code, "name": user["name"], "at": user["recoveryAt"]})
 
+    # ---- Discord link (site Profile page). Linking only: nobody signs in with Discord. The player allows our Discord
+    # application to see who they are (OAuth2, scope "identify"); the server keeps their Discord id, name, whether the
+    # account has two-factor sign-in on, and when it was linked. Later: the Discord bot (/recover, roles) uses the link.
+    # Needs data/discord-app.json {"clientId", "clientSecret"} (the application from Discord's developer portal; the
+    # secret never leaves data/ and is never logged). Discord sends the player back to <creatorUrl base>/discord-linked.
+    DISCORD_API = "https://discord.com/api/v10"
+    DISCORD_STATE_SECONDS = 600
+
+    def _discord_app(self):
+        """(client id, client secret, return address) or None when Discord linking is not set up."""
+        try:
+            with open(os.path.join(self.store.root, "discord-app.json"), encoding="utf-8") as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            return None
+        if not isinstance(d, dict):
+            return None
+        cid, secret = str(d.get("clientId") or ""), str(d.get("clientSecret") or "")
+        site = str(self._settings().get("creatorUrl") or "").rstrip("/")
+        base = site.split("/creator")[0] if site else ""
+        if not re.fullmatch(r"\d{15,22}", cid) or not re.fullmatch(r"[A-Za-z0-9_\-]{16,128}", secret) or not base.startswith("https://"):
+            return None
+        return cid, secret, base + "/discord-linked"
+
+    def _discord_call(self, path, data=None, token=None):
+        """A request to Discord's API: form data POSTed when given, else GET with the player's token. JSON back."""
+        import urllib.request, urllib.parse
+        headers = {"User-Agent": "WarpforgeRevival (server, 1.0)", "Accept": "application/json"}
+        body = None
+        if data is not None:
+            body = urllib.parse.urlencode(data).encode()
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+        if token:
+            headers["Authorization"] = "Bearer " + token
+        rq = urllib.request.Request(self.DISCORD_API + path, data=body, headers=headers, method="POST" if body is not None else "GET")
+        with urllib.request.urlopen(rq, timeout=10) as resp:
+            return json.loads(resp.read(65536) or b"{}")
+
+    @staticmethod
+    def _discord_created(snowflake):
+        """When a Discord account was made, from its id (ISO time)."""
+        try:
+            ms = (int(snowflake) >> 22) + 1420070400000
+            return datetime.fromtimestamp(ms / 1000, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        except (TypeError, ValueError, OverflowError, OSError):
+            return ""
+
+    def api_Revival_CreatorDiscordStart(self, req, headers):
+        """Profile > Link Discord: checks the password and answers the address of Discord's own "allow" page. Linking
+        another Discord account over an existing link needs the password too, so a stolen site session alone cannot
+        swap in someone else's Discord."""
+        app = self._discord_app()
+        if app is None:
+            return err("NotAvailable", "Discord linking is not set up on this server yet")
+        with self.store.lock:
+            me = self._creator_account_limited(req)
+            if not me:
+                return err("NotAuthorized", "sign in first")
+            bad = self._staff_password(me, req)            # same 5-wrong-per-15-minutes limit
+            if bad:
+                return bad
+        if not self._allow("discord-link", me["name"].lower(), 10, 3600):
+            return err("TooManyRequests", "too many tries; wait a while and try again", 1199, 429)
+        state = base64.urlsafe_b64encode(os.urandom(24)).decode().rstrip("=")
+        states = self.__dict__.setdefault("_discord_states", {})
+        now = time.time()
+        for k in [k for k, v in states.items() if v[1] < now]:
+            del states[k]
+        states[hashlib.sha256(state.encode()).hexdigest()] = (me["name"].lower(), now + self.DISCORD_STATE_SECONDS)
+        import urllib.parse
+        url = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode({
+            "client_id": app[0], "response_type": "code", "redirect_uri": app[2], "scope": "identify",
+            "state": state, "prompt": "consent"})
+        return ok({"url": url})
+
+    def api_Revival_CreatorDiscordFinish(self, req, headers):
+        """Back from Discord with {discordCode, discordState}: asks Discord who the player is and links that Discord
+        account to the signed-in site account. A Discord account links to one site account at most; bot accounts never."""
+        app = self._discord_app()
+        if app is None:
+            return err("NotAvailable", "Discord linking is not set up on this server yet")
+        code, state = str(req.get("discordCode") or ""), str(req.get("discordState") or "")
+        if not re.fullmatch(r"[A-Za-z0-9_\-]{10,200}", code) or not re.fullmatch(r"[A-Za-z0-9_\-]{20,100}", state):
+            return err("InvalidParams", "that link from Discord is not valid; try Link Discord again")
+        me = self._creator_account_limited(req)
+        if not me:
+            return err("NotAuthorized", "sign in first")
+        entry = self.__dict__.setdefault("_discord_states", {}).pop(hashlib.sha256(state.encode()).hexdigest(), None)
+        if not entry or entry[1] < time.time() or entry[0] != me["name"].lower():
+            return err("InvalidParams", "that link from Discord has expired; try Link Discord again")
+        try:
+            tok = self._discord_call("/oauth2/token", {"client_id": app[0], "client_secret": app[1], "grant_type": "authorization_code",
+                                                       "code": code, "redirect_uri": app[2]})
+            access = str(tok.get("access_token") or "")
+            if not access:
+                raise ValueError("no access token")
+            who = self._discord_call("/users/@me", token=access)
+            try:                                   # we need nothing more from Discord: give the permission back
+                self._discord_call("/oauth2/token/revoke", {"client_id": app[0], "client_secret": app[1], "token": access})
+            except Exception:
+                pass
+        except Exception as e:
+            log.warning("discord link for %s: Discord did not confirm (%s)", me["name"], type(e).__name__)
+            return err("NotAvailable", "Discord did not confirm the link; try again")
+        did = str(who.get("id") or "")
+        if not re.fullmatch(r"\d{15,22}", did):
+            return err("NotAvailable", "Discord did not say who you are; try again")
+        if who.get("bot") or who.get("system"):
+            return err("NotAllowed", "bot accounts cannot be linked")
+        name = str(who.get("username") or "")[:40]
+        shown = str(who.get("global_name") or "")[:40]
+        with self.store.lock:
+            users = self._creator_users()
+            mine = users.get(me["name"].lower())
+            if not mine:
+                return err("NotAuthorized", "sign in first")
+            other = next((u for k, u in users.items() if k != me["name"].lower() and (u.get("discord") or {}).get("id") == did), None)
+            if other:
+                return err("NotAllowed", "that Discord account is already linked to another account here")
+            mine["discord"] = {"id": did, "name": name, "shown": shown, "mfa": who.get("mfa_enabled") is True,
+                               "created": self._discord_created(did), "linkedAt": now_iso()}
+            self._creator_users_save(users)
+        log.info("discord: %s linked a Discord account (2FA %s)", me["name"], "on" if who.get("mfa_enabled") else "off")
+        return ok({"discord": self._discord_view(mine)})
+
+    def api_Revival_CreatorDiscordUnlink(self, req, headers):
+        """Profile > Unlink Discord (password needed)."""
+        with self.store.lock:
+            me = self._creator_account_limited(req)
+            if not me:
+                return err("NotAuthorized", "sign in first")
+            bad = self._staff_password(me, req)
+            if bad:
+                return bad
+            users = self._creator_users()
+            had = users[me["name"].lower()].pop("discord", None) is not None
+            if had:
+                self._creator_users_save(users)
+        if had:
+            log.info("discord: %s unlinked their Discord account", me["name"])
+        return ok({"removed": had})
+
+    @staticmethod
+    def _discord_view(user):
+        """What the site shows about an account's Discord link: name, when linked, 2FA (never the id)."""
+        d = (user or {}).get("discord") or {}
+        if not d.get("id"):
+            return None
+        return {"name": d.get("name") or "", "shown": d.get("shown") or "", "mfa": bool(d.get("mfa")),
+                "linkedAt": d.get("linkedAt") or "", "created": d.get("created") or ""}
+
     def api_Revival_GameRecoveryCode(self, req, headers):
         """The game's Settings > Account (mod 0.13.35): a recovery code for the site account this game player
         is linked to, made exactly like the Profile page's (it replaces any earlier one). Needs the account's
@@ -4321,6 +4475,7 @@ class PlayFabEmulator:
         people = [dict(self._creator_perms(u), name=u["name"], created=u.get("created", ""), cards=counts.get(key, 0),
                        playerName=game_name(u.get("player")), deleteAt=u.get("deleteAt") or "",
                        terms=u.get("termsAgreed") or "",
+                       discord=((u.get("discord") or {}).get("name") or "") if (u.get("discord") or {}).get("id") else "",
                        resetUntil=u.get("adminResetUntil") or "" if self._reset_code_live(u) else "",
                        resetBy=u.get("adminResetBy") or "" if self._reset_code_live(u) else "") for key, u in users.items()
                   if not (skip and self._creator_perms(u)["access"] == "requested")]
@@ -4692,7 +4847,8 @@ class PlayFabEmulator:
     #  - entries older than "logDays" in revival-settings.json (default 14) are dropped once a day,
     #    and the file is cut back if it still passes 50 MB.
     LOG_SECRET = {"passphrase", "newpassphrase", "password", "session", "key", "token", "ticket", "image", "mask",
-                  "sessionticket", "entitytoken", "devicetoken", "x-authorization", "secret", "recoverycode"}
+                  "sessionticket", "entitytoken", "devicetoken", "x-authorization", "secret", "recoverycode",
+                  "discordcode", "discordstate"}
     LOG_IDENTITY = {"steamticket", "androiddeviceid", "androiddevice", "customid", "iosdeviceid", "deviceid", "nintendoswitchdeviceid"}
     LOG_MAX_BYTES = 50 * 1024 * 1024
 
