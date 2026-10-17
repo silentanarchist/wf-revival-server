@@ -6783,7 +6783,7 @@ class PlayFabEmulator:
         codes = {d.get("recordingIndex"): self._code_show(c) for c, d in mine.items()}
         out = []
         history = self._battle_log(player)
-        for e in reversed(history):
+        for e in history:                        # the battle log is kept newest first
             index = str(e.get("recordingIndex") or "")
             path = os.path.join(self._replay_dir(pfid), index + ".json") if self.RECORD_NAME.fullmatch(index) else ""
             played = ""
