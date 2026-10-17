@@ -1369,7 +1369,28 @@ class PlayFabEmulator:
         self.cloudscript = {  # FunctionName -> handler(player, params) -> result object
             "InitializeLiveOps": self.cs_InitializeLiveOps,
             "FetchTwitchDrops": lambda player, params: [],
-            "FetchGroupInvitations": lambda player, params: [],  # alliance invites: none
+            # alliances (see "alliances" below)
+            "FetchCurrentGroup": self.cs_FetchCurrentGroup,
+            "FetchGroupById": self.cs_FetchGroupById,
+            "CreateGroup": self.cs_CreateGroup,
+            "JoinGroup": self.cs_JoinGroup,
+            "AcceptGroupInvitation": self.cs_AcceptGroupInvitation,
+            "FetchGroups": self.cs_FetchGroups,
+            "FetchGroupsOrdered": self.cs_FetchGroupsOrdered,
+            "FetchAlliancesRanking": self.cs_FetchAlliancesRanking,
+            "FetchAlliancesRankingByEvent": self.cs_FetchAlliancesRankingByEvent,
+            "ExitCurrentGroup": self.cs_ExitCurrentGroup,
+            "KickGroupMember": self.cs_KickGroupMember,
+            "ChangeGroupMemberRole": self.cs_ChangeGroupMemberRole,
+            "FetchGroupInvitations": self.cs_FetchGroupInvitations,
+            "RejectGroupInvitation": self.cs_RejectGroupInvitation,
+            "InvitePlayerToGroup": self.cs_InvitePlayerToGroup,
+            "CancelPlayerInvitationToGroup": self.cs_CancelPlayerInvitationToGroup,
+            "UpdateGroupInfo": self.cs_UpdateGroupInfo,
+            "SetCurrentGroupBadge": self.cs_SetCurrentGroupBadge,
+            "UpdateTrophy": lambda player, params: self.cs_alliance_noop(player, params, "UpdateTrophy"),
+            "UpdatePooledTrophies": lambda player, params: self.cs_alliance_noop(player, params, "UpdatePooledTrophies"),
+            "CollectAllianceDraftRewards": lambda player, params: self.cs_alliance_noop(player, params, "CollectAllianceDraftRewards"),
             "updatePlayerDecks": self.cs_updatePlayerDecks,
             "deletePlayerDeck": self.cs_deletePlayerDeck,
             "FreeDraftEntrance": self.cs_FreeDraftEntrance,
@@ -5086,6 +5107,463 @@ class PlayFabEmulator:
         if isinstance(params, dict) and "Data" in params and "SessionId" in params:
             return params.get("Data")
         return params
+
+    # ---------------------------------------------------------------- alliances (2026-10-16)
+    # The game's alliances (Social > Alliances) are server functions called by name (the game's own
+    # CloudHandle list): FetchCurrentGroup, CreateGroup, JoinGroup, FetchGroups, FetchGroupsOrdered,
+    # KickGroupMember, ExitCurrentGroup, ChangeGroupMemberRole, FetchGroupInvitations,
+    # AcceptGroupInvitation, RejectGroupInvitation, InvitePlayerToGroup, UpdateGroupInfo,
+    # CancelPlayerInvitationToGroup, SetCurrentGroupBadge, UpdateTrophy, UpdatePooledTrophies,
+    # FetchAlliancesRanking, FetchGroupById, FetchAlliancesRankingByEvent, CollectAllianceDraftRewards.
+    # Replies use the game's own field names (Group, GroupMember, GroupInvitation: the game reads them by
+    # field). Roles: Member 0, Moderator 1, Admin 2, Leader 3; privacy: Open 0, Private 1. Times in ms.
+    # One file per alliance in data/alliances/<id>.json; the player's file holds "Alliance": <id>.
+    # Request field names are accepted in both spellings the game uses (GroupId / groupId ...); the first
+    # call of each function is logged with its argument names, to confirm them against the game.
+    ALLIANCE_ID = re.compile(r"[0-9a-f]{16}")
+    ALLIANCE_MAX_MEMBERS = 30          # used when the title data's AlliancesConfig.maxMemberCount is 0
+    ALLIANCE_INVITE_DAYS = 7
+    ALLIANCE_LIST = 50
+
+    def _alliance_dir(self):
+        d = os.path.join(self.store.root, "alliances")
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    def _alliance_load(self, gid):
+        if not isinstance(gid, str) or not self.ALLIANCE_ID.fullmatch(gid):
+            return None
+        path = os.path.join(self._alliance_dir(), gid + ".json")
+        if not os.path.exists(path):
+            return None
+        def read():
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        try:
+            return _retry_locked(read)
+        except (OSError, ValueError):
+            return None
+
+    def _alliance_save(self, g):
+        path = os.path.join(self._alliance_dir(), g["groupId"] + ".json")
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(g, f, indent=1, ensure_ascii=False)
+        _retry_locked(lambda: os.replace(tmp, path))
+
+    def _alliance_delete(self, gid):
+        try:
+            os.remove(os.path.join(self._alliance_dir(), gid + ".json"))
+        except OSError:
+            pass
+
+    def _alliance_all(self):
+        out = []
+        for name in os.listdir(self._alliance_dir()):
+            if name.endswith(".json"):
+                g = self._alliance_load(name[:-5])
+                if g:
+                    out.append(g)
+        return out
+
+    def _alliance_max(self):
+        try:
+            n = int(((self._title_config("AlliancesConfig") or {}).get("maxMemberCount")) or 0)
+        except (TypeError, ValueError):
+            n = 0
+        return n if n > 0 else self.ALLIANCE_MAX_MEMBERS
+
+    def _title_config(self, key):
+        try:
+            with open(os.path.join(self.store.titledata_dir, "configs.json"), encoding="utf-8") as f:
+                d = json.load(f)
+            return d.get(key) if isinstance(d, dict) else None
+        except (OSError, ValueError):
+            return None
+
+    _alliance_logged = set()
+
+    def _alliance_args(self, fn, params):
+        a = self._cs_args(params)
+        if not isinstance(a, dict):
+            a = {"value": a} if a not in (None, "") else {}
+        if fn not in self._alliance_logged:
+            self._alliance_logged.add(fn)
+            log.info("alliances: first %s call, arguments %s", fn, sorted(a.keys()))
+        return a
+
+    @staticmethod
+    def _arg(a, *names, default=None):
+        for n in names:
+            if n in a and a[n] is not None:
+                return a[n]
+        low = {k.lower(): v for k, v in a.items() if isinstance(k, str)}
+        for n in names:
+            if n.lower() in low and low[n.lower()] is not None:
+                return low[n.lower()]
+        return default
+
+    @staticmethod
+    def _alliance_error(message):
+        return {"error": message, "errorMessage": message}
+
+    @staticmethod
+    def _now_ms():
+        return int(time.time() * 1000)
+
+    def _alliance_member_view(self, g, m):
+        p = self.store.load(m["id"]) or {}
+        avatar, _, border = (p.get("AvatarUrl") or "").partition("#")
+        try:
+            title = json.loads((p.get("UserData") or {}).get("DemoData") or "{}").get("playerTitle") or ""
+        except (ValueError, AttributeError):
+            title = ""
+        return {"id": m["id"], "name": p.get("DisplayName") or "", "groupId": g["groupId"], "groupName": g["name"],
+                "titleId": title, "avatarId": avatar, "avatarBorderId": border, "role": int(m.get("role", 0)),
+                "joinAt": int(m.get("joinAt", 0)), "rating": 0, "season": 0, "trophies": {}, "events": {},
+                "blockDescriptionChange": False}
+
+    def _alliance_view(self, g, members=True):
+        return {"groupId": g["groupId"], "name": g["name"], "desc": g.get("desc", ""), "minElo": int(g.get("minElo", 0)),
+                "memberCount": len(g.get("members", [])), "badge": g.get("badge"), "leaderId": g.get("leaderId", ""),
+                "privacy": int(g.get("privacy", 0)), "region": g.get("region", ""), "createdAt": int(g.get("createdAt", 0)),
+                "lastActivity": int(g.get("lastActivity", 0)), "rating": int(g.get("rating", 0)), "currentSeason": 0,
+                "previousRating": int(g.get("previousRating", 0)), "trophies": g.get("trophies") or {},
+                "events": g.get("events") or {},
+                "members": [self._alliance_member_view(g, m) for m in g.get("members", [])] if members else [],
+                "blockDescriptionChange": False}
+
+    def _alliance_of(self, player):
+        """The player's alliance (fresh from disk), or None; a stale link is cleared."""
+        me = self.store.load(player["PlayFabId"]) or player
+        gid = me.get("Alliance")
+        g = self._alliance_load(gid) if gid else None
+        if gid and (not g or all(m["id"] != me["PlayFabId"] for m in g.get("members", []))):
+            me.pop("Alliance", None)
+            self.store.save(me)
+            g = None
+        return g
+
+    def _alliance_link(self, pfid, gid):
+        p = self.store.load(pfid)
+        if not p:
+            return
+        if gid:
+            p["Alliance"] = gid
+        else:
+            p.pop("Alliance", None)
+        self.store.save(p)
+
+    @staticmethod
+    def _alliance_role(g, pfid):
+        return next((int(m.get("role", 0)) for m in g.get("members", []) if m["id"] == pfid), -1)
+
+    def _alliance_text(self, value, limit):
+        text = " ".join(str(value or "").split())[:limit]
+        return self._word_filter().censor(text)[0] if text else ""
+
+    def _alliance_join(self, g, pfid, role=0):
+        g.setdefault("members", []).append({"id": pfid, "role": role, "joinAt": self._now_ms()})
+        g.setdefault("invites", {}).pop(pfid, None)
+        g["lastActivity"] = self._now_ms()
+        self._alliance_save(g)
+        self._alliance_link(pfid, g["groupId"])
+
+    def cs_FetchCurrentGroup(self, player, params):
+        self._alliance_args("FetchCurrentGroup", params)
+        with self.store.lock:
+            g = self._alliance_of(player)
+            return self._alliance_view(g) if g else None
+
+    def cs_FetchGroupById(self, player, params):
+        a = self._alliance_args("FetchGroupById", params)
+        with self.store.lock:
+            g = self._alliance_load(str(self._arg(a, "GroupId", "groupId", "id", "value", default="")))
+            return self._alliance_view(g) if g else self._alliance_error("That alliance no longer exists")
+
+    def cs_CreateGroup(self, player, params):
+        a = self._alliance_args("CreateGroup", params)
+        name = " ".join(str(self._arg(a, "GroupName", "name", "Name", default="")).split())
+        if not 3 <= len(name) <= 24:
+            return self._alliance_error("An alliance name must be 3-24 characters long")
+        if self._word_filter().found(name):
+            return self._alliance_error("That name contains a word that is not allowed here")
+        with self.store.lock:
+            if self._alliance_of(player):
+                return self._alliance_error("You're already in a group")
+            if any(g["name"].lower() == name.lower() for g in self._alliance_all()):
+                return self._alliance_error("That alliance name is already taken")
+            try:
+                privacy = 1 if int(self._arg(a, "Privacy", "privacy", default=0)) == 1 else 0
+            except (TypeError, ValueError):
+                privacy = 0
+            try:
+                min_elo = max(0, min(10000, int(self._arg(a, "MinElo", "minElo", default=0))))
+            except (TypeError, ValueError):
+                min_elo = 0
+            now = self._now_ms()
+            g = {"groupId": uuid.uuid4().hex[:16], "name": name,
+                 "desc": self._alliance_text(self._arg(a, "Description", "desc", "description"), 200),
+                 "minElo": min_elo, "privacy": privacy,
+                 "region": self._alliance_text(self._arg(a, "Region", "region"), 32),
+                 "badgeId": self._alliance_text(self._arg(a, "BadgeId", "badgeId"), 64), "badge": None,
+                 "leaderId": player["PlayFabId"], "createdAt": now, "lastActivity": now, "rating": 0,
+                 "trophies": {}, "events": {}, "members": [], "invites": {}}
+            self._alliance_join(g, player["PlayFabId"], role=3)
+            log.info("alliances: %s created '%s' (%s)", player["PlayFabId"], name, g["groupId"])
+            return self._alliance_view(g)
+
+    def _alliance_enter(self, player, gid, invited_only):
+        with self.store.lock:
+            if self._alliance_of(player):
+                return self._alliance_error("You're already in a group")
+            g = self._alliance_load(gid)
+            if not g:
+                return self._alliance_error("That alliance no longer exists")
+            invite = (g.get("invites") or {}).get(player["PlayFabId"])
+            invited = bool(invite) and int(invite) > self._now_ms()
+            if invited_only and not invited:
+                return self._alliance_error("That invitation has expired")
+            if int(g.get("privacy", 0)) == 1 and not invited:
+                return self._alliance_error("Can't join an group that has privacy of Private")
+            if len(g.get("members", [])) >= self._alliance_max():
+                return self._alliance_error("Group is full")
+            self._alliance_join(g, player["PlayFabId"])
+            return self._alliance_view(g)
+
+    def cs_JoinGroup(self, player, params):
+        a = self._alliance_args("JoinGroup", params)
+        return self._alliance_enter(player, str(self._arg(a, "GroupId", "groupId", "value", default="")), False)
+
+    def cs_AcceptGroupInvitation(self, player, params):
+        a = self._alliance_args("AcceptGroupInvitation", params)
+        return self._alliance_enter(player, str(self._arg(a, "GroupId", "groupId", "value", default="")), True)
+
+    def _alliance_list(self, groups):
+        return [self._alliance_view(g, members=False) for g in groups[:self.ALLIANCE_LIST]]
+
+    def cs_FetchGroups(self, player, params):
+        a = self._alliance_args("FetchGroups", params)
+        term = str(self._arg(a, "Filter", "filter", "GroupName", "name", default="") or "").strip().lower()[:40]
+        with self.store.lock:
+            groups = [g for g in self._alliance_all() if not term or term in g["name"].lower()]
+        groups.sort(key=lambda g: (-g.get("lastActivity", 0)))
+        return self._alliance_list(groups)
+
+    def cs_FetchGroupsOrdered(self, player, params):
+        a = self._alliance_args("FetchGroupsOrdered", params)
+        order = str(self._arg(a, "OrderBy", "orderBy", default="") or "").lower()
+        with self.store.lock:
+            groups = self._alliance_all()
+        if "member" in order:
+            groups.sort(key=lambda g: -len(g.get("members", [])))
+        elif "activ" in order:
+            groups.sort(key=lambda g: -g.get("lastActivity", 0))
+        else:
+            groups.sort(key=lambda g: (-g.get("rating", 0), -len(g.get("members", []))))
+        return self._alliance_list(groups)
+
+    def cs_FetchAlliancesRanking(self, player, params):
+        a = self._alliance_args("FetchAlliancesRanking", params)
+        previous = bool(self._arg(a, "getPreviousRating", "GetPreviousRating", default=False))
+        key = "previousRating" if previous else "rating"
+        with self.store.lock:
+            groups = self._alliance_all()
+        groups.sort(key=lambda g: -g.get(key, 0))
+        return self._alliance_list(groups)
+
+    def cs_FetchAlliancesRankingByEvent(self, player, params):
+        a = self._alliance_args("FetchAlliancesRankingByEvent", params)
+        event = str(self._arg(a, "EventId", "eventId", "eventID", default="") or "")
+        with self.store.lock:
+            groups = [g for g in self._alliance_all() if event in (g.get("events") or {})]
+        groups.sort(key=lambda g: -(g.get("events") or {}).get(event, 0))
+        return self._alliance_list(groups)
+
+    def cs_ExitCurrentGroup(self, player, params):
+        self._alliance_args("ExitCurrentGroup", params)
+        with self.store.lock:
+            g = self._alliance_of(player)
+            if not g:
+                return self._alliance_error("You're not in a group")
+            pfid = player["PlayFabId"]
+            g["members"] = [m for m in g["members"] if m["id"] != pfid]
+            self._alliance_link(pfid, None)
+            if not g["members"]:
+                self._alliance_delete(g["groupId"])
+                log.info("alliances: '%s' (%s) closed: its last member left", g["name"], g["groupId"])
+                return {}
+            if g.get("leaderId") == pfid:
+                heir = sorted(g["members"], key=lambda m: (-int(m.get("role", 0)), m.get("joinAt", 0)))[0]
+                heir["role"] = 3
+                g["leaderId"] = heir["id"]
+            g["lastActivity"] = self._now_ms()
+            self._alliance_save(g)
+            return {}
+
+    def cs_KickGroupMember(self, player, params):
+        a = self._alliance_args("KickGroupMember", params)
+        target = str(self._arg(a, "PlayerId", "playerId", "targetPlayerId", "Id", "id", "value", default="") or "")
+        with self.store.lock:
+            g = self._alliance_of(player)
+            if not g:
+                return self._alliance_error("You're not in a group")
+            mine, theirs = self._alliance_role(g, player["PlayFabId"]), self._alliance_role(g, target)
+            if theirs < 0:
+                return self._alliance_error("That player is not in your alliance")
+            if mine < 1 or theirs >= mine:
+                return self._alliance_error("You're not allower to perform this operation")
+            g["members"] = [m for m in g["members"] if m["id"] != target]
+            self._alliance_save(g)
+            self._alliance_link(target, None)
+            return {}
+
+    def cs_ChangeGroupMemberRole(self, player, params):
+        a = self._alliance_args("ChangeGroupMemberRole", params)
+        target = str(self._arg(a, "PlayerId", "playerId", "targetPlayerId", "Id", "id", default="") or "")
+        try:
+            new = int(self._arg(a, "NewRole", "newRole", "Role", "role", default=-1))
+        except (TypeError, ValueError):
+            new = -1
+        if not 0 <= new <= 3:
+            return self._alliance_error("That role does not exist")
+        with self.store.lock:
+            g = self._alliance_of(player)
+            if not g:
+                return self._alliance_error("You're not in a group")
+            mine, theirs = self._alliance_role(g, player["PlayFabId"]), self._alliance_role(g, target)
+            if theirs < 0 or target == player["PlayFabId"]:
+                return self._alliance_error("You're not allowed to change other players roles")
+            # a member can only change someone below them, and only to a role below their own (the leader
+            # hands the leadership over: they become an admin)
+            if mine < 2 or theirs >= mine or (new >= mine and mine != 3):
+                return self._alliance_error("You're not allowed to change other players roles")
+            for m in g["members"]:
+                if m["id"] == target:
+                    m["role"] = new
+                if new == 3 and m["id"] == player["PlayFabId"]:
+                    m["role"] = 2
+            if new == 3:
+                g["leaderId"] = target
+            g["lastActivity"] = self._now_ms()
+            self._alliance_save(g)
+            return {}
+
+    def _alliance_invitations(self, pfid):
+        now, out = self._now_ms(), []
+        for g in self._alliance_all():
+            exp = (g.get("invites") or {}).get(pfid)
+            if exp and int(exp) > now:
+                out.append({"groupId": g["groupId"], "groupName": g["name"], "expireAt": int(exp),
+                            "group": self._alliance_view(g, members=False)})
+        return out
+
+    def cs_FetchGroupInvitations(self, player, params):
+        self._alliance_args("FetchGroupInvitations", params)
+        with self.store.lock:
+            return self._alliance_invitations(player["PlayFabId"])
+
+    def cs_RejectGroupInvitation(self, player, params):
+        a = self._alliance_args("RejectGroupInvitation", params)
+        gid = str(self._arg(a, "GroupId", "groupId", "value", default="") or "")
+        with self.store.lock:
+            g = self._alliance_load(gid)
+            if g and (g.get("invites") or {}).pop(player["PlayFabId"], None) is not None:
+                self._alliance_save(g)
+            return self._alliance_invitations(player["PlayFabId"])
+
+    def cs_InvitePlayerToGroup(self, player, params):
+        a = self._alliance_args("InvitePlayerToGroup", params)
+        target = str(self._arg(a, "PlayerId", "playerId", "targetPlayerId", "PlayerPlayfabId", "value", default="") or "")
+        with self.store.lock:
+            g = self._alliance_of(player)
+            if not g:
+                return self._alliance_error("You're not in a group")
+            if self._alliance_role(g, player["PlayFabId"]) < 1:
+                return self._alliance_error("You're not allower to perform this operation")
+            other = self.store.load(target) if self.store.PLAYER_ID.fullmatch(target or "") else None
+            if not other:
+                return self._alliance_error("No player with that id")
+            if self._alliance_role(g, target) >= 0:
+                return self._alliance_error("That player is already in your alliance")
+            invites = g.setdefault("invites", {})
+            now = self._now_ms()
+            for k in [k for k, v in invites.items() if int(v) <= now]:
+                del invites[k]
+            if len(invites) >= 100:
+                return self._alliance_error("Too many open invitations")
+            invites[target] = now + self.ALLIANCE_INVITE_DAYS * 86400 * 1000
+            self._alliance_save(g)
+            return {}
+
+    def cs_CancelPlayerInvitationToGroup(self, player, params):
+        a = self._alliance_args("CancelPlayerInvitationToGroup", params)
+        target = str(self._arg(a, "PlayerId", "playerId", "targetPlayerId", "value", default="") or "")
+        with self.store.lock:
+            g = self._alliance_of(player)
+            if not g:
+                return self._alliance_error("You're not in a group")
+            if self._alliance_role(g, player["PlayFabId"]) < 1:
+                return self._alliance_error("You're not allower to perform this operation")
+            if (g.get("invites") or {}).pop(target, None) is not None:
+                self._alliance_save(g)
+            return {}
+
+    def cs_UpdateGroupInfo(self, player, params):
+        a = self._alliance_args("UpdateGroupInfo", params)
+        data = self._arg(a, "GroupData", "groupData", default=None)
+        if isinstance(data, dict):
+            a = {**a, **data}
+        with self.store.lock:
+            g = self._alliance_of(player)
+            if not g:
+                return self._alliance_error("You're not in a group")
+            if self._alliance_role(g, player["PlayFabId"]) < 2:
+                return self._alliance_error("You're not allower to perform this operation")
+            desc = self._arg(a, "Description", "desc", "description")
+            if desc is not None:
+                g["desc"] = self._alliance_text(desc, 200)
+            privacy = self._arg(a, "Privacy", "privacy")
+            if privacy is not None:
+                try:
+                    g["privacy"] = 1 if int(privacy) == 1 else 0
+                except (TypeError, ValueError):
+                    pass
+            region = self._arg(a, "Region", "region")
+            if region is not None:
+                g["region"] = self._alliance_text(region, 32)
+            badge = self._arg(a, "BadgeId", "badgeId")
+            if badge is not None:
+                g["badgeId"] = self._alliance_text(badge, 64)
+            elo = self._arg(a, "MinElo", "minElo")
+            if elo is not None:
+                try:
+                    g["minElo"] = max(0, min(10000, int(elo)))
+                except (TypeError, ValueError):
+                    pass
+            g["lastActivity"] = self._now_ms()
+            self._alliance_save(g)
+            return self._alliance_view(g)
+
+    def cs_SetCurrentGroupBadge(self, player, params):
+        a = self._alliance_args("SetCurrentGroupBadge", params)
+        badge = self._arg(a, "GroupBadge", "groupBadge", "badge", default=None)
+        with self.store.lock:
+            g = self._alliance_of(player)
+            if not g:
+                return self._alliance_error("You're not in a group")
+            if self._alliance_role(g, player["PlayFabId"]) < 2:
+                return self._alliance_error("You're not allower to perform this operation")
+            if badge is not None and (not isinstance(badge, dict) or len(json.dumps(badge)) > 500):
+                return self._alliance_error("That badge cannot be used")
+            g["badge"] = badge
+            self._alliance_save(g)
+            return {}
+
+    def cs_alliance_noop(self, player, params, fn):
+        """Trophies and alliance draft rewards: accepted and logged, not kept yet (no alliance events run)."""
+        self._alliance_args(fn, params)
+        return {}
 
     def cs_AddFriend(self, player, params):
         """Adds a friend by id (the game looks the id up from a name or friend code first). Only to
