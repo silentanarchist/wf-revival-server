@@ -4045,9 +4045,10 @@ class PlayFabEmulator:
     #                    at least minAccountDays old, at most one a day; admins are told in their channel
     #   /account         which site account and game player this Discord account is linked to
     #   /approve @user   admins (by their site rank): approve that player's waiting account
-    # Roles: each linked member's Discord roles follow their site account (Approved, Tester, Reviewer, Admin as named in
-    # the settings), set when they link or unlink and when an admin changes the account. Roles the settings do not name
-    # are never touched, and members who are not linked are left alone.
+    # Roles: each linked member gets the Discord roles that match their site account (Approved, Tester, Reviewer, Admin as
+    # named in the settings), when they link and when an admin changes the account. Roles are only added, never taken
+    # away (owner, 2026-10-17), unless the settings say "removeRoles": true. Roles the settings do not name are never
+    # touched, and members who are not linked are left alone.
     DISCORD_BOT_FILE = "discord-bot.json"
 
     def _discord_bot(self):
@@ -4089,7 +4090,8 @@ class PlayFabEmulator:
         return {"app": app[0], "token": token, "guild": guild, "key": bytes.fromhex(key), "site": app[2].rsplit("/", 1)[0],
                 "roles": {k: str(v) for k, v in roles.items() if k in ("approved", "tester", "reviewer", "admin") and isinstance(v, str) and v.strip()},
                 "wait": num("resetWaitSeconds", 120, 30, 600), "valid": num("resetMinutes", 30, 5, 120),
-                "minAge": num("minAccountDays", 30, 0, 3650)}
+                "minAge": num("minAccountDays", 30, 0, 3650),
+                "remove": cfg.get("removeRoles") is True}
 
     def _discord_rest(self, bot, method, path, body=None):
         """A request to Discord's API as the bot. (status, JSON or None); never raises."""
@@ -4154,6 +4156,8 @@ class PlayFabEmulator:
 
     def _discord_sync_later(self, name, forget=None):
         bot = self._discord_bot()
+        if forget and bot is not None and not bot["remove"]:
+            return                               # roles are only ever added (owner, 2026-10-17): nothing to take away
         if bot is not None:
             threading.Thread(target=self._discord_sync, args=(bot, name, forget), name="discord-roles", daemon=True).start()
 
@@ -4186,7 +4190,7 @@ class PlayFabEmulator:
                 if role in want and rid not in has:
                     s, _ = self._discord_rest(bot, "PUT", f"/guilds/{bot['guild']}/members/{did}/roles/{rid}")
                     changed.append(f"+{role}" if s == 204 else f"+{role} FAILED ({s})")
-                elif role not in want and rid in has:
+                elif bot["remove"] and role not in want and rid in has:
                     s, _ = self._discord_rest(bot, "DELETE", f"/guilds/{bot['guild']}/members/{did}/roles/{rid}")
                     changed.append(f"-{role}" if s == 204 else f"-{role} FAILED ({s})")
             if changed:
