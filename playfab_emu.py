@@ -1177,7 +1177,9 @@ def _offence_modes(handler):
 def _site_content_get(handler, path):
     """Game content answers changed without a restart. Returns True when the request was answered.
     - /api/v1/content/files/revival-settings.json (what the mod reads) gains "offenseCardModes",
-      each game mode's Offence card switch (mod 0.13.24 on; older mods read "offenseCards").
+      each game mode's Offence card switch (mod 0.13.24 on; older mods read "offenseCards"), and
+      "menuLayout", the menus' inner ribbons (mod 0.13.51 on), when the settings file has one
+      (warpforge_server.py hands the game only its own list of settings, which needs a restart to change).
     - /api/v1/content/pack is no longer handed out: the mod never used its cards (only its version,
       now "cardsVersion" in the manifest); mods before 0.13.20 still ask and keep their cached copy.
     - /api/v1/content/manifest gains "cardsVersion"."""
@@ -1201,6 +1203,12 @@ def _site_content_get(handler, path):
         except Exception:
             log.exception("site content: could not read the game modes' Offence switches")
             modes = {}
+        try:
+            layout = handler.current_playfab()._settings().get("menuLayout")
+            layout = layout if isinstance(layout, dict) else None
+        except Exception:
+            log.exception("site content: could not read the menu layout")
+            layout = None
         plain = handler._send
 
         def with_modes(code, body, ctype="application/json", *a, **k):
@@ -1208,7 +1216,10 @@ def _site_content_get(handler, path):
                 try:
                     obj = json.loads(body)
                     if isinstance(obj, dict):
-                        body = json.dumps(dict(obj, offenseCardModes=modes), ensure_ascii=False).encode("utf-8")
+                        extra = {"offenseCardModes": modes}
+                        if layout is not None:
+                            extra["menuLayout"] = layout
+                        body = json.dumps(dict(obj, **extra), ensure_ascii=False).encode("utf-8")
                 except ValueError:
                     pass
             return plain(code, body, ctype, *a, **k)
