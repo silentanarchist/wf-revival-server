@@ -995,7 +995,7 @@ SITE_PAGES = {
         "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
         "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/unreleased",
         "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu", "/guides/creator", "/guides/card-art",
-        "/decks", "/discord-linked")},
+        "/decks", "/replays", "/discord-linked")},
     "/robots.txt": "robots.txt",                  # asks search engines and crawlers to keep out (all but /terms)
 }
 # Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
@@ -6734,6 +6734,100 @@ class PlayFabEmulator:
         if not d:
             return err("NotFound", "no replay has that code")
         return ok(self._code_public(code, d))
+
+    # ---- the website's replay viewer (Game Data > Replays): a match as text, from its recording. The recording is
+    # what the game itself plays back; this only lists who did what, turn by turn. Own matches (the linked game
+    # player's battle log) and replay codes (anyone signed in, like watching one in the game).
+    def _replay_view(self, kept, info):
+        """A recording turned into what the viewer needs: both decks, the in-match numbers' card ids, and every
+        move (side "own" = the player whose recording it is)."""
+        rec = kept.get("record") if isinstance(kept.get("record"), dict) else {}
+        cards = {}
+        for c in ((kept.get("revivalCards") or {}).get("cards") or []):
+            if isinstance(c, list) and len(c) == 3:
+                cards[str(c[0])] = [c[1], c[2]]
+        def deck(d):
+            d = d if isinstance(d, dict) else {}
+            lib = [str((x or {}).get("id") or "") for x in (d.get("cardLibrary") or []) if isinstance(x, dict)][:120]
+            return {"name": str(d.get("deckName") or "")[:60], "warlord": str((d.get("deckWarlord") or {}).get("id") or "")[:64],
+                    "defence": str(d.get("defensiveCard") or "")[:64], "cards": lib}
+        rows = []
+        for key, side in (("playerLog", "own"), ("enemyLog", "enemy")):
+            for a in (rec.get(key) or [])[:3000]:
+                if not isinstance(a, dict):
+                    continue
+                t = a.get("typ")
+                rows.append({"side": side, "t": a.get("ts") if isinstance(a.get("ts"), (int, float)) else 0,
+                             "n": a.get("num") if isinstance(a.get("num"), int) else 0,
+                             "a": self.ACTION_NAMES.get(t, str(t)), "card": a.get("act") if isinstance(a.get("act"), int) else None,
+                             "target": a.get("tget") if a.get("tgtd") and isinstance(a.get("tget"), int) else None,
+                             "pos": a.get("pos") if isinstance(a.get("pos"), int) else None})
+        rows.sort(key=lambda r: (r["t"], r["side"] != ("own" if rec.get("first") else "enemy"), r["n"]))
+        rules = kept.get("revivalRules") if isinstance(kept.get("revivalRules"), dict) else {}
+        return {"info": info, "event": str(rules.get("event") or ""), "first": bool(rec.get("first")),
+                "own": deck(rec.get("playerData")), "enemy": deck(rec.get("oppData")),
+                "ownMulligan": len(rec.get("playerMulligan") or []), "enemyMulligan": len(rec.get("enemyMulligan") or []),
+                "cards": cards, "rows": rows[:6000], "named": bool(cards)}
+
+    def api_Revival_CreatorMatches(self, req, headers):
+        """Game Data > Replays: the linked game player's battle log, newest first, with which matches have a recording
+        on the server (and their replay code, if one was made)."""
+        me = self._creator_account(req)
+        if not me or self._creator_perms(me)["access"] == "banned":
+            return err("NotAuthorized", "sign in first")
+        pfid = me.get("player")
+        if not pfid:
+            return ok({"matches": [], "linked": False})
+        player = self.store.load(pfid) or {}
+        codes = {d.get("recordingIndex"): self._code_show(c) for c, d in self._codes_all().items() if d.get("owner") == pfid}
+        out = []
+        for e in reversed(self._battle_log(player)):
+            index = str(e.get("recordingIndex") or "")
+            path = os.path.join(self._replay_dir(pfid), index + ".json") if self.RECORD_NAME.fullmatch(index) else ""
+            played = ""
+            if path and os.path.isfile(path):
+                played = datetime.fromtimestamp(os.stat(path).st_mtime, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            won, lost = e.get("matchWin") is True, e.get("matchLose") is True
+            out.append({"index": index, "recording": bool(played), "played": played, "code": codes.get(index, ""),
+                        "ownName": str(e.get("ownName") or "")[:40], "enemyName": str(e.get("enemyName") or "")[:40],
+                        "ownHero": str(e.get("ownHeroName") or "")[:20], "enemyHero": str(e.get("enemyHeroName") or "")[:20],
+                        "result": "won" if won else "lost" if lost else "draw", "matchType": e.get("matchType"),
+                        "pinned": bool(e.get("pinned"))})
+        return ok({"matches": out, "linked": True})
+
+    def api_Revival_CreatorReplayView(self, req, headers):
+        """{"recordingIndex"} of one of your own matches, or {"code"} of any replay code -> the match as text."""
+        me = self._creator_account(req)
+        if not me or self._creator_perms(me)["access"] == "banned":
+            return err("NotAuthorized", "sign in first")
+        if not self._allow("replayview", me.get("name") or "?", 300, 3600):
+            return err("TooManyAttempts", "too many replays opened - try again later", 1199, 429)
+        if req.get("code"):
+            code = self._code_norm(req.get("code"))
+            d = self._code_load(code) if code else None
+            if not d or not isinstance(d.get("kept"), dict):
+                return err("NotFound", "no replay has that code")
+            return ok(self._replay_view(d["kept"], self._code_public(code, d)))
+        pfid = me.get("player")
+        index = str(req.get("recordingIndex") or "")
+        if not pfid or not self.RECORD_NAME.fullmatch(index):
+            return err("NotFound", "no such match")
+        player = self.store.load(pfid) or {}
+        e = next((x for x in self._battle_log(player) if str(x.get("recordingIndex")) == index), None)
+        if e is None:
+            return err("NotFound", "that match is no longer in your history")
+        try:
+            with open(os.path.join(self._replay_dir(pfid), index + ".json"), encoding="utf-8") as f:
+                kept = json.load(f)
+        except (OSError, ValueError):
+            return err("NotFound", "this match has no recording on the server")
+        if not isinstance(kept, dict):
+            return err("NotFound", "this match has no recording on the server")
+        won, lost = e.get("matchWin") is True, e.get("matchLose") is True
+        info = {"ownName": str(e.get("ownName") or "")[:40], "enemyName": str(e.get("enemyName") or "")[:40],
+                "ownHero": str(e.get("ownHeroName") or "")[:20], "enemyHero": str(e.get("enemyHeroName") or "")[:20],
+                "result": "won" if won else "lost" if lost else "draw", "matchType": e.get("matchType")}
+        return ok(self._replay_view(kept, info))
 
     def api_Revival_CreatorReplayCodeRemove(self, req, headers):
         """{"code"}: the owner (through the linked game player) or an admin takes a code back."""

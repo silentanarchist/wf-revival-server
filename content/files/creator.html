@@ -248,6 +248,8 @@
   .deck table { border-collapse: collapse; margin-top: 8px; width: 100%; font-size: 14px; }
   .deck td { padding: 2px 8px 2px 0; } .deck td.n { width: 2.5em; color: var(--dim); font-variant-numeric: tabular-nums; }
   .deck h4 { margin: 10px 0 2px; font-size: 13px; color: var(--dim); font-weight: 600; }
+  #r_viewer h4 { margin: 14px 0 4px; font-size: 14px; color: var(--accent, #d4a645); }
+  ul.replayTurn { margin: 0; padding-left: 18px; } ul.replayTurn li { margin: 2px 0; }
   .profile { max-width: 640px; } .profile input { width: 100%; max-width: 320px; }
   .hidden { display: none !important; }
 </style>
@@ -297,7 +299,7 @@
 <div id="tabs" class="hidden">
 <nav id="mainTabs">
   <a id="tabCreator" href="/creator">Card Creator</a>
-  <a id="tabDecks" href="/decks" class="hidden">Decks</a>
+  <a id="tabGameData" href="/decks" class="hidden">Game Data</a>
   <a id="tabAdmin" href="/people" class="hidden">Admin</a>
   <a id="tabGuides" href="/guides">Guides</a>
   <a id="tabBugs" href="/bugs" class="hidden">Bugs</a>
@@ -311,6 +313,10 @@
   <a id="tabList" href="/review" class="hidden">Review queue</a>
   <a id="tabUnreleased" href="/unreleased" class="hidden">Unreleased cards</a>
   <a id="tabServer" href="/server" class="hidden">Server</a>
+</nav>
+<nav id="gameTabs" class="sub hidden">
+  <a id="tabDecks" href="/decks">Decks</a>
+  <a id="tabReplays" href="/replays">Replays</a>
 </nav>
 <nav id="guideTabs" class="sub hidden">
   <a id="tabGuideHome" href="/guides">Which guide?</a>
@@ -483,6 +489,31 @@
     </section>
   </div>
 
+  <div id="viewReplays" class="hidden profile">
+    <p id="r_unlinked" class="note hidden">Your matches show here once this account is linked to your game: open the game, go to Settings &gt; Account, and sign in with this username and password. You can still look up a replay code below.</p>
+    <section id="r_viewerBox" class="hidden">
+      <div class="row" style="justify-content:space-between; align-items:center"><h2 id="r_title" style="margin:0">Replay</h2><button type="button" class="small" id="r_close">Close</button></div>
+      <div id="r_viewer"></div>
+    </section>
+    <section id="r_matches">
+      <h2>Your matches</h2>
+      <p class="hint">The matches in your game's battle log. <strong>View as text</strong> lists who played what, turn by turn, from the match's recording on the server (the game itself shows it as a replay). Card names come from your own game's card export (Profile &gt; Card art and text from your game); without it, cards show by their id.</p>
+      <div class="list" id="r_matchList"></div>
+    </section>
+    <section id="p_replays">
+      <h2>Your replay codes</h2>
+      <p class="hint">A replay code lets anyone watch one of your matches. In the game, open your <strong>Profile</strong>'s battle log and press <strong>CODE</strong> next to a match: the code is copied, ready to paste into Discord or a message. To watch one, copy the code and press <strong>Watch a replay code</strong> in the game under <strong>Settings &gt; Mod</strong>. A code keeps working after the match leaves your battle log, until you remove it here. A match can only have a code while its recording is on the server.</p>
+      <div class="list" id="replayCodeList"></div>
+      <h2 style="margin-top:18px">Look up a code</h2>
+      <div class="row" style="align-items:center; gap:10px">
+        <input id="replayCodeQuery" maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
+        <button type="button" class="small" id="replayCodeFind">Look up</button>
+        <button type="button" class="small" id="replayCodeView">View as text</button>
+      </div>
+      <div id="replayCodeFound" style="margin-top:8px"></div>
+    </section>
+  </div>
+
   <div id="viewProfile" class="hidden profile">
     <p id="p_waiting" class="note hidden"><strong>Your account is waiting for an admin to approve it.</strong> Until then you can read the guides and look after your account here (username, password, recovery code). The game and the Card Creator open once it is approved: sign in to the game then with this username and password.</p>
     <section>
@@ -520,17 +551,6 @@
         <button type="button" id="p_recRemove" class="hidden">Remove recovery code</button>
       </form>
       <div id="p_recShow" class="box hidden" style="margin-top:10px; border-color:var(--ok)">Your recovery code: <code id="p_recCode" style="font-size:1.2em; user-select:all"></code><br><span class="hint">It has also been downloaded. It will not be shown again.</span></div>
-    </section>
-    <section id="p_replays">
-      <h2>Replay codes</h2>
-      <p class="hint">A replay code lets anyone watch one of your matches. In the game, open your <strong>Profile</strong>'s battle log and press <strong>CODE</strong> next to a match: the code is copied, ready to paste into Discord or a message. To watch one, copy the code and press <strong>Watch a replay code</strong> in the game under <strong>Settings &gt; Mod</strong>. A code keeps working after the match leaves your battle log, until you remove it here. A match can only have a code while its recording is on the server.</p>
-      <div class="list" id="replayCodeList"></div>
-      <h2 style="margin-top:18px">Look up a code</h2>
-      <div class="row" style="align-items:center; gap:10px">
-        <input id="replayCodeQuery" maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
-        <button type="button" class="small" id="replayCodeFind">Look up</button>
-      </div>
-      <div id="replayCodeFound" style="margin-top:8px"></div>
     </section>
     <section id="p_cardArt" class="localArt">
       <h2>Card art and text from your game</h2>
@@ -2497,7 +2517,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", GuideCardArt: "/guides/card-art", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile", Decks: "/decks" };
+const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", GuideCardArt: "/guides/card-art", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile", Decks: "/decks", Replays: "/replays" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -2869,14 +2889,14 @@ function loadOfficial(c, design) {
 let account = null;
 function drawProfile() {
   $("p_waiting").classList.toggle("hidden", !limited);
-  for (const id of ["p_game", "p_replays", "p_cardArt"]) $(id).classList.toggle("hidden", limited);
+  for (const id of ["p_game", "p_cardArt"]) $(id).classList.toggle("hidden", limited);
   drawDiscord();
   if (limited) { drawRecovery(); return; }
   const linked = account && account.player;
   $("p_link").textContent = linked ? `Linked to game player ${account.playerName}.` : "Not linked to a game account. To link, open the game and go to Settings > Account, then enter this username and password.";
   $("p_gameLogin").classList.toggle("hidden", !linked);
   if (account && !$("viewDecks").classList.contains("hidden")) drawDecksPage();
-  if (!$("viewProfile").classList.contains("hidden")) loadReplayCodes();
+  if (account && !$("viewReplays").classList.contains("hidden")) drawReplaysPage();
   drawRecovery();
   $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
 }
@@ -3218,6 +3238,98 @@ async function findReplayCode() {
   } catch (e) { out.append(el("p", { class: "hint", text: sentence(e) })); }
 }
 $("replayCodeFind").onclick = findReplayCode;
+$("replayCodeView").onclick = () => { const c = val("replayCodeQuery").trim(); if (c) openReplay({ code: c }); };
+$("r_close").onclick = () => { $("r_viewerBox").classList.add("hidden"); if (location.search) history.replaceState(null, "", "/replays"); };
+
+// Game Data > Replays: your battle log, your replay codes, and a match as text.
+let matchAsk = 0;
+function drawReplaysPage() {
+  if (!account) { loadList(); return; }
+  const linked = !!account.player;
+  $("r_unlinked").classList.toggle("hidden", linked);
+  $("r_matches").classList.toggle("hidden", !linked);
+  if (linked) loadMatches();
+  loadReplayCodes();
+  const q = new URLSearchParams(location.search).get("code");         // /replays?code=K7M2-QX9P opens that replay
+  if (q && $("r_viewerBox").classList.contains("hidden")) openReplay({ code: q });
+}
+async function loadMatches() {
+  const ask = ++matchAsk, box = $("r_matchList");
+  try {
+    const d = await call("CreatorMatches");
+    if (ask !== matchAsk) return;
+    box.textContent = "";
+    if (!d.matches.length) return box.append(el("p", { class: "hint", text: "No matches in your battle log yet." }));
+    for (const m of d.matches) {
+      box.append(el("div", { class: "box" }, el("span", { text: replayLine(m) }),
+        m.code ? el("code", { text: m.code, style: "margin-left:10px" }) : null,
+        el("div", { class: "row", style: "gap:8px; margin-top:6px" },
+          m.recording ? el("button", { class: "small", type: "button", text: "View as text", onclick: () => openReplay({ recordingIndex: m.index }) })
+                      : el("span", { class: "hint", text: "No recording on the server for this match." }))));
+    }
+  } catch (e) { if (ask === matchAsk) { box.textContent = ""; box.append(el("p", { class: "hint", text: sentence(e) })); } }
+}
+const REPLAY_WORDS = {
+  playCardFromHand: (c, t) => `played ${c}` + (t ? ` on ${t}` : ""),
+  attack: (c, t) => `${c} attacked ${t || "?"}`,
+  endTurn: () => "ended the turn",
+  playHeroPower: (c, t) => "used the warlord's power" + (t ? ` on ${t}` : ""),
+  playActiveAbility: (c, t) => `used ${c}'s ability` + (t ? ` on ${t}` : ""),
+  mulligan: () => "swapped cards (mulligan)",
+  resign: () => "conceded",
+  chatMessage: () => "sent an emote",
+  remotePlayerAction: (c, t) => `acted with ${c}` + (t ? ` on ${t}` : ""),
+};
+function replayWords(a, c, t) {
+  const f = REPLAY_WORDS[a];
+  if (f) return f(c, t);
+  const words = a.replace(/([A-Z])/g, " $1").toLowerCase();          // anything else: the game's own action name
+  return words + (c ? ` ${c}` : "") + (t ? ` → ${t}` : "");
+}
+async function openReplay(which) {
+  const box = $("r_viewer"); box.textContent = "";
+  $("r_viewerBox").classList.remove("hidden"); $("r_title").textContent = "Replay";
+  box.append(el("p", { class: "hint", text: "Loading…" }));
+  $("r_viewerBox").scrollIntoView({ block: "start" });
+  let d;
+  try { d = await call("CreatorReplayView", which); }
+  catch (e) { box.textContent = ""; return box.append(el("p", { class: "hint", text: sentence(e) })); }
+  if (which.code) history.replaceState(null, "", "/replays?code=" + encodeURIComponent(d.info.code || which.code));
+  box.textContent = "";
+  const i = d.info, ownName = i.ownName || "Player 1", enemyName = i.enemyName || "Player 2";
+  $("r_title").textContent = `${ownName} vs ${enemyName}`;
+  box.append(el("p", { text: replayLine(i) + (i.code ? ` · code ${i.code}` : "") }));
+  const num = n => {
+    if (n == null) return "";
+    const c = d.cards[String(n)];
+    if (!c) return "#" + n;
+    const name = cardName(c[0]);
+    return name === c[0] && /^[0-9a-f]{32}$/.test(c[0]) ? "a card made during the match" : name;   // the game's hidden made-up cards
+  };
+  if (!d.named) box.append(el("p", { class: "hint", text: "This recording was made before the mod sent card lists with recordings, so cards show by their in-match number." }));
+  // both decks
+  for (const [who, dk] of [[ownName, d.own], [enemyName, d.enemy]]) {
+    const counts = {};
+    for (const id of dk.cards) counts[id] = (counts[id] || 0) + 1;
+    const t = el("table");
+    for (const [id, n] of Object.entries(counts).sort((a, b) => cardName(a[0]).localeCompare(cardName(b[0])))) t.append(el("tr", {}, el("td", { class: "n", text: n + "×" }), el("td", { text: cardName(id) })));
+    box.append(el("details", { class: "deck" }, el("summary", { text: `${who}'s deck: ${dk.name || "(unnamed)"} · ${cardName(dk.warlord) || "?"} · ${dk.cards.length} cards` }), t,
+      dk.defence ? el("p", { class: "hint", text: "Defence card: " + cardName(dk.defence) }) : null));
+  }
+  box.append(el("p", { class: "hint", text: `${d.first ? ownName : enemyName} went first. Mulligan: ${ownName} swapped ${d.ownMulligan}, ${enemyName} swapped ${d.enemyMulligan}.` }));
+  // the moves, turn by turn (a turn ends with "ended the turn")
+  const mmss = t => { const s = Math.max(0, Math.round(t || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  let turn = 1, side = d.first ? "own" : "enemy", list = null;
+  const head = () => { box.append(el("h4", { text: `Turn ${turn} – ${side === "own" ? ownName : enemyName}` })); list = el("ul", { class: "replayTurn" }); box.append(list); };
+  head();
+  for (const r of d.rows) {
+    const who = r.side === "own" ? ownName : enemyName;
+    list.append(el("li", {}, el("span", { class: "hint", text: mmss(r.t) + "  " }), el("strong", { text: who }), " " + replayWords(r.a, num(r.card), r.target != null ? num(r.target) : "")));
+    if (r.a === "endTurn") { turn++; side = r.side === "own" ? "enemy" : "own"; head(); }
+  }
+  if (!list.childElementCount) list.remove(), box.lastElementChild.remove();
+  if (!d.rows.length) box.append(el("p", { class: "hint", text: "This recording has no moves." }));
+}
 $("replayCodeQuery").onkeydown = e => { if (e.key === "Enter") findReplayCode(); };
 
 async function loadDecks() {
@@ -3939,7 +4051,7 @@ async function loadList() {
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
     // an account waiting for approval: Guides and its Profile only
-    $("tabCreator").classList.toggle("hidden", limited); $("tabDecks").classList.toggle("hidden", limited); $("tabProfile").classList.toggle("hidden", !limited);
+    $("tabCreator").classList.toggle("hidden", limited); $("tabGameData").classList.toggle("hidden", limited); $("tabProfile").classList.toggle("hidden", !limited);
     if (limited) {
       gate();
       const here = pageOf(location.pathname);
@@ -3961,9 +4073,12 @@ const limitedOk = page => !!page && (page === "Profile" || page in GUIDE_SECTION
 const CREATOR_GROUP = ["Create", "Mine", "Examples", "Cards", "Keywords", "Artwork", "Rules"];
 let lastCreatorPage = "Create";
 // The Admin tab opens its own ribbon: admins see every page, reviewers only the review queue.
+// Game Data (main ribbon): your game account's decks and replays.
+const GAME_GROUP = ["Decks", "Replays"];
+let lastGamePage = "Decks";
 const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Unreleased", "Server"];
 let lastAdminPage = "";
-const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", GuideCardArt: "Guide: Card art from your game", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile", Decks: "Decks" };
+const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", GuideCardArt: "Guide: Card art from your game", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile", Decks: "Decks", Replays: "Replays" };
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
 const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu", GuideCreator: "creator", GuideCardArt: "card-art" };
@@ -4001,14 +4116,17 @@ function show(which, replace) {                // a page name from PAGES
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Decks", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Profile", "Decks", "GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Decks", "Replays", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["Profile", "Decks", "Replays", "GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   const inAdmin = ADMIN_GROUP.includes(which);
   if (inAdmin) lastAdminPage = which;
   $("tabAdmin").classList.toggle("on", inAdmin); $("adminTabs").classList.toggle("hidden", !inAdmin);
   $("tabCreator").classList.toggle("on", inCreator); $("creatorTabs").classList.toggle("hidden", !inCreator);
+  const inGame = GAME_GROUP.includes(which);
+  if (inGame) lastGamePage = which;
+  $("tabGameData").classList.toggle("on", inGame); $("gameTabs").classList.toggle("hidden", !inGame);
   const inGuides = which in GUIDE_SECTIONS;
   if (inGuides) lastGuidePage = which;
   $("viewGuides").classList.toggle("hidden", !inGuides);
@@ -4022,6 +4140,7 @@ function show(which, replace) {                // a page name from PAGES
   if (which === "Cards") showViewer();
   if (which === "Keywords") showKeywords();
   if (which === "Decks") { say(""); drawDecksPage(); }
+  if (which === "Replays") { say(""); drawReplaysPage(); }
   if (which === "Profile") { say(""); loadList(); laStart(); if (location.hash === "#card-art") setTimeout(() => $("p_cardArt").scrollIntoView({ block: "start" }), 50); }
   if (list) loadList();
   if (which === "People") loadPeople();
@@ -4118,6 +4237,7 @@ async function start() {
   $("peopleSearch").addEventListener("input", filterPeople); $("peopleShow").onchange = filterPeople;
   $("unrelQuery").addEventListener("input", drawUnreleased); $("unrelShow").onchange = drawUnreleased;
   $("tabGuides").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGuidePage); } };
+  $("tabGameData").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGamePage); } };
   $("tabGuideInstall").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastInstallGuide); } };
   for (const [name, path] of Object.entries(PAGES)) {
     const t = $("tab" + name);                     // real links: a plain click switches in place, anything else (new tab, copy link) is the browser's
