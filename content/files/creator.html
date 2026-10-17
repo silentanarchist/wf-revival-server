@@ -21,6 +21,7 @@
            border-radius: 5px; padding: 6px 8px; }
   input[type=number] { width: 72px; }
   input[type=checkbox] { width: auto; }
+  input[type=search] { -webkit-appearance: none; appearance: none; }      /* look like the other boxes (Safari rounds them) */
   textarea { width: 100%; min-height: 70px; resize: vertical; }
   select { max-width: 100%; }
   button { cursor: pointer; background: #2c313b; }
@@ -499,7 +500,7 @@
       <h2>Look up a code</h2>
       <p class="hint">Someone shared a code with you? Look it up, or read the match as text.</p>
       <div class="row" style="align-items:center; gap:10px">
-        <input id="replayCodeQuery" maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
+        <input id="replayCodeQuery" type="search" name="replayCodeQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
         <button type="button" class="small" id="replayCodeFind">Look up</button>
         <button type="button" class="small" id="replayCodeView">View as text</button>
       </div>
@@ -509,7 +510,7 @@
       <h2>Your matches</h2>
       <p class="hint">Your game's battle log, newest first, and the replay codes you made (a code keeps working after its match leaves the battle log). <strong>View as text</strong> lists who played what, turn by turn, from the recording on the server. To make a code, press <strong>CODE</strong> next to a match in the game's battle log (Profile). Card names come from your own game's card export (Profile &gt; Card art and text from your game); without it, cards show by their id.</p>
       <div class="row" style="gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px">
-        <div class="field"><label for="r_search">Opponent or warlord</label><input id="r_search" maxlength="40" spellcheck="false" placeholder="Search"></div>
+        <div class="field"><label for="r_search">Opponent or warlord</label><input id="r_search" type="search" name="r_search-find" autocomplete="off" data-lpignore="true" data-1p-ignore maxlength="40" spellcheck="false" placeholder="Search"></div>
         <div class="field"><label for="r_result">Result</label><select id="r_result"><option value="">All</option><option value="won">Won</option><option value="lost">Lost</option><option value="draw">Draw</option></select></div>
         <div class="field"><label for="r_mode">Mode</label><select id="r_mode"><option value="">All</option></select></div>
         <div class="field"><label for="r_has">Show</label><select id="r_has"><option value="">Everything</option><option value="recording">With a recording</option><option value="code">With a replay code</option></select></div>
@@ -653,7 +654,7 @@
         <div class="field"><label for="bugStatus">Status</label><select id="bugStatus"><option value="open">Open</option><option value="">All</option></select></div>
         <div class="field"><label for="bugPlatform">Platform</label><select id="bugPlatform"><option value="">All</option><option>Windows</option><option>Android</option></select></div>
         <div class="field"><label for="bugCategory">Type</label><select id="bugCategory"><option value="">All</option></select></div>
-        <div class="field grow"><label for="bugSearch">Search titles</label><input id="bugSearch" autocomplete="off"></div>
+        <div class="field grow"><label for="bugSearch">Search titles</label><input id="bugSearch" type="search" name="bugSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore></div>
         <label style="margin-bottom:8px"><input type="checkbox" id="bugMine"> Mine only</label>
       </div>
       <div class="list" id="bugList"></div>
@@ -666,7 +667,7 @@
       <h2>People <span class="hint" id="peopleTotals" style="text-transform:none; letter-spacing:0; font-family:inherit; font-weight:normal"></span></h2>
       <p class="hint">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
       <p class="hint" id="peopleHint"></p>
-      <div class="row"><div class="field grow"><label>Find an account</label><input id="peopleSearch" placeholder="account or game player name"></div>
+      <div class="row"><div class="field grow"><label>Find an account</label><input id="peopleSearch" type="search" name="peopleSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="account or game player name"></div>
         <div class="field"><label>Show</label><select id="peopleShow"><option value="">Everyone</option><option value="online">Online now</option><option value="staff">Staff (reviewers, admins, owners)</option><option value="tester">Testers</option><option value="banned">Banned</option></select></div></div>
       <p class="hint" id="peopleCount"></p>
       <div class="list" id="people"></div>
@@ -677,7 +678,7 @@
     <section>
       <h2>Unreleased cards</h2>
       <p class="hint">Cards that only exist as text in the game: names and rules text Everguild wrote but never turned into card data, so they were never playable. <strong>Unreleased</strong> ones were still being made (mostly Emperor's Children and Goff Orks); <strong>old versions</strong> are earlier wordings of cards that changed. Taken from the game's own English text. Ideas for custom cards.</p>
-      <div class="row"><div class="field grow"><label>Search</label><input id="unrelQuery" placeholder="name, rules text or army"></div>
+      <div class="row"><div class="field grow"><label>Search</label><input id="unrelQuery" type="search" name="unrelQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="name, rules text or army"></div>
         <div class="field"><label>Show</label><select id="unrelShow"><option value="">All</option><option value="Unreleased (text only)">Unreleased</option><option value="Old version (text only)">Old versions</option></select></div></div>
       <p class="hint" id="unrelCount"></p>
       <div class="unrel" id="unrelList"></div>
@@ -690,7 +691,7 @@
       <p class="hint">Accounts waiting for access, oldest first. <strong>Approve</strong> lets the account use this site and play on the game server. <strong>Decline</strong> signs it out and deletes it after 7 days, as Delete does on the People page (signing in again within those days cancels that, and the account waits here again).</p>
       <p class="hint" id="reqHint"></p>
       <div class="row">
-        <div class="field grow"><label>Find a name</label><input id="reqQuery" placeholder="part of a name"></div>
+        <div class="field grow"><label>Find a name</label><input id="reqQuery" type="search" name="reqQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="part of a name"></div>
         <button class="small" id="reqApproveAll" type="button">Approve everyone shown</button>
       </div>
       <div class="list slim" id="requests"></div>
@@ -715,7 +716,7 @@
     <section>
       <h2 id="banTitle">Banned game players</h2>
       <p class="hint" id="banHint">For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (on the People page) are listed here too; unban those there.</p>
-      <div class="row" id="banFindRow"><div class="field grow"><label>Find a player (name, friend code or id)</label><input id="banQuery" placeholder="e.g. Commander-1A2B or 1A2B-3C4D"></div><button id="banFind" type="button">Find</button></div>
+      <div class="row" id="banFindRow"><div class="field grow"><label>Find a player (name, friend code or id)</label><input id="banQuery" type="search" name="banQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="e.g. Commander-1A2B or 1A2B-3C4D"></div><button id="banFind" type="button">Find</button></div>
       <div class="list" id="banFound"></div>
       <h3>Banned now</h3>
       <div class="list" id="banList"></div>
@@ -743,7 +744,7 @@
       <p class="hint">Every official card, drawn with the game's own frame and art, with the data the game uses for it. <strong>Load in editor</strong> copies the card into the card creator as a new card, built the same way the game builds it, so you can see how it is made or start from it.</p>
       <p class="hint laNote"></p>
       <div class="row">
-        <div class="field grow"><label>Search (name, rules text or id)</label><input id="cvSearch" placeholder="e.g. Fenrisian Wolf, Rally, SW9" autocomplete="off"></div>
+        <div class="field grow"><label>Search (name, rules text or id)</label><input id="cvSearch" type="search" name="cvSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="e.g. Fenrisian Wolf, Rally, SW9"></div>
         <div class="field"><label>Faction</label><select id="cvArmy"></select></div>
         <div class="field"><label>Kind</label><select id="cvKind"></select></div>
         <div class="field"><label>Show</label><select id="cvShow">
