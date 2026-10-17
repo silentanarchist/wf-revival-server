@@ -5622,6 +5622,7 @@ class PlayFabEmulator:
             title = json.loads(other.get("UserData", {}).get("DemoData") or "{}").get("playerTitle") or ""
         except ValueError:
             title = ""
+        alliance_info, invited = self._profile_alliance(player, other)
         return {"IsPlayer": other["PlayFabId"] == player["PlayFabId"], "IsBot": False,
                 "PlayerName": other.get("DisplayName") or "", "PlayfabId": other["PlayFabId"],
                 "PlayerAvatarID": avatar, "PlayerAvatarBorderID": border, "PlayerTitleID": title,
@@ -5629,7 +5630,25 @@ class PlayFabEmulator:
                 "HighestEloSeason": 0, "HighestEloSeasonFast": 0,
                 "Logs": self._battle_log(other), "VictoryCounters": self._victory_counters(other),
                 "SeasonPositions": {}, "SeasonPositionsFast": {},
-                "HasBeenInvited": False, "CurrentSeason": 1, "PlayerLevel": 1}
+                "AllianceInfo": alliance_info, "HasBeenInvited": invited, "CurrentSeason": 1, "PlayerLevel": 1}
+
+    def _profile_alliance(self, viewer, other):
+        """For another player's profile: their alliance ({"AllianceName", "Rating"}, or None when in none) and
+        whether the viewer's alliance has an open invitation for them. The game shows "Invite to alliance" only for
+        players in no alliance, and "Cancel invitation" instead when HasBeenInvited is true."""
+        try:
+            with self.store.lock:
+                theirs = self._alliance_of(other)
+                info = {"AllianceName": theirs.get("name", ""), "Rating": int(theirs.get("rating", 0))} if theirs else None
+                invited = False
+                if other["PlayFabId"] != viewer["PlayFabId"]:
+                    mine = self._alliance_of(viewer)
+                    exp = (mine.get("invites") or {}).get(other["PlayFabId"]) if mine else None
+                    invited = bool(exp) and int(exp) > self._now_ms()
+            return info, invited
+        except Exception as e:
+            log.warning("profile alliance info for %s: %s", other.get("PlayFabId"), e)
+            return None, False
 
     def cs_GetLeaderboard(self, player, params):
         """No rankings are kept yet: every board is empty and the player's own score is 0."""
