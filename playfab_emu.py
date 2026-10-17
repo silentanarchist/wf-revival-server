@@ -1486,6 +1486,9 @@ class PlayFabEmulator:
             return err("NotAuthorized", "a chat message can only be sent as yourself", 1089, 403)
         if not self._allow("chat", sender, 8, 10):
             return err("TooManyAttempts", "slow down - too many messages", 1199, 429)
+        refusal = self._chat_alliance_refusal(channel, sender, message)
+        if refusal:
+            return err("NotAuthorized", refusal, 1089, 403)
         message = self._chat_clean(message, sender)
         with self._chat_lock:
             last = self._chat[-1]["id"] if self._chat else 0
@@ -1544,16 +1547,17 @@ class PlayFabEmulator:
         except (TypeError, ValueError):
             since = -1
         with self._chat_lock:
+            chat = self._chat_visible(me, self._chat)
             if since < 0:                                   # first request: recent history per channel
                 per, out = {}, []
-                for e in reversed(self._chat):
+                for e in reversed(chat):
                     n = per.get(e["channel"], 0)
                     if n < self.CHAT_HISTORY:
                         per[e["channel"]] = n + 1
                         out.append(e)
                 out.reverse()
             else:
-                out = [e for e in self._chat if e["id"] > since]
+                out = [e for e in chat if e["id"] > since]
             last = self._chat[-1]["id"] if self._chat else 0
             private = [{"from": m["from"], "data": m["data"]} for m in photon_emu.PRIVATE.pop(me, [])
                        if m["t"] > time.time() - self.PRIVATE_SECONDS]
@@ -5393,6 +5397,55 @@ class PlayFabEmulator:
         groups.sort(key=lambda g: -(g.get("events") or {}).get(event, 0))
         return self._alliance_list(groups)
 
+    LEFT_CHAT_MS = 10 * 60 * 1000     # a player who has just left may still send the "left" notice to the alliance chat
+
+    def _alliance_note_left(self, g, pfid):
+        now = self._now_ms()
+        left = {k: v for k, v in (g.get("left") or {}).items() if now - int(v) < self.LEFT_CHAT_MS}
+        left[pfid] = now
+        g["left"] = left
+
+    # ---- alliance chat: the game's alliance channel is named after the alliance id (16 hex characters).
+    # Only its members may read it or write to it. Membership notices are held to who may send them:
+    # promote / demote / kick / invite from Moderators and up, "left" from the player who left.
+    ALLIANCE_CHANNEL = re.compile(r"[0-9a-f]{16}")
+    CHAT_TEXT_TYPES = {50, 100, 140, 150, 160}          # message, announcement, replay / deck / reward share
+
+    def _chat_alliance_refusal(self, channel, sender, message):
+        """None when the sender may post this to the alliance channel, else the reason."""
+        if not self.ALLIANCE_CHANNEL.fullmatch(channel):
+            return None
+        try:
+            inside = json.loads(message)
+        except ValueError:
+            inside = {}
+        kind = inside.get("type") if isinstance(inside, dict) else None
+        target = str(inside.get("targetPlayerId") or "") if isinstance(inside, dict) else ""
+        with self.store.lock:
+            g = self._alliance_load(channel)
+        if not g:
+            return "that alliance does not exist"
+        role = self._alliance_role(g, sender)
+        if kind == 30 and target in ("", sender):        # "left": sent just after leaving
+            if role >= 0 or int((g.get("left") or {}).get(sender, 0)) > self._now_ms() - self.LEFT_CHAT_MS:
+                return None
+            return "you are not in that alliance"
+        if role < 0:
+            return "you are not in that alliance"
+        if kind in (60, 70, 80, 90) and role < 1:
+            return "only Moderators and up can send that"
+        return None
+
+    def _chat_visible(self, me, entries):
+        """Messages this player may see: alliance channels only for that alliance's members."""
+        if not any(self.ALLIANCE_CHANNEL.fullmatch(e["channel"]) for e in entries):
+            return entries
+        with self.store.lock:
+            p = self.store.load(me) or {}
+            g = self._alliance_load(p.get("Alliance")) if p.get("Alliance") else None
+        mine = g["groupId"] if g and any(m["id"] == me for m in g.get("members", [])) else None
+        return [e for e in entries if not self.ALLIANCE_CHANNEL.fullmatch(e["channel"]) or e["channel"] == mine]
+
     def cs_ExitCurrentGroup(self, player, params):
         self._alliance_args("ExitCurrentGroup", params)
         with self.store.lock:
@@ -5402,6 +5455,7 @@ class PlayFabEmulator:
             pfid = player["PlayFabId"]
             g["members"] = [m for m in g["members"] if m["id"] != pfid]
             self._alliance_link(pfid, None)
+            self._alliance_note_left(g, pfid)
             if not g["members"]:
                 self._alliance_delete(g["groupId"])
                 log.info("alliances: '%s' (%s) closed: its last member left", g["name"], g["groupId"])
