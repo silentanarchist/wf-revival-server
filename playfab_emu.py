@@ -5563,6 +5563,36 @@ class PlayFabEmulator:
             self._alliance_save(g)
             return {}
 
+    def api_Revival_AllianceInvite(self, req, headers):
+        """The mod's "invite by friend code" box on the alliance page: {"code": friend code, name or id} ->
+        {"name": who was invited}, or an error saying why not (the same rules as the game's own invite)."""
+        me = self.store.session_player_id(headers)
+        if not me:
+            return err("NotAuthenticated", "sign in first", 1074, 401)
+        player = self.store.load(me)
+        if not player:
+            return err("NotAuthenticated", "sign in first", 1074, 401)
+        if not self._allow("alliance-invite", me, 20, 60):
+            return err("TooManyRequests", "too many invitations; wait a moment", 1199, 429)
+        code = str(req.get("code") or "").strip()[:64]
+        other = self._find_player(code) if code else None
+        if not other:
+            return err("InvalidParams", "No player with that friend code")
+        if other["PlayFabId"] == me:
+            return err("InvalidParams", "That is your own friend code")
+        with self.store.lock:
+            theirs = self._alliance_of(other)
+            mine = self._alliance_of(player)
+        if theirs and mine and theirs["groupId"] == mine["groupId"]:
+            return err("NotAllowed", "%s is already in your alliance" % (other.get("DisplayName") or "That player"))
+        if theirs:
+            return err("NotAllowed", "%s is already in an alliance" % (other.get("DisplayName") or "That player"))
+        r = self.cs_InvitePlayerToGroup(player, {"PlayerId": other["PlayFabId"]})
+        if isinstance(r, dict) and r.get("error"):
+            return err("NotAllowed", r["error"])
+        log.info("alliances: %s invited %s by friend code", me, other["PlayFabId"])
+        return ok({"name": other.get("DisplayName") or ""})
+
     def cs_CancelPlayerInvitationToGroup(self, player, params):
         a = self._alliance_args("CancelPlayerInvitationToGroup", params)
         target = str(self._arg(a, "PlayerId", "playerId", "targetPlayerId", "value", default="") or "")
