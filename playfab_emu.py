@@ -5768,7 +5768,24 @@ class PlayFabEmulator:
                 out[k] = self._deck_list(player["UserData"][k])
         if "VictoryCounters" in player.get("UserData", {}) and "VictoryCounters" not in out:
             out["VictoryCounters"] = player["UserData"]["VictoryCounters"]
+        member = self._alliance_group_player(player)
+        if member is not None:
+            out["groupPlayer"] = member
         return out
+
+    def _alliance_group_player(self, player):
+        """The player's alliance membership as the game reads it at sign-in (player data "groupPlayer", a
+        GroupMember): AlliancesManager.BuildCurrentMember takes the alliance id from it and only then asks for
+        the current alliance (FetchCurrentGroup). Built from the alliance file each time, so it is never stale;
+        None when the player is in no alliance."""
+        try:
+            gid = player.get("Alliance")
+            g = self._alliance_load(gid) if gid else None
+            m = next((m for m in (g or {}).get("members", []) if m["id"] == player.get("PlayFabId")), None)
+            return json.dumps(self._alliance_member_view(g, m), separators=(",", ":")) if m else None
+        except Exception:
+            log.exception("alliances: could not build groupPlayer")
+            return None
 
     def _userdata(self, player):
         out = dict(player.get("UserData") or {})
@@ -5777,6 +5794,10 @@ class PlayFabEmulator:
         for k in self.SERVER_OWNED_KEYS:
             if k in out:
                 out[k] = self._deck_list(out[k])
+        if "groupPlayer" not in out:                     # also here, in case the game reads it from user data
+            member = self._alliance_group_player(player)
+            if member is not None:
+                out["groupPlayer"] = member
         return out
 
     @staticmethod
