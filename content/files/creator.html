@@ -2796,6 +2796,17 @@ function drawViewerList() {
     it.dataset.id = c.id; list.append(it);
   }
 }
+// The game only opens a card's "choose one of these" window when its target group is set
+// (CardScript.NeedsToChooseFromPool). 150 official cards carry a window with no group but a leftover faction
+// (nearly always Ultramarines, the first faction in the game's list: the developers' blank), which the game
+// never reads. The viewer leaves that out so it does not look like a rule of the card. (The creator design
+// already omits it, and "Load in editor" uses the design, so official cards still rebuild exactly.)
+function shownGameData(data) {
+  const cd = data && data.choicesDefinition;
+  if (!cd || cd.targetsAffected) return data;
+  const out = Object.assign({}, data); delete out.choicesDefinition;
+  return out;
+}
 async function viewCard(id) {
   cvPick = id; const mine = ++cvAsk;
   for (const it of $("cvList").children) it.classList.toggle("on", it.dataset.id === id);
@@ -2826,7 +2837,7 @@ async function viewCard(id) {
       el("div", { class: "row", style: "margin-top:12px" },
         el("button", { class: "primary", text: "Load in editor", onclick: () => loadOfficial(c, d.design) })))),
     el("details", { open: true }, el("summary", { text: "The data the game uses (from the game's card file; empty fields left out, numbers with their names)" }),
-      el("pre", { text: JSON.stringify(d.data, null, 1) })),
+      el("pre", { text: JSON.stringify(shownGameData(d.data), null, 1) })),
     el("details", {}, el("summary", { text: "The card as a creator design (what Load in editor fills in)" }), el("pre", { text: JSON.stringify(d.design, null, 1) })));
 }
 function loadOfficial(c, design) {
