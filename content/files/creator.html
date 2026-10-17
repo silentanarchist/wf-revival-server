@@ -497,14 +497,19 @@
     </section>
     <section id="r_matches">
       <h2>Your matches</h2>
-      <p class="hint">The matches in your game's battle log. <strong>View as text</strong> lists who played what, turn by turn, from the match's recording on the server (the game itself shows it as a replay). Card names come from your own game's card export (Profile &gt; Card art and text from your game); without it, cards show by their id.</p>
+      <p class="hint">Your game's battle log, newest first, and the replay codes you made (a code keeps working after its match leaves the battle log). <strong>View as text</strong> lists who played what, turn by turn, from the recording on the server. To make a code, press <strong>CODE</strong> next to a match in the game's battle log (Profile). Card names come from your own game's card export (Profile &gt; Card art and text from your game); without it, cards show by their id.</p>
+      <div class="row" style="gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px">
+        <div class="field"><label for="r_search">Opponent or warlord</label><input id="r_search" maxlength="40" spellcheck="false" placeholder="Search"></div>
+        <div class="field"><label for="r_result">Result</label><select id="r_result"><option value="">All</option><option value="won">Won</option><option value="lost">Lost</option><option value="draw">Draw</option></select></div>
+        <div class="field"><label for="r_mode">Mode</label><select id="r_mode"><option value="">All</option></select></div>
+        <div class="field"><label for="r_has">Show</label><select id="r_has"><option value="">Everything</option><option value="recording">With a recording</option><option value="code">With a replay code</option></select></div>
+        <div class="field"><label for="r_sort">Sort</label><select id="r_sort"><option value="new">Newest first</option><option value="old">Oldest first</option></select></div>
+      </div>
       <div class="list" id="r_matchList"></div>
     </section>
     <section id="p_replays">
-      <h2>Your replay codes</h2>
-      <p class="hint">A replay code lets anyone watch one of your matches. In the game, open your <strong>Profile</strong>'s battle log and press <strong>CODE</strong> next to a match: the code is copied, ready to paste into Discord or a message. To watch one, copy the code and press <strong>Watch a replay code</strong> in the game under <strong>Settings &gt; Mod</strong>. A code keeps working after the match leaves your battle log, until you remove it here. A match can only have a code while its recording is on the server.</p>
-      <div class="list" id="replayCodeList"></div>
-      <h2 style="margin-top:18px">Look up a code</h2>
+      <h2>Look up a code</h2>
+      <p class="hint">Someone shared a code with you? Look it up, or read the match as text.</p>
       <div class="row" style="align-items:center; gap:10px">
         <input id="replayCodeQuery" maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
         <button type="button" class="small" id="replayCodeFind">Look up</button>
@@ -3199,33 +3204,12 @@ function drawDecks() {
   }
 }
 // Profile: replay codes of the linked game player (made in the game's battle log), and a look-up for any code.
-const MATCH_KINDS = { 170: "Classic", 200: "Skirmish", 10: "Ranked", 110: "Draft", 80: "Event or challenge", 90: "Practice" };
-let replayAsk = 0;
+const MATCH_KINDS = { 170: "Classic", 200: "Skirmish", 10: "Ranked", 110: "Draft", 80: "Event or challenge", 90: "Practice", 20: "Against the AI" };
 function replayLine(c) {
   const result = { won: "won", lost: "lost", draw: "drew" }[c.result] || "played";
   const who = `${c.ownName || "?"} (${cardName(c.ownHero || "") || "?"}) ${result} against ${c.enemyName || "?"} (${cardName(c.enemyHero || "") || "?"})`;
   const when = (c.played || c.created || "").slice(0, 10);
   return `${who}${MATCH_KINDS[c.matchType] ? " · " + MATCH_KINDS[c.matchType] : ""}${when ? " · " + when : ""}`;
-}
-function drawReplayCodes(d) {
-  const list = $("replayCodeList"); list.textContent = "";
-  if (!d.linked) { list.append(el("p", { class: "hint", text: "Link your game account (in the game: Settings > Account) to see the codes you made." })); return; }
-  if (!d.codes.length) { list.append(el("p", { class: "hint", text: "You have not made any replay codes yet." })); return; }
-  for (const c of d.codes) {
-    const copy = el("button", { class: "small", type: "button", text: "Copy code", onclick: async e => {
-      try { await navigator.clipboard.writeText(c.code); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work: select the code and copy it by hand.", "bad"); } } });
-    const remove = el("button", { class: "small", type: "button", text: "Remove", onclick: async () => {
-      if (!confirm(`Remove replay code ${c.code}? Anyone who has it will no longer be able to watch this match.`)) return;
-      try { await call("CreatorReplayCodeRemove", { code: c.code }); say(`Replay code ${c.code} removed.`, "ok"); loadReplayCodes(); } catch (e) { say(sentence(e), "bad"); } } });
-    list.append(el("div", { class: "box" }, el("code", { text: c.code, style: "font-size:1.15em; user-select:all; margin-right:10px" }),
-      el("span", { text: replayLine(c) }), el("div", { class: "row", style: "gap:8px; margin-top:6px" }, copy, remove)));
-  }
-  if (d.codes.length >= (d.max || 200)) list.append(el("p", { class: "hint", text: `That is the most codes one player can have (${d.max}); remove one to make another.` }));
-}
-async function loadReplayCodes() {
-  const ask = ++replayAsk;
-  try { const d = await call("CreatorReplayCodes"); if (ask === replayAsk) drawReplayCodes(d); }
-  catch (e) { if (ask !== replayAsk) return; $("replayCodeList").textContent = ""; $("replayCodeList").append(el("p", { class: "hint", text: sentence(e) })); }
 }
 async function findReplayCode() {
   const out = $("replayCodeFound"); out.textContent = "";
@@ -3249,26 +3233,54 @@ function drawReplaysPage() {
   $("r_unlinked").classList.toggle("hidden", linked);
   $("r_matches").classList.toggle("hidden", !linked);
   if (linked) loadMatches();
-  loadReplayCodes();
   const q = new URLSearchParams(location.search).get("code");         // /replays?code=K7M2-QX9P opens that replay
   if (q && $("r_viewerBox").classList.contains("hidden")) openReplay({ code: q });
 }
+let matches = [];
 async function loadMatches() {
   const ask = ++matchAsk, box = $("r_matchList");
   try {
     const d = await call("CreatorMatches");
     if (ask !== matchAsk) return;
-    box.textContent = "";
-    if (!d.matches.length) return box.append(el("p", { class: "hint", text: "No matches in your battle log yet." }));
-    for (const m of d.matches) {
-      box.append(el("div", { class: "box" }, el("span", { text: replayLine(m) }),
-        m.code ? el("code", { text: m.code, style: "margin-left:10px" }) : null,
-        el("div", { class: "row", style: "gap:8px; margin-top:6px" },
-          m.recording ? el("button", { class: "small", type: "button", text: "View as text", onclick: () => openReplay({ recordingIndex: m.index }) })
-                      : el("span", { class: "hint", text: "No recording on the server for this match." }))));
-    }
+    matches = d.matches.map((m, i) => Object.assign(m, { order: i }));     // the server's order is newest first
+    const modes = [...new Set(matches.map(m => m.matchType).filter(t => t != null))];
+    const sel = $("r_mode"), keep = sel.value;
+    sel.textContent = ""; sel.append(el("option", { value: "", text: "All" }));
+    for (const t of modes) sel.append(el("option", { value: String(t), text: MATCH_KINDS[t] || "Mode " + t }));
+    sel.value = modes.map(String).includes(keep) ? keep : "";
+    drawMatches();
   } catch (e) { if (ask === matchAsk) { box.textContent = ""; box.append(el("p", { class: "hint", text: sentence(e) })); } }
 }
+function drawMatches() {
+  const box = $("r_matchList"); box.textContent = "";
+  if (!matches.length) return box.append(el("p", { class: "hint", text: "No matches in your battle log yet." }));
+  const q = val("r_search").trim().toLowerCase(), result = val("r_result"), mode = val("r_mode"), has = val("r_has");
+  let list = matches.filter(m => (!result || m.result === result) && (!mode || String(m.matchType) === mode)
+    && (!has || (has === "code" ? !!m.code : m.recording))
+    && (!q || [m.enemyName, m.ownName, cardName(m.ownHero || ""), cardName(m.enemyHero || ""), m.code].join(" ").toLowerCase().includes(q)));
+  if (val("r_sort") === "old") list = list.slice().reverse();
+  if (!list.length) return box.append(el("p", { class: "hint", text: "No match fits these filters." }));
+  for (const m of list) {
+    const acts = el("div", { class: "row", style: "gap:8px; margin-top:6px; align-items:center" });
+    if (m.recording || m.code) acts.append(el("button", { class: "small", type: "button", text: "View as text", onclick: () => openReplay(m.recording ? { recordingIndex: m.index } : { code: m.code }) }));
+    else acts.append(el("span", { class: "hint", text: "No recording on the server for this match." }));
+    if (m.code) {
+      acts.append(el("code", { text: m.code, style: "font-size:1.05em; user-select:all; margin-left:6px" }),
+        el("button", { class: "small", type: "button", text: "Copy code", onclick: async e => {
+          try { await navigator.clipboard.writeText(m.code); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work: select the code and copy it by hand.", "bad"); } } }),
+        el("button", { class: "small", type: "button", text: "Copy link", title: "A link that opens this match as text on this site", onclick: async e => {
+          try { await navigator.clipboard.writeText(location.origin + "/replays?code=" + m.code); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work.", "bad"); } } }),
+        el("button", { class: "small", type: "button", text: "Remove code", onclick: async () => {
+          if (!confirm(`Remove replay code ${m.code}? Anyone who has it will no longer be able to watch this match.`)) return;
+          try { await call("CreatorReplayCodeRemove", { code: m.code }); say(`Replay code ${m.code} removed.`, "ok"); loadMatches(); } catch (e) { say(sentence(e), "bad"); } } }));
+    }
+    box.append(el("div", { class: "box" }, el("span", { text: replayLine(m) }),
+      m.codeOnly ? el("span", { class: "hint", text: " · no longer in your battle log" }) : null,
+      m.pinned ? el("span", { class: "hint", text: " · pinned" }) : null, acts));
+  }
+}
+for (const id of ["r_result", "r_mode", "r_has", "r_sort"]) $(id).onchange = drawMatches;
+$("r_search").addEventListener("input", drawMatches);
 const REPLAY_WORDS = {
   playCardFromHand: (c, t) => `played ${c}` + (t ? ` on ${t}` : ""),
   attack: (c, t) => `${c} attacked ${t || "?"}`,

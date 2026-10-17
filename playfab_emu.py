@@ -6771,7 +6771,7 @@ class PlayFabEmulator:
 
     def api_Revival_CreatorMatches(self, req, headers):
         """Game Data > Replays: the linked game player's battle log, newest first, with which matches have a recording
-        on the server (and their replay code, if one was made)."""
+        on the server and their replay code, then the player's replay codes whose match has left the battle log."""
         me = self._creator_account(req)
         if not me or self._creator_perms(me)["access"] == "banned":
             return err("NotAuthorized", "sign in first")
@@ -6779,9 +6779,11 @@ class PlayFabEmulator:
         if not pfid:
             return ok({"matches": [], "linked": False})
         player = self.store.load(pfid) or {}
-        codes = {d.get("recordingIndex"): self._code_show(c) for c, d in self._codes_all().items() if d.get("owner") == pfid}
+        mine = {c: d for c, d in self._codes_all().items() if d.get("owner") == pfid}
+        codes = {d.get("recordingIndex"): self._code_show(c) for c, d in mine.items()}
         out = []
-        for e in reversed(self._battle_log(player)):
+        history = self._battle_log(player)
+        for e in reversed(history):
             index = str(e.get("recordingIndex") or "")
             path = os.path.join(self._replay_dir(pfid), index + ".json") if self.RECORD_NAME.fullmatch(index) else ""
             played = ""
@@ -6793,7 +6795,12 @@ class PlayFabEmulator:
                         "ownHero": str(e.get("ownHeroName") or "")[:20], "enemyHero": str(e.get("enemyHeroName") or "")[:20],
                         "result": "won" if won else "lost" if lost else "draw", "matchType": e.get("matchType"),
                         "pinned": bool(e.get("pinned"))})
-        return ok({"matches": out, "linked": True})
+        # replay codes outlive the battle log: those whose match has left it come after, newest first
+        held = {str(e.get("recordingIndex") or "") for e in history}
+        gone = [dict(self._code_public(c, d), index="", recording=False, pinned=False, codeOnly=True)
+                for c, d in mine.items() if d.get("recordingIndex") not in held]
+        gone.sort(key=lambda m: m.get("played") or m.get("created") or "", reverse=True)
+        return ok({"matches": out + gone, "linked": True, "maxCodes": self.CODES_PER_PLAYER})
 
     def api_Revival_CreatorReplayView(self, req, headers):
         """{"recordingIndex"} of one of your own matches, or {"code"} of any replay code -> the match as text."""
