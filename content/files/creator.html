@@ -476,47 +476,47 @@
   </div>
 
   <div id="viewDecks" class="hidden profile">
-    <p id="d_unlinked" class="note hidden">Your decks show here once this account is linked to your game: open the game, go to Settings &gt; Account, and sign in with this username and password.</p>
+    <p id="d_unlinked" class="note hidden" data-t-rich="decks.unlinked">Your decks show here once this account is linked to your game: open the game, go to Settings &gt; Account, and sign in with this username and password.</p>
     <section id="p_decks" class="hidden">
-      <h2>Your decks</h2>
-      <p class="hint">The decks saved on your linked game account. <strong>Copy code</strong> or <strong>Download</strong> a deck to share it or keep a backup; anyone can import it here or in the game. These are the game's own deck codes: in the game, <strong>Import Deck</strong> on the decks screen takes a code from here, and a deck's <strong>Share</strong> button copies one you can paste below.</p>
+      <h2 data-t="decks.title">Your decks</h2>
+      <p class="hint" data-t-rich="decks.help">The decks saved on your linked game account. <strong>Copy code</strong> or <strong>Download</strong> a deck to share it or keep a backup; anyone can import it here or in the game. These are the game's own deck codes: in the game, <strong>Import Deck</strong> on the decks screen takes a code from here, and a deck's <strong>Share</strong> button copies one you can paste below.</p>
       <div class="list" id="deckList"></div>
-      <h2 style="margin-top:18px">Import a deck</h2>
-      <p class="hint">Paste a deck code, or choose a deck file. The deck is added as a new deck – nothing you already have is replaced. Decks imported here show up in the game the next time the game starts; to get one straight away, paste the code into the game's own Import Deck box instead.</p>
-      <textarea id="deckCode" rows="3" spellcheck="false" autocapitalize="none" placeholder="Paste a deck code" style="width:100%"></textarea>
+      <h2 style="margin-top:18px" data-t="decks.importTitle">Import a deck</h2>
+      <p class="hint" data-t-rich="decks.importHelp">Paste a deck code, or choose a deck file. The deck is added as a new deck – nothing you already have is replaced. Decks imported here show up in the game the next time the game starts; to get one straight away, paste the code into the game's own Import Deck box instead.</p>
+      <textarea id="deckCode" rows="3" spellcheck="false" autocapitalize="none" placeholder="Paste a deck code" data-t-placeholder="decks.pastePlaceholder" style="width:100%"></textarea>
       <div class="row" style="align-items:center; gap:10px; margin-top:8px">
-        <button type="button" id="deckImport">Import deck</button>
-        <button type="button" class="small" id="deckFileBtn">Choose a deck file…</button>
+        <button type="button" id="deckImport" data-t="decks.import">Import deck</button>
+        <button type="button" class="small" id="deckFileBtn" data-t="decks.chooseFile">Choose a deck file…</button>
         <input type="file" id="deckFile" accept=".txt,.wfdeck,text/plain" class="hidden">
       </div>
     </section>
   </div>
 
   <div id="viewReplays" class="hidden profile">
-    <p id="r_unlinked" class="note hidden">Your matches show here once this account is linked to your game: open the game, go to Settings &gt; Account, and sign in with this username and password. You can still look up a replay code below.</p>
+    <p id="r_unlinked" class="note hidden" data-t-rich="replays.unlinked">Your matches show here once this account is linked to your game: open the game, go to Settings &gt; Account, and sign in with this username and password. You can still look up a replay code below.</p>
     <section id="r_viewerBox" class="hidden">
-      <div class="row" style="justify-content:space-between; align-items:center"><h2 id="r_title" style="margin:0">Replay</h2><button type="button" class="small" id="r_close">Close</button></div>
+      <div class="row" style="justify-content:space-between; align-items:center"><h2 id="r_title" style="margin:0">Replay</h2><button type="button" class="small" id="r_close" data-t="common.close">Close</button></div>
       <div id="r_viewer"></div>
     </section>
     <section id="p_replays">
-      <h2>Look up a code</h2>
-      <p class="hint">Someone shared a code with you? Look it up, or read the match as text.</p>
+      <h2 data-t="replays.lookupTitle">Look up a code</h2>
+      <p class="hint" data-t="replays.lookupHelp">Someone shared a code with you? Look it up, or read the match as text.</p>
       <div class="row" style="align-items:center; gap:10px">
-        <input id="replayCodeQuery" type="search" name="replayCodeQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" style="max-width:14em">
-        <button type="button" class="small" id="replayCodeFind">Look up</button>
-        <button type="button" class="small" id="replayCodeView">View as text</button>
+        <input id="replayCodeQuery" type="search" name="replayCodeQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore maxlength="20" spellcheck="false" autocapitalize="characters" placeholder="e.g. K7M2-QX9P" data-t-placeholder="replays.codePlaceholder" style="max-width:14em">
+        <button type="button" class="small" id="replayCodeFind" data-t="replays.lookup">Look up</button>
+        <button type="button" class="small" id="replayCodeView" data-t="replays.viewText">View as text</button>
       </div>
       <div id="replayCodeFound" style="margin-top:8px"></div>
     </section>
     <section id="r_matches">
-      <h2>Your matches</h2>
-      <p class="hint">Your game's battle log, newest first, and the replay codes you made (a code keeps working after its match leaves the battle log). <strong>View as text</strong> lists who played what, turn by turn, from the recording on the server. To make a code, press <strong>CODE</strong> next to a match in the game's battle log (Profile). Card names come from your own game's card export (Profile &gt; Card art and text from your game); without it, cards show by their id.</p>
+      <h2 data-t="replays.matchesTitle">Your matches</h2>
+      <p class="hint" data-t-rich="replays.matchesHelp">Your game's battle log, newest first, and the replay codes you made (a code keeps working after its match leaves the battle log). <strong>View as text</strong> lists who played what, turn by turn, from the recording on the server. To make a code, press <strong>CODE</strong> next to a match in the game's battle log (Profile). Card names come from your own game's card export (Profile &gt; Card art and text from your game); without it, cards show by their id.</p>
       <div class="row" style="gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px">
-        <div class="field"><label for="r_search">Opponent or warlord</label><input id="r_search" type="search" name="r_search-find" autocomplete="off" data-lpignore="true" data-1p-ignore maxlength="40" spellcheck="false" placeholder="Search"></div>
-        <div class="field"><label for="r_result">Result</label><select id="r_result"><option value="">All</option><option value="won">Won</option><option value="lost">Lost</option><option value="draw">Draw</option></select></div>
-        <div class="field"><label for="r_mode">Mode</label><select id="r_mode"><option value="">All</option></select></div>
-        <div class="field"><label for="r_has">Show</label><select id="r_has"><option value="">Everything</option><option value="recording">With a recording</option><option value="code">With a replay code</option></select></div>
-        <div class="field"><label for="r_sort">Sort</label><select id="r_sort"><option value="new">Newest first</option><option value="old">Oldest first</option></select></div>
+        <div class="field"><label for="r_search" data-t="replays.searchLabel">Opponent or warlord</label><input id="r_search" type="search" name="r_search-find" autocomplete="off" data-lpignore="true" data-1p-ignore maxlength="40" spellcheck="false" placeholder="Search" data-t-placeholder="common.search"></div>
+        <div class="field"><label for="r_result" data-t="replays.result">Result</label><select id="r_result"><option value="" data-t="common.all">All</option><option value="won" data-t="replays.won">Won</option><option value="lost" data-t="replays.lost">Lost</option><option value="draw" data-t="replays.draw">Draw</option></select></div>
+        <div class="field"><label for="r_mode" data-t="replays.mode">Mode</label><select id="r_mode"><option value="" data-t="common.all">All</option></select></div>
+        <div class="field"><label for="r_has" data-t="replays.show">Show</label><select id="r_has"><option value="" data-t="replays.everything">Everything</option><option value="recording" data-t="replays.withRecording">With a recording</option><option value="code" data-t="replays.withCode">With a replay code</option></select></div>
+        <div class="field"><label for="r_sort" data-t="replays.sort">Sort</label><select id="r_sort"><option value="new" data-t="replays.newest">Newest first</option><option value="old" data-t="replays.oldest">Oldest first</option></select></div>
       </div>
       <div class="list" id="r_matchList"></div>
     </section>
@@ -3308,7 +3308,7 @@ function readDeckCode(text) {
       return deck;
     }
   }
-  throw new Error("that is not a deck code. Use Copy code here, or the Share button on a deck in the game");
+  throw new Error(T("decks.notACode", "that is not a deck code. Use Copy code here, or the Share button on a deck in the game"));
 }
 function deckText(d) {                            // same shape as the game's own export: notes on * lines, then the code
   const lines = [`* ${d.name} (${d.mode})`, `* Warlord: ${cardName(d.hero)}`];
@@ -3321,25 +3321,25 @@ const deckRows = d => Object.entries(d.cards || {}).sort((a, b) =>
   ((cardInfo[a[0]] || {}).cost ?? 99) - ((cardInfo[b[0]] || {}).cost ?? 99) || cardName(a[0]).localeCompare(cardName(b[0])));
 function drawDecks() {
   const box = $("deckList"); box.textContent = "";
-  if (!decks.length) return box.append(el("p", { class: "hint", text: "No decks saved yet. Build one in the game, or import one below." }));
+  if (!decks.length) return box.append(el("p", { class: "hint", text: T("decks.none", "No decks saved yet. Build one in the game, or import one below.") }));
   for (const d of decks) {
     const total = Object.values(d.cards || {}).reduce((a, b) => a + b, 0), open = openDecks.has(d.id);
     const item = el("div", { class: "deck" }, el("div", { class: "top" },
-      el("strong", { text: d.name || "(unnamed deck)" }),
-      el("span", { class: "hint", text: `${d.mode} · ${cardName(d.hero)} · ${total} cards` })),
+      el("strong", { text: d.name || T("decks.unnamed", "(unnamed deck)") }),
+      el("span", { class: "hint", text: `${modeName(d.mode)} · ${cardName(d.hero)} · ` + T("decks.cardCount", "{count} cards", { count: total }) })),
       // the buttons sit on their own row, left-aligned, the same on every deck
       el("div", { class: "acts" },
-      el("button", { class: "small", type: "button", text: open ? "Hide cards" : "Show cards", onclick: () => { open ? openDecks.delete(d.id) : openDecks.add(d.id); drawDecks(); } }),
-      el("button", { class: "small", type: "button", text: "Copy code", onclick: async () => {
-        try { await navigator.clipboard.writeText(deckCode(d)); say(`Deck code for ${d.name} copied.`, "ok"); }
-        catch (e) { $("deckCode").value = deckCode(d); $("deckCode").select(); say("Your browser did not allow copying, so the code is in the import box below – copy it from there.", "info"); }
+      el("button", { class: "small", type: "button", text: open ? T("decks.hideCards", "Hide cards") : T("decks.showCards", "Show cards"), onclick: () => { open ? openDecks.delete(d.id) : openDecks.add(d.id); drawDecks(); } }),
+      el("button", { class: "small", type: "button", text: T("decks.copyCode", "Copy code"), onclick: async () => {
+        try { await navigator.clipboard.writeText(deckCode(d)); say(T("decks.copied", "Deck code for {name} copied.", { name: d.name }), "ok"); }
+        catch (e) { $("deckCode").value = deckCode(d); $("deckCode").select(); say(T("decks.copyBlocked", "Your browser did not allow copying, so the code is in the import box below – copy it from there."), "info"); }
       } }),
-      el("button", { class: "small", type: "button", text: "Download", onclick: () => {
+      el("button", { class: "small", type: "button", text: T("decks.download", "Download"), onclick: () => {
         const a = el("a", { href: URL.createObjectURL(new Blob([deckText(d)], { type: "text/plain" })), download: (d.name || "deck").replace(/[^\w .'-]+/g, "_").trim() + ".wfdeck.txt" });
         document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       } })));
     if (open) {
-      for (const [title, kinds] of [["Troops", ["troop"]], ["Stratagems", ["tactic"]], ["Other", null]]) {
+      for (const [title, kinds] of [[T("decks.troops", "Troops"), ["troop"]], [T("decks.stratagems", "Stratagems"), ["tactic"]], [T("decks.other", "Other"), null]]) {
         const rows = deckRows(d).filter(([id]) => kinds ? kinds.includes((cardInfo[id] || {}).kind) : !cardInfo[id]);
         if (!rows.length) continue;
         item.append(el("h4", { text: `${title} (${rows.reduce((a, r) => a + r[1], 0)})` }));
@@ -3347,16 +3347,26 @@ function drawDecks() {
         for (const [id, n] of rows) t.append(el("tr", {}, el("td", { class: "n", text: n + "×" }), el("td", { text: cardName(id) }), el("td", { class: "n", text: String((cardInfo[id] || {}).cost ?? "") })));
         item.append(t);
       }
-      if (d.defenseCard) item.append(el("p", { class: "hint", text: "Defence card: " + cardName(d.defenseCard) }));
+      if (d.defenseCard) item.append(el("p", { class: "hint", text: T("decks.defenceCard", "Defence card: {card}", { card: cardName(d.defenseCard) }) }));
     }
     box.append(item);
   }
 }
 // Profile: replay codes of the linked game player (made in the game's battle log), and a look-up for any code.
-const MATCH_KINDS = { 170: "Classic", 200: "Skirmish", 10: "Ranked", 110: "Draft", 80: "Event or challenge", 90: "Practice", 20: "Against the AI" };
+const MATCH_KIND_KEYS = { 170: ["mode.classic", "Classic"], 200: ["mode.skirmish", "Skirmish"], 10: ["mode.ranked", "Ranked"], 110: ["mode.draft", "Draft"], 80: ["mode.event", "Event or challenge"], 90: ["mode.practice", "Practice"], 20: ["mode.ai", "Against the AI"] };
+const MATCH_KINDS = new Proxy({}, { get: (o, t) => { const k = MATCH_KIND_KEYS[t]; return k && T(k[0], k[1]); } });   // in the chosen language
+T("mode.classic", "Classic"); T("mode.skirmish", "Skirmish"); T("mode.ranked", "Ranked"); T("mode.draft", "Draft");      // (listed for the extractor)
+T("mode.event", "Event or challenge"); T("mode.practice", "Practice"); T("mode.ai", "Against the AI"); T("mode.customTest", "Custom Test");
+function modeName(m) {                       // a mode name the server sends in English ("Classic"...), in the chosen language
+  const k = Object.values(MATCH_KIND_KEYS).find(x => x[1] === m) || (m === "Custom Test" ? ["mode.customTest", m] : null);
+  return k ? T(k[0], k[1]) : m;
+}
 function replayLine(c) {
-  const result = { won: "won", lost: "lost", draw: "drew" }[c.result] || "played";
-  const who = `${c.ownName || "?"} (${cardName(c.ownHero || "") || "?"}) ${result} against ${c.enemyName || "?"} (${cardName(c.enemyHero || "") || "?"})`;
+  const args = { own: c.ownName || "?", ownWarlord: cardName(c.ownHero || "") || "?", enemy: c.enemyName || "?", enemyWarlord: cardName(c.enemyHero || "") || "?" };
+  const who = c.result === "won" ? T("replays.lineWon", "{own} ({ownWarlord}) won against {enemy} ({enemyWarlord})", args)
+    : c.result === "lost" ? T("replays.lineLost", "{own} ({ownWarlord}) lost against {enemy} ({enemyWarlord})", args)
+    : c.result === "draw" ? T("replays.lineDraw", "{own} ({ownWarlord}) drew against {enemy} ({enemyWarlord})", args)
+    : T("replays.linePlayed", "{own} ({ownWarlord}) played against {enemy} ({enemyWarlord})", args);
   const when = (c.played || c.created || "").slice(0, 10);
   return `${who}${MATCH_KINDS[c.matchType] ? " · " + MATCH_KINDS[c.matchType] : ""}${when ? " · " + when : ""}`;
 }
@@ -3367,7 +3377,7 @@ async function findReplayCode() {
   try {
     const c = await call("CreatorReplayCodeLookup", { code });
     out.append(el("div", { class: "box" }, el("code", { text: c.code, style: "margin-right:10px" }), el("span", { text: replayLine(c) }),
-      el("p", { class: "hint", text: `Shared by ${c.owner || "a player"}. To watch it, copy the code and press Watch a replay code in the game under Settings > Mod.` })));
+      el("p", { class: "hint", text: T("replays.sharedBy", "Shared by {name}. To watch it, copy the code and press Watch a replay code in the game under Settings > Mod.", { name: c.owner || T("replays.aPlayer", "a player") }) })));
   } catch (e) { out.append(el("p", { class: "hint", text: sentence(e) })); }
 }
 $("replayCodeFind").onclick = findReplayCode;
@@ -3394,52 +3404,52 @@ async function loadMatches() {
     matches = d.matches.map((m, i) => Object.assign(m, { order: i }));     // the server's order is newest first
     const modes = [...new Set(matches.map(m => m.matchType).filter(t => t != null))];
     const sel = $("r_mode"), keep = sel.value;
-    sel.textContent = ""; sel.append(el("option", { value: "", text: "All" }));
-    for (const t of modes) sel.append(el("option", { value: String(t), text: MATCH_KINDS[t] || "Mode " + t }));
+    sel.textContent = ""; sel.append(el("option", { value: "", text: T("common.all", "All") }));
+    for (const t of modes) sel.append(el("option", { value: String(t), text: MATCH_KINDS[t] || T("replays.modeNumber", "Mode {number}", { number: t }) }));
     sel.value = modes.map(String).includes(keep) ? keep : "";
     drawMatches();
   } catch (e) { if (ask === matchAsk) { box.textContent = ""; box.append(el("p", { class: "hint", text: sentence(e) })); } }
 }
 function drawMatches() {
   const box = $("r_matchList"); box.textContent = "";
-  if (!matches.length) return box.append(el("p", { class: "hint", text: "No matches in your battle log yet." }));
+  if (!matches.length) return box.append(el("p", { class: "hint", text: T("replays.noMatches", "No matches in your battle log yet.") }));
   const q = val("r_search").trim().toLowerCase(), result = val("r_result"), mode = val("r_mode"), has = val("r_has");
   let list = matches.filter(m => (!result || m.result === result) && (!mode || String(m.matchType) === mode)
     && (!has || (has === "code" ? !!m.code : m.recording))
     && (!q || [m.enemyName, m.ownName, cardName(m.ownHero || ""), cardName(m.enemyHero || ""), m.code].join(" ").toLowerCase().includes(q)));
   if (val("r_sort") === "old") list = list.slice().reverse();
-  if (!list.length) return box.append(el("p", { class: "hint", text: "No match fits these filters." }));
+  if (!list.length) return box.append(el("p", { class: "hint", text: T("replays.noFit", "No match fits these filters.") }));
   for (const m of list) {
     const acts = el("div", { class: "row", style: "gap:8px; margin-top:6px; align-items:center" });
-    if (m.recording || m.code) acts.append(el("button", { class: "small", type: "button", text: "View as text", onclick: () => openReplay(m.recording ? { recordingIndex: m.index } : { code: m.code }) }));
-    else acts.append(el("span", { class: "hint", text: "No recording on the server for this match." }));
+    if (m.recording || m.code) acts.append(el("button", { class: "small", type: "button", text: T("replays.viewText", "View as text"), onclick: () => openReplay(m.recording ? { recordingIndex: m.index } : { code: m.code }) }));
+    else acts.append(el("span", { class: "hint", text: T("replays.noRecording", "No recording on the server for this match.") }));
     if (m.code) {
       acts.append(el("code", { text: m.code, style: "font-size:1.05em; user-select:all; margin-left:6px" }),
-        el("button", { class: "small", type: "button", text: "Copy code", onclick: async e => {
-          try { await navigator.clipboard.writeText(m.code); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work: select the code and copy it by hand.", "bad"); } } }),
-        el("button", { class: "small", type: "button", text: "Copy link", title: "A link that opens this match as text on this site", onclick: async e => {
-          try { await navigator.clipboard.writeText(location.origin + "/replays?code=" + m.code); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work.", "bad"); } } }),
-        el("button", { class: "small", type: "button", text: "Remove code", onclick: async () => {
-          if (!confirm(`Remove replay code ${m.code}? Anyone who has it will no longer be able to watch this match.`)) return;
-          try { await call("CreatorReplayCodeRemove", { code: m.code }); say(`Replay code ${m.code} removed.`, "ok"); loadMatches(); } catch (e) { say(sentence(e), "bad"); } } }));
+        el("button", { class: "small", type: "button", text: T("decks.copyCode", "Copy code"), onclick: async e => {
+          try { await navigator.clipboard.writeText(m.code); e.target.textContent = T("common.copied", "Copied"); } catch (x) { say(T("replays.copyByHand", "Copy did not work: select the code and copy it by hand."), "bad"); } } }),
+        el("button", { class: "small", type: "button", text: T("replays.copyLink", "Copy link"), title: T("replays.copyLinkTip", "A link that opens this match as text on this site"), onclick: async e => {
+          try { await navigator.clipboard.writeText(location.origin + "/replays?code=" + m.code); e.target.textContent = T("common.copied", "Copied"); } catch (x) { say(T("replays.copyFailed", "Copy did not work."), "bad"); } } }),
+        el("button", { class: "small", type: "button", text: T("replays.removeCode", "Remove code"), onclick: async () => {
+          if (!confirm(T("replays.removeAsk", "Remove replay code {code}? Anyone who has it will no longer be able to watch this match.", { code: m.code }))) return;
+          try { await call("CreatorReplayCodeRemove", { code: m.code }); say(T("replays.removed", "Replay code {code} removed.", { code: m.code }), "ok"); loadMatches(); } catch (e) { say(sentence(e), "bad"); } } }));
     }
     box.append(el("div", { class: "box" }, el("span", { text: replayLine(m) }),
-      m.codeOnly ? el("span", { class: "hint", text: " · no longer in your battle log" }) : null,
-      m.pinned ? el("span", { class: "hint", text: " · pinned" }) : null, acts));
+      m.codeOnly ? el("span", { class: "hint", text: " · " + T("replays.notInLog", "no longer in your battle log") }) : null,
+      m.pinned ? el("span", { class: "hint", text: " · " + T("replays.pinned", "pinned") }) : null, acts));
   }
 }
 for (const id of ["r_result", "r_mode", "r_has", "r_sort"]) $(id).onchange = drawMatches;
 $("r_search").addEventListener("input", drawMatches);
 const REPLAY_WORDS = {
-  playCardFromHand: (c, t) => `played ${c}` + (t ? ` on ${t}` : ""),
-  attack: (c, t) => `${c} attacked ${t || "?"}`,
-  endTurn: () => "ended the turn",
-  playHeroPower: (c, t) => "used the warlord's power" + (t ? ` on ${t}` : ""),
-  playActiveAbility: (c, t) => `used ${c}'s ability` + (t ? ` on ${t}` : ""),
-  mulligan: () => "swapped cards (mulligan)",
-  resign: () => "conceded",
-  chatMessage: () => "sent an emote",
-  remotePlayerAction: (c, t) => `acted with ${c}` + (t ? ` on ${t}` : ""),
+  playCardFromHand: (c, t) => t ? T("replay.playedOn", "played {card} on {target}", { card: c, target: t }) : T("replay.played", "played {card}", { card: c }),
+  attack: (c, t) => T("replay.attacked", "{card} attacked {target}", { card: c, target: t || "?" }),
+  endTurn: () => T("replay.endedTurn", "ended the turn"),
+  playHeroPower: (c, t) => t ? T("replay.heroPowerOn", "used the warlord's power on {target}", { target: t }) : T("replay.heroPower", "used the warlord's power"),
+  playActiveAbility: (c, t) => t ? T("replay.abilityOn", "used the ability of {card} on {target}", { card: c, target: t }) : T("replay.ability", "used the ability of {card}", { card: c }),
+  mulligan: () => T("replay.mulligan", "swapped cards (mulligan)"),
+  resign: () => T("replay.conceded", "conceded"),
+  chatMessage: () => T("replay.emote", "sent an emote"),
+  remotePlayerAction: (c, t) => t ? T("replay.actedOn", "acted with {card} on {target}", { card: c, target: t }) : T("replay.acted", "acted with {card}", { card: c }),
 };
 function replayWords(a, c, t) {
   const f = REPLAY_WORDS[a];
@@ -3449,39 +3459,40 @@ function replayWords(a, c, t) {
 }
 async function openReplay(which) {
   const box = $("r_viewer"); box.textContent = "";
-  $("r_viewerBox").classList.remove("hidden"); $("r_title").textContent = "Replay";
-  box.append(el("p", { class: "hint", text: "Loading…" }));
+  $("r_viewerBox").classList.remove("hidden"); $("r_title").textContent = T("replays.replay", "Replay");
+  box.append(el("p", { class: "hint", text: T("common.loading", "Loading…") }));
   $("r_viewerBox").scrollIntoView({ block: "start" });
   let d;
   try { d = await call("CreatorReplayView", which); }
   catch (e) { box.textContent = ""; return box.append(el("p", { class: "hint", text: sentence(e) })); }
   if (which.code) history.replaceState(null, "", "/replays?code=" + encodeURIComponent(d.info.code || which.code));
   box.textContent = "";
-  const i = d.info, ownName = i.ownName || "Player 1", enemyName = i.enemyName || "Player 2";
-  $("r_title").textContent = `${ownName} vs ${enemyName}`;
-  box.append(el("p", { text: replayLine(i) + (i.code ? ` · code ${i.code}` : "") }));
+  const i = d.info, ownName = i.ownName || T("replays.player1", "Player 1"), enemyName = i.enemyName || T("replays.player2", "Player 2");
+  $("r_title").textContent = T("replays.versus", "{a} vs {b}", { a: ownName, b: enemyName });
+  box.append(el("p", { text: replayLine(i) + (i.code ? " · " + T("replays.codeIs", "code {code}", { code: i.code }) : "") }));
   const num = n => {
     if (n == null) return "";
     const c = d.cards[String(n)];
     if (!c) return "#" + n;
     const name = cardName(c[0]);
-    return name === c[0] && /^[0-9a-f]{32}$/.test(c[0]) ? "a card made during the match" : name;   // the game's hidden made-up cards
+    return name === c[0] && /^[0-9a-f]{32}$/.test(c[0]) ? T("replay.madeCard", "a card made during the match") : name;   // the game's hidden made-up cards
   };
-  if (!d.named) box.append(el("p", { class: "hint", text: "This recording was made before the mod sent card lists with recordings, so cards show by their in-match number." }));
+  if (!d.named) box.append(el("p", { class: "hint", text: T("replays.unnamed", "This recording was made before the mod sent card lists with recordings, so cards show by their in-match number.") }));
   // both decks
   for (const [who, dk] of [[ownName, d.own], [enemyName, d.enemy]]) {
     const counts = {};
     for (const id of dk.cards) counts[id] = (counts[id] || 0) + 1;
     const t = el("table");
     for (const [id, n] of Object.entries(counts).sort((a, b) => cardName(a[0]).localeCompare(cardName(b[0])))) t.append(el("tr", {}, el("td", { class: "n", text: n + "×" }), el("td", { text: cardName(id) })));
-    box.append(el("details", { class: "deck" }, el("summary", { text: `${who}'s deck: ${dk.name || "(unnamed)"} · ${cardName(dk.warlord) || "?"} · ${dk.cards.length} cards` }), t,
-      dk.defence ? el("p", { class: "hint", text: "Defence card: " + cardName(dk.defence) }) : null));
+    box.append(el("details", { class: "deck" }, el("summary", { text: T("replays.deckOf", "Deck of {name}: {deck}", { name: who, deck: dk.name || T("decks.unnamed", "(unnamed deck)") }) + ` · ${cardName(dk.warlord) || "?"} · ` + T("decks.cardCount", "{count} cards", { count: dk.cards.length }) }), t,
+      dk.defence ? el("p", { class: "hint", text: T("decks.defenceCard", "Defence card: {card}", { card: cardName(dk.defence) }) }) : null));
   }
-  box.append(el("p", { class: "hint", text: `${d.first ? ownName : enemyName} went first. Mulligan: ${ownName} swapped ${d.ownMulligan}, ${enemyName} swapped ${d.enemyMulligan}.` }));
+  box.append(el("p", { class: "hint", text: T("replays.wentFirst", "{name} went first.", { name: d.first ? ownName : enemyName }) + " " +
+    T("replays.mulliganLine", "Mulligan: {a} swapped {aCount}, {b} swapped {bCount}.", { a: ownName, aCount: d.ownMulligan, b: enemyName, bCount: d.enemyMulligan }) }));
   // the moves, turn by turn (a turn ends with "ended the turn")
   const mmss = t => { const s = Math.max(0, Math.round(t || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   let turn = 1, side = d.first ? "own" : "enemy", list = null;
-  const head = () => { box.append(el("h4", { text: `Turn ${turn} – ${side === "own" ? ownName : enemyName}` })); list = el("ul", { class: "replayTurn" }); box.append(list); };
+  const head = () => { box.append(el("h4", { text: T("replays.turn", "Turn {number} – {name}", { number: turn, name: side === "own" ? ownName : enemyName }) })); list = el("ul", { class: "replayTurn" }); box.append(list); };
   head();
   for (const r of d.rows) {
     const who = r.side === "own" ? ownName : enemyName;
@@ -3489,7 +3500,7 @@ async function openReplay(which) {
     if (r.a === "endTurn") { turn++; side = r.side === "own" ? "enemy" : "own"; head(); }
   }
   if (!list.childElementCount) list.remove(), box.lastElementChild.remove();
-  if (!d.rows.length) box.append(el("p", { class: "hint", text: "This recording has no moves." }));
+  if (!d.rows.length) box.append(el("p", { class: "hint", text: T("replays.noMoves", "This recording has no moves.") }));
 }
 $("replayCodeQuery").onkeydown = e => { if (e.key === "Enter") findReplayCode(); };
 
@@ -3504,8 +3515,8 @@ async function importDeck() {
   try {
     const d = await call("CreatorDeckImport", { deck });
     $("deckCode").value = ""; await loadDecks();
-    say(`${d.name} added to your ${d.mode} decks. It appears in the game the next time the game starts.`, "ok");
-  } catch (e) { say("Not imported: " + e.message + ".", "bad"); }
+    say(T("decks.imported", "{name} added to your {mode} decks. It appears in the game the next time the game starts.", { name: d.name, mode: modeName(d.mode) }), "ok");
+  } catch (e) { say(T("decks.notImported", "Not imported: {error}.", { error: e.message }), "bad"); }
 }
 // Admins: every account with its switches. Reviewer and tester are independent; admin turns everything on.
 // Ranks: founding owner > owner > admin > everyone else. An account can only be changed by someone ranked
@@ -4460,7 +4471,8 @@ function reqTab(n) {                     // Admin > Requests, with the number wa
   $("tabRequests").textContent = reqCount ? T("nav.requestsCount", "Requests ({count})", { count: reqCount }) : T("nav.requests", "Requests");
 }
 onSiteLang(() => reqTab(reqCount));
-onSiteLang(() => { try { drawProfile(); laShow(); } catch (e) { } });     // whatever arrived first, the texts or the account
+onSiteLang(() => { try { drawProfile(); laShow(); } catch (e) { } });
+onSiteLang(() => { try { if (decks.length) drawDecks(); if (matches.length) drawMatches(); } catch (e) { } });     // whatever arrived first, the texts or the account
 siteLangStart();
 onSiteLang(() => {                       // official card text follows the site's language unless picked on the Profile page
   let own = null; try { own = localStorage.getItem(LT_LANG); } catch (e) { }
