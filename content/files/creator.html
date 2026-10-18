@@ -16,6 +16,7 @@
            border-bottom: 2px solid var(--accent); }
   header h1 { margin: 0; font: 600 20px/1 Georgia, "Times New Roman", serif; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
   header .who { margin-left: auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  #siteLang { padding: 3px 6px; font-size: 13px; }
   label { color: var(--dim); font-size: 13px; }
   input, select, textarea, button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line);
            border-radius: 5px; padding: 6px 8px; }
@@ -259,7 +260,8 @@
 <header>
   <h1><a id="tabHome" href="/" title="Home">WF-Revival</a></h1>
   <div class="who">
-    <span id="signedIn" class="hidden">Signed in as <a href="/profile" id="meName" title="Open your profile"></a> <span class="badge approved hidden" id="roleBadge"></span> <span class="badge pending hidden" id="testerBadge">Tester</span> <button class="small" id="signOut">Sign out</button></span>
+    <span id="signedIn" class="hidden"><span data-t="header.signedInAs">Signed in as</span> <a href="/profile" id="meName" title="Open your profile" data-t-title="header.openProfile"></a> <span class="badge approved hidden" id="roleBadge"></span> <span class="badge pending hidden" id="testerBadge" data-t="header.tester">Tester</span> <button class="small" id="signOut" data-t="header.signOut">Sign out</button></span>
+    <select id="siteLang" title="Language" aria-label="Language" data-t-title="header.language"><option value="en">English</option></select>
   </div>
 </header>
 <div id="viewLogin" class="hidden">
@@ -299,46 +301,46 @@
 </div>
 <div id="tabs" class="hidden">
 <nav id="mainTabs">
-  <a id="tabCreator" href="/creator">Card Creator</a>
-  <a id="tabGameData" href="/decks" class="hidden">Game Data</a>
-  <a id="tabAdmin" href="/people" class="hidden">Admin</a>
-  <a id="tabGuides" href="/guides">Guides</a>
-  <a id="tabBugs" href="/bugs" class="hidden">Bugs</a>
-  <a id="tabProfile" href="/profile" class="hidden">Profile</a>
+  <a id="tabCreator" href="/creator" data-t="nav.cardCreator">Card Creator</a>
+  <a id="tabGameData" href="/decks" class="hidden" data-t="nav.gameData">Game Data</a>
+  <a id="tabAdmin" href="/people" class="hidden" data-t="nav.admin">Admin</a>
+  <a id="tabGuides" href="/guides" data-t="nav.guides">Guides</a>
+  <a id="tabBugs" href="/bugs" class="hidden" data-t="nav.bugs">Bugs</a>
+  <a id="tabProfile" href="/profile" class="hidden" data-t="nav.profile">Profile</a>
 </nav>
 <nav id="adminTabs" class="sub hidden">
-  <a id="tabPeople" href="/people" class="hidden">People</a>
+  <a id="tabPeople" href="/people" class="hidden" data-t="nav.people">People</a>
   <a id="tabRequests" href="/requests" class="hidden">Requests</a>
-  <a id="tabModeration" href="/moderation" class="hidden">Moderation</a>
-  <a id="tabUploads" href="/uploads" class="hidden">Uploaded artwork</a>
-  <a id="tabList" href="/review" class="hidden">Review queue</a>
-  <a id="tabUnreleased" href="/unreleased" class="hidden">Unreleased cards</a>
-  <a id="tabServer" href="/server" class="hidden">Server</a>
+  <a id="tabModeration" href="/moderation" class="hidden" data-t="nav.moderation">Moderation</a>
+  <a id="tabUploads" href="/uploads" class="hidden" data-t="nav.uploads">Uploaded artwork</a>
+  <a id="tabList" href="/review" class="hidden" data-t="nav.reviewQueue">Review queue</a>
+  <a id="tabUnreleased" href="/unreleased" class="hidden" data-t="nav.unreleased">Unreleased cards</a>
+  <a id="tabServer" href="/server" class="hidden" data-t="nav.server">Server</a>
 </nav>
 <nav id="gameTabs" class="sub hidden">
-  <a id="tabDecks" href="/decks">Decks</a>
-  <a id="tabReplays" href="/replays">Replays</a>
+  <a id="tabDecks" href="/decks" data-t="nav.decks">Decks</a>
+  <a id="tabReplays" href="/replays" data-t="nav.replays">Replays</a>
 </nav>
 <nav id="guideTabs" class="sub hidden">
-  <a id="tabGuideHome" href="/guides">Which guide?</a>
-  <a id="tabGuideInstall" href="/guides/pc">Install Guides</a>
-  <a id="tabGuideCreator" href="/guides/creator">Card Creator</a>
-  <a id="tabGuideCardArt" href="/guides/card-art">Card art</a>
+  <a id="tabGuideHome" href="/guides" data-t="nav.whichGuide">Which guide?</a>
+  <a id="tabGuideInstall" href="/guides/pc" data-t="nav.installGuides">Install Guides</a>
+  <a id="tabGuideCreator" href="/guides/creator" data-t="nav.creatorGuide">Card Creator</a>
+  <a id="tabGuideCardArt" href="/guides/card-art" data-t="nav.cardArtGuide">Card art</a>
 </nav>
 <nav id="installTabs" class="sub sub2 hidden">
-  <a id="tabGuidePc" href="/guides/pc">PC (Windows)</a>
-  <a id="tabGuidePhone" href="/guides/phone">Android device: Patcher app</a>
-  <a id="tabGuideAndroid" href="/guides/android-pc">Android device: with a PC</a>
-  <a id="tabGuideMumu" href="/guides/mumu">MuMu Player</a>
+  <a id="tabGuidePc" href="/guides/pc" data-t="nav.guidePc">PC (Windows)</a>
+  <a id="tabGuidePhone" href="/guides/phone" data-t="nav.guidePhone">Android device: Patcher app</a>
+  <a id="tabGuideAndroid" href="/guides/android-pc" data-t="nav.guideAndroidPc">Android device: with a PC</a>
+  <a id="tabGuideMumu" href="/guides/mumu" data-t="nav.guideMumu">MuMu Player</a>
 </nav>
 <nav id="creatorTabs" class="sub">
-  <a id="tabCreate" href="/creator">Create a card</a>
-  <a id="tabMine" href="/my-cards">My cards</a>
-  <a id="tabExamples" href="/examples">Examples</a>
-  <a id="tabCards" href="/cards">Card viewer</a>
-  <a id="tabKeywords" href="/keywords">Keywords</a>
-  <a id="tabArtwork" href="/artwork">Artwork</a>
-  <a id="tabRules" href="/rules">Rules</a>
+  <a id="tabCreate" href="/creator" data-t="nav.create">Create a card</a>
+  <a id="tabMine" href="/my-cards" data-t="nav.myCards">My cards</a>
+  <a id="tabExamples" href="/examples" data-t="nav.examples">Examples</a>
+  <a id="tabCards" href="/cards" data-t="nav.cardViewer">Card viewer</a>
+  <a id="tabKeywords" href="/keywords" data-t="nav.keywords">Keywords</a>
+  <a id="tabArtwork" href="/artwork" data-t="nav.artwork">Artwork</a>
+  <a id="tabRules" href="/rules" data-t="nav.rules">Rules</a>
 </nav>
 </div>
 <main id="app" class="hidden">
@@ -943,6 +945,77 @@ let help = { triggers: {}, keywords: {} }, kwText = {};
 function newMore() { return { inventory: "", randomCreation: "", attackDamageType: "", blockActions: false, hintsOn: false, hints: [],
                               related: [], counter: null, choices: null, startingCard: "", goSecondCard: "", unitStats: false }; }
 const $ = id => document.getElementById(id);
+
+/* ---- The site in the player's language (2026-10-17). The language picker in the header (every language the game
+   has) is kept in this browser; until one is picked, the browser's own language is used when the game has it.
+   Texts come from the server (localization/site/<code>.json, listed with checksums in localization/index.json);
+   the English is in the page itself: on elements as data-t="key" (data-t-title / data-t-placeholder for those
+   attributes), in scripts as T(key, english, { name: value }) with both written as plain "..." strings. tools/localization/extract-site.py (mod repo)
+   collects both into localization/site/en.json for the translators. A text without a translation shows in English. */
+const SITE_LANG = "wfr.siteLang";
+const LOC = "/api/v1/content/files/localization/";
+const siteLoc = { code: "en", table: null, names: { en: "English" }, index: null, listeners: [] };
+function T(key, english, args) {
+  let t = (siteLoc.code !== "en" && siteLoc.table && siteLoc.table[key]) || english;
+  if (args) for (const [k, v] of Object.entries(args)) t = t.split("{" + k + "}").join(v == null ? "" : String(v));
+  return t;
+}
+function siteLang() { return siteLoc.code; }
+function onSiteLang(f) { siteLoc.listeners.push(f); }      // pages drawn by script redraw themselves on a change
+function siteLangApply(root) {                             // the page's own marked texts, in the current language
+  for (const e of (root || document).querySelectorAll("[data-t]")) {
+    if (e.dataset.tEn == null) e.dataset.tEn = e.textContent;
+    e.textContent = T(e.dataset.t, e.dataset.tEn);
+  }
+  for (const a of ["title", "placeholder"]) {
+    const d = "t" + a[0].toUpperCase() + a.slice(1);
+    for (const e of (root || document).querySelectorAll("[data-t-" + a + "]")) {
+      if (e.dataset[d + "En"] == null) e.dataset[d + "En"] = e.getAttribute(a) || "";
+      e.setAttribute(a, T(e.dataset[d], e.dataset[d + "En"]));
+    }
+  }
+}
+function siteLangGuess() {                                 // the browser's language, when the game has it
+  for (const l of navigator.languages || [navigator.language || "en"]) {
+    const low = String(l).toLowerCase();
+    const hit = Object.keys(siteLoc.names).find(c => c.toLowerCase() === low) || Object.keys(siteLoc.names).find(c => c.toLowerCase().split("-")[0] === low.split("-")[0]);
+    if (hit) return hit;
+  }
+  return "en";
+}
+async function siteLangSet(code, keep) {
+  if (!siteLoc.names[code]) code = "en";
+  if (keep) { try { localStorage.setItem(SITE_LANG, code); } catch (e) { } }
+  let table = null;
+  if (code !== "en") {
+    const sha = siteLoc.index && siteLoc.index.site && siteLoc.index.site[code];
+    if (sha) {
+      try {
+        const r = await fetch(LOC + "site/" + encodeURIComponent(code) + ".json?v=" + sha.slice(0, 12));
+        if (r.ok) table = await r.json();
+      } catch (e) { console.warn("site texts:", e); }
+    }
+  }
+  siteLoc.code = code; siteLoc.table = table;
+  document.documentElement.lang = code;
+  $("siteLang").value = code;
+  siteLangApply();
+  for (const f of siteLoc.listeners) { try { f(code); } catch (e) { console.warn(e); } }
+}
+async function siteLangStart() {
+  try {
+    const [names, index] = await Promise.all([
+      fetch(LOC + "languages.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null),
+      fetch(LOC + "index.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null)]);
+    if (names) siteLoc.names = names;
+    siteLoc.index = index;
+  } catch (e) { console.warn("languages:", e); }
+  const sel = $("siteLang"); sel.textContent = "";
+  for (const [c, n] of Object.entries(siteLoc.names)) sel.append(el("option", { value: c, text: n }));
+  sel.addEventListener("change", () => siteLangSet(sel.value, true));
+  let code = null; try { code = localStorage.getItem(SITE_LANG); } catch (e) { }
+  await siteLangSet(code || siteLangGuess(), false);
+}
 
 function el(tag, props, ...kids) {
   const e = document.createElement(tag);
@@ -2773,8 +2846,8 @@ async function ltLoad() {                   // after an export is picked or foun
     const b = await laRead("card-text.json");
     if (b) { const j = JSON.parse(await b.text()); if (j && Array.isArray(j.languages) && j.terms) { localText.langs = j.languages; localText.terms = j.terms; } }
   } catch (e) { console.warn("card text:", e); }
-  let code = "en"; try { code = localStorage.getItem(LT_LANG) || "en"; } catch (e) { }
-  ltPick(code);
+  let code = null; try { code = localStorage.getItem(LT_LANG); } catch (e) { }
+  ltPick(code || siteLang());           // not picked here: the site's language
   ltApply();
 }
 function ltApply() {                        // redraw what shows official card text
@@ -3435,14 +3508,14 @@ function drawUnreleased() {
 const REQ_PAGE = 50;
 let reqOffset = 0, reqTimer = 0, reqShown = [];
 async function loadRequestCount() {
-  try { const d = await call("CreatorRequests", { limit: 0 }); $("tabRequests").textContent = d.total ? `Requests (${d.total})` : "Requests"; } catch (e) { /* the tab just shows no number */ }
+  try { const d = await call("CreatorRequests", { limit: 0 }); reqTab(d.total); } catch (e) { /* the tab just shows no number */ }
 }
 async function loadRequests() {
   let d;
   try { d = await call("CreatorRequests", { offset: reqOffset, limit: REQ_PAGE, query: val("reqQuery").trim() }); }
   catch (e) { return say("Could not load the requests: " + e.message, "bad"); }
   if (d.offset && d.offset >= d.matching) { reqOffset = Math.max(0, d.matching - REQ_PAGE); return loadRequests(); }   // the last page emptied
-  $("tabRequests").textContent = d.total ? `Requests (${d.total})` : "Requests";
+  reqTab(d.total);
   $("reqHint").textContent = (d.autoApprove ? "New accounts are approved automatically for now, so new ones do not wait here. " : "") +
     (d.total ? `${d.total} waiting.` : "Nobody is waiting.");
   reqShown = d.requests;
@@ -4293,6 +4366,17 @@ async function start() {
   loadList();
   if (fromDiscord && session()) finishDiscord(fromDiscord);
 }
+let reqCount = 0;
+function reqTab(n) {                     // Admin > Requests, with the number waiting
+  reqCount = n || 0;
+  $("tabRequests").textContent = reqCount ? T("nav.requestsCount", "Requests ({count})", { count: reqCount }) : T("nav.requests", "Requests");
+}
+onSiteLang(() => reqTab(reqCount));
+siteLangStart();
+onSiteLang(() => {                       // official card text follows the site's language unless picked on the Profile page
+  let own = null; try { own = localStorage.getItem(LT_LANG); } catch (e) { }
+  if (!own && localText.langs) { ltPick(siteLang()); ltApply(); }
+});
 start();
 </script>
 </body>
