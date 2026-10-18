@@ -4104,7 +4104,8 @@ class PlayFabEmulator:
                 "roles": {k: str(v) for k, v in roles.items() if k in ("approved", "tester", "reviewer", "admin") and isinstance(v, str) and v.strip()},
                 "wait": num("resetWaitSeconds", 120, 30, 600), "valid": num("resetMinutes", 30, 5, 120),
                 "minAge": num("minAccountDays", 30, 0, 3650),
-                "remove": cfg.get("removeRoles") is True}
+                "remove": cfg.get("removeRoles") is True,
+                "replayChannel": str(cfg.get("replayChannel") or "replay-sharing").strip().lstrip("#")[:100] or "replay-sharing"}
 
     def _discord_rest(self, bot, method, path, body=None):
         """A request to Discord's API as the bot. (status, JSON or None); never raises."""
@@ -4131,6 +4132,10 @@ class PlayFabEmulator:
          "default_member_permissions": "268435456",
          "options": [{"type": 3, "name": "account", "description": "Their WF-Revival account name (as on the website)", "required": True,
                       "autocomplete": True, "max_length": 30}]},
+        {"name": "replay", "description": "Share a replay code in the replay channel", "type": 1,
+         "options": [{"type": 3, "name": "code", "description": "The replay code, e.g. K7M2-QX9P", "required": True, "max_length": 20},
+                     {"type": 3, "name": "comment", "description": "A few words about the match (optional)", "required": False,
+                      "max_length": 200}]},
     ]
 
     def _discord_startup(self):
@@ -4263,6 +4268,8 @@ class PlayFabEmulator:
                 return self._discord_cmd_reset(bot, did, str(it.get("token") or ""))
             if name == "approve":
                 return self._discord_cmd_approve(bot, did, it.get("data") or {})
+            if name == "replay":
+                return self._discord_cmd_replay(bot, did, it)
         except Exception:
             log.exception("discord bot: /%s", name)
             return self._discord_say("Something went wrong on the server; try again later.")
@@ -4313,6 +4320,133 @@ class PlayFabEmulator:
         log.info("account %s approved by %s through Discord", t["name"], me["name"])
         self._discord_sync_later(t["name"])
         return self._discord_say(f"{t['name']} is approved. They can now sign in to the game with that account.")
+
+    # ---------------------------------------------------------------- /replay (2026-10-18)
+    # Anyone with a replay code can share it: the bot posts a card about the match in the replay channel (by name,
+    # "replayChannel" in discord-bot.json, default "replay-sharing"; only the bot should be able to write there).
+    # Official card names (the warlords) may be named in these posts (owner, 2026-10-18); rules text never.
+    REPLAY_MODES = {170: "Classic", 180: "Classic against the AI", 200: "Skirmish", 210: "Skirmish against the AI",
+                    10: "Ranked", 20: "Against the AI", 110: "Draft", 120: "Draft against the AI",
+                    80: "Event or challenge", 90: "Practice"}
+
+    def _official_names(self):
+        """{official card id: its English name} from creator-official.json (read again when the file changes)."""
+        path = os.path.join(self.content_root, "creator-official.json")
+        try:
+            stamp = os.path.getmtime(path)
+        except OSError:
+            return {}
+        cached = self.__dict__.get("_official_names_cache")
+        if cached and cached[0] == stamp:
+            return cached[1]
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            names = {str(c["id"]): str(c["name"]) for c in data.get("cards") or []
+                     if isinstance(c, dict) and c.get("id") and isinstance(c.get("name"), str) and c["name"].strip()}
+        except (OSError, ValueError, AttributeError, TypeError):
+            names = {}
+        self._official_names_cache = (stamp, names)
+        return names
+
+    def _discord_channel_id(self, bot, name):
+        """The id of the server's text channel with that name, or None (Discord's list read at most every 10 minutes)."""
+        cache = self.__dict__.get("_discord_channels_cache")
+        if not (cache and cache[0] > time.time() and cache[1] == bot["guild"]):
+            status, chans = self._discord_rest(bot, "GET", f"/guilds/{bot['guild']}/channels")
+            if status != 200 or not isinstance(chans, list):
+                return None
+            cache = (time.time() + 600, bot["guild"],
+                     {str(c.get("name") or "").lower(): str(c.get("id")) for c in chans if isinstance(c, dict) and c.get("type") in (0, 5)})
+            self._discord_channels_cache = cache
+        found = cache[2].get(name.lower())
+        if not found:
+            self._discord_channels_cache = None          # just made? look again next time
+        return found
+
+    @staticmethod
+    def _discord_plain(text, limit):
+        """Text shown as written in a Discord message: Markdown characters escaped, whitespace collapsed."""
+        text = " ".join(str(text or "").split())[:limit]
+        return re.sub(r"([\\*_~`|>\[\]<@])", r"\\\1", text)
+
+    def _discord_cmd_replay(self, bot, did, it):
+        opts = {o.get("name"): o.get("value") for o in (it.get("data") or {}).get("options") or [] if isinstance(o, dict)}
+        code = self._code_norm(opts.get("code"))
+        if not code:
+            return self._discord_say("That is not a replay code. A code looks like `K7M2-QX9P`: open a match in your battle log in the game and ask for its code.")
+        shown = self._code_show(code)
+        d = self._code_load(code)
+        if not d:
+            return self._discord_say(f"There is no replay with the code `{shown}`. Check it for typos.")
+        posted = self.__dict__.setdefault("_replays_posted", {})
+        prev = posted.get(code)
+        if prev and prev[0] > time.time() - 86400:
+            return self._discord_say(f"That replay was already shared in the last day: {prev[1]}")
+        token = str(it.get("token") or "")
+        if not re.fullmatch(r"[A-Za-z0-9._\-]{20,600}", token):
+            return self._discord_say("Discord did not send what is needed; try again.")
+        if not self._allow("discord-replay", did, 6, 3600):
+            return self._discord_say("You have shared a lot of replays in the last hour. Try again later.")
+        comment = " ".join(str(opts.get("comment") or "").split())[:200]
+        if comment:
+            comment = self._word_filter().censor(comment)[0]
+        threading.Thread(target=self._discord_replay_post, args=(bot, did, code, d, comment, token),
+                         name="discord-replay", daemon=True).start()
+        return 200, {"type": 5, "data": {"flags": 64}}            # "thinking...", answered when the post is made
+
+    def _replay_card(self, code, d, did, comment):
+        """The message posted about a shared replay."""
+        info = d.get("info") if isinstance(d.get("info"), dict) else {}
+        names = self._official_names()
+        plain = self._discord_plain
+        hero = lambda h: plain(names.get(str(h or ""), str(h or "?")), 80)
+        own, enemy = plain(info.get("ownName") or "?", 60), plain(info.get("enemyName") or "?", 60)
+        result = {"won": f"**{own}** won", "lost": f"**{enemy}** won", "draw": "A draw"}.get(info.get("result"), "")
+        lines = [f"**{own}** ({hero(info.get('ownHero'))}) against **{enemy}** ({hero(info.get('enemyHero'))})"]
+        if result:
+            lines.append(result)
+        mode = self.REPLAY_MODES.get(info.get("matchType")) if isinstance(info.get("matchType"), int) else None
+        try:
+            played = int(datetime.fromisoformat(str(d.get("played") or d.get("created") or "").replace("Z", "+00:00")).timestamp())
+        except ValueError:
+            played = None
+        extra = " · ".join(x for x in (mode, f"<t:{played}:D>" if played else None) if x)
+        if extra:
+            lines.append(extra)
+        fields = [{"name": "Replay code", "value": f"`{self._code_show(code)}`", "inline": True},
+                  {"name": "Shared by", "value": f"<@{did}>", "inline": True}]
+        if comment:
+            fields.append({"name": "Comment", "value": plain(comment, 200), "inline": False})
+        title = " ".join(f"{info.get('ownName') or '?'} vs {info.get('enemyName') or '?'}".split())[:250]   # titles show no Markdown
+        return {"embeds": [{"title": title, "description": "\n".join(lines)[:2000], "color": 0x8B1A1A,
+                            "fields": fields, "footer": {"text": "To watch it in the game: Settings > Mod > Watch a replay code"}}],
+                "allowed_mentions": {"parse": []}}
+
+    def _discord_replay_post(self, bot, did, code, d, comment, token):
+        """Posts the replay card, then replaces the "thinking..." answer with where it went (or why it did not)."""
+        text = "Something went wrong on the server; try again later."
+        try:
+            cid = self._discord_channel_id(bot, bot["replayChannel"])
+            if not cid:
+                text = f"The bot cannot find the #{bot['replayChannel']} channel. Ask an admin."
+            else:
+                status, msg = self._discord_rest(bot, "POST", f"/channels/{cid}/messages", self._replay_card(code, d, did, comment))
+                if status == 200 and isinstance(msg, dict) and msg.get("id"):
+                    url = f"https://discord.com/channels/{bot['guild']}/{cid}/{msg['id']}"
+                    posted = self.__dict__.setdefault("_replays_posted", {})
+                    for k in [k for k, v in posted.items() if v[0] < time.time() - 86400]:
+                        posted.pop(k, None)
+                    posted[code] = (time.time(), url)
+                    text = f"Shared in <#{cid}>: {url}"
+                    log.info("discord bot: replay %s shared by Discord user %s", self._code_show(code), did)
+                else:
+                    text = f"The bot could not post in #{bot['replayChannel']} (HTTP {status}). Ask an admin to let it send messages and embed links there."
+                    log.warning("discord bot: replay post refused (HTTP %s)", status)
+        except Exception:
+            log.exception("discord bot: replay post")
+        self._discord_rest(bot, "PATCH", f"/webhooks/{bot['app']}/{token}/messages/@original",
+                           {"content": text, "allowed_mentions": {"parse": []}})
 
     def _discord_cmd_reset(self, bot, did, token):
         key, u = self._discord_account_of(did)
