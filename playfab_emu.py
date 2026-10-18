@@ -4253,6 +4253,15 @@ class PlayFabEmulator:
             return 200, {"type": 1}
         if it.get("type") == 4:                                       # typing in /approve: suggest waiting accounts
             return self._discord_suggest(bot, it)
+        if it.get("type") == 3 and str((it.get("data") or {}).get("custom_id") or "").startswith("replay-moves:"):
+            if str(it.get("guild_id") or "") != bot["guild"]:
+                return self._discord_say("Use this in the WF-Revival Discord server.")
+            user = ((it.get("member") or {}).get("user") or it.get("user") or {})
+            try:
+                return self._discord_replay_moves(bot, str(user.get("id") or ""), it)
+            except Exception:
+                log.exception("discord bot: replay moves")
+                return self._discord_say("Something went wrong on the server; try again later.")
         if it.get("type") != 2:
             return self._discord_say("That is not something this bot does.")
         if str(it.get("guild_id") or "") != bot["guild"]:
@@ -4379,6 +4388,8 @@ class PlayFabEmulator:
         d = self._code_load(code)
         if not d:
             return self._discord_say(f"There is no replay with the code `{shown}`. Check it for typos.")
+        if d.get("report"):                                       # a player report's copy, for reviewers only
+            return self._discord_say(f"`{shown}` belongs to a player report and cannot be shared.")
         posted = self.__dict__.setdefault("_replays_posted", {})
         prev = posted.get(code)
         if prev and prev[0] > time.time() - 86400:
@@ -4421,7 +4432,79 @@ class PlayFabEmulator:
         title = " ".join(f"{info.get('ownName') or '?'} vs {info.get('enemyName') or '?'}".split())[:250]   # titles show no Markdown
         return {"embeds": [{"title": title, "description": "\n".join(lines)[:2000], "color": 0x8B1A1A,
                             "fields": fields, "footer": {"text": "To watch it in the game: Settings > Mod > Watch a replay code"}}],
+                "components": [{"type": 1, "components": [{"type": 2, "style": 2, "label": "Moves",
+                                                           "custom_id": "replay-moves:" + code}]}],
                 "allowed_mentions": {"parse": []}}
+
+    # The "Moves" button under a shared replay: the match as a list of moves with card names, shown only to whoever
+    # pressed it (replay_moves.py). Card data comes from data/replay-carddata.json (game content, made from the game's
+    # cards; never in the repository); without it the official names are used and some details are left out.
+    def _replay_carddata(self):
+        path = os.path.join(self.store.root, "replay-carddata.json")
+        try:
+            stamp = os.path.getmtime(path)
+        except OSError:
+            return {}
+        cached = self.__dict__.get("_replay_carddata_cache")
+        if cached and cached[0] == stamp:
+            return cached[1]
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            data = data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            data = {}
+        self._replay_carddata_cache = (stamp, data)
+        return data
+
+    def _replay_moves_lines(self, d):
+        import replay_moves
+        carddata = self._replay_carddata()
+        names = dict(self._official_names())
+        names.update({k: v["name"] for k, v in carddata.items() if isinstance(v, dict) and isinstance(v.get("name"), str)})
+        return replay_moves.moves(d, names, carddata or None)
+
+    def _discord_replay_moves(self, bot, did, it):
+        code = self._code_norm(str((it.get("data") or {}).get("custom_id") or "").split(":", 1)[-1])
+        d = self._code_load(code) if code else None
+        if not d or d.get("report"):
+            return self._discord_say("That replay is no longer on the server.")
+        if not self._allow("discord-moves", did, 20, 3600):
+            return self._discord_say("You have opened a lot of move lists in the last hour. Try again later.")
+        try:
+            lines = self._replay_moves_lines(d)
+        except Exception:
+            log.exception("discord bot: moves for %s", self._code_show(code))
+            return self._discord_say("The moves of this replay could not be read.")
+        text = "\n".join(lines)
+        block = "```\n" + text.replace("`", "'") + "\n```"           # shown as written, nothing in it can end the block
+        if len(block) <= 1900:
+            return 200, {"type": 4, "data": {"content": block, "flags": 64, "allowed_mentions": {"parse": []}}}
+        token = str(it.get("token") or "")
+        if not re.fullmatch(r"[A-Za-z0-9._\-]{20,600}", token):
+            return self._discord_say("Discord did not send what is needed; try again.")
+        name = f"moves-{self._code_show(code)}.txt"
+        threading.Thread(target=self._discord_send_file, args=(bot, token, f"The moves of `{self._code_show(code)}` ({len(lines)} lines):",
+                                                               name, text.encode("utf-8")), name="discord-moves", daemon=True).start()
+        return 200, {"type": 5, "data": {"flags": 64}}
+
+    def _discord_send_file(self, bot, token, text, filename, data):
+        """A follow-up only the person who pressed the button sees, with one text file attached."""
+        import urllib.request
+        boundary = "wfr" + os.urandom(12).hex()
+        payload = json.dumps({"content": text, "flags": 64, "allowed_mentions": {"parse": []},
+                              "attachments": [{"id": 0, "filename": filename}]})
+        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"payload_json\"\r\nContent-Type: application/json\r\n\r\n"
+                f"{payload}\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"files[0]\"; filename=\"{filename}\"\r\n"
+                f"Content-Type: text/plain; charset=utf-8\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
+        rq = urllib.request.Request(f"{self.DISCORD_API}/webhooks/{bot['app']}/{token}", data=body, method="POST",
+                                    headers={"Content-Type": f"multipart/form-data; boundary={boundary}",
+                                             "User-Agent": "WarpforgeRevival (server, 1.0)"})
+        try:
+            with urllib.request.urlopen(rq, timeout=15):
+                pass
+        except Exception as e:
+            log.warning("discord bot: move list not sent (%s)", type(e).__name__)
 
     def _discord_replay_post(self, bot, did, code, d, comment, token):
         """Posts the replay card, then replaces the "thinking..." answer with where it went (or why it did not)."""
