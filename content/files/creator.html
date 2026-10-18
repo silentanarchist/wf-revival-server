@@ -269,34 +269,34 @@
     <h2 id="loginTitle">Sign in</h2>
     <p class="hint" id="loginIntro">Sign in to design cards for Warpforge Revival.</p>
     <p id="loginMsg" class="note hidden"></p>
-    <div class="field"><label for="author">Username</label>
+    <div class="field"><label for="author" data-t="login.username">Username</label>
       <input id="author" name="username" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
-    <div class="field"><label for="pass">Password</label>
+    <div class="field"><label for="pass" data-t="login.password">Password</label>
       <input id="pass" name="password" type="password" maxlength="200" autocomplete="current-password"></div>
-    <div class="field hidden" id="pass2Field"><label for="pass2">Password again</label>
+    <div class="field hidden" id="pass2Field"><label for="pass2" data-t="login.passwordAgain">Password again</label>
       <input id="pass2" type="password" maxlength="200" autocomplete="new-password"></div>
-    <p class="hint hidden" id="loginRules">Username: 5 to 30 letters, digits, . ' - or _, no spaces. Password: at least 6 characters, no spaces. Do not reuse a password from another site. This is the same account you can link in the game under Settings &gt; Account.</p>
-    <label class="terms hidden" id="termsField"><input type="checkbox" id="termsBox"> <span>I am 16 or older and I agree to the <a href="/terms" target="_blank" rel="noopener">Terms and Privacy notice</a>.</span></label>
+    <p class="hint hidden" id="loginRules" data-t="login.rules">Username: 5 to 30 letters, digits, . ' - or _, no spaces. Password: at least 6 characters, no spaces. Do not reuse a password from another site. This is the same account you can link in the game under Settings &gt; Account.</p>
+    <label class="terms hidden" id="termsField"><input type="checkbox" id="termsBox"> <span data-t="login.agree">I am 16 or older and I agree to the <a href="/terms" target="_blank" rel="noopener" data-t-part="terms" data-t="login.termsLink">Terms and Privacy notice</a>.</span></label>
     <button class="primary" id="loginGo" type="submit">Sign in</button>
     <p class="switch"><span id="loginAsk">New here?</span> <a href="#" id="loginSwitch">Create an account</a></p>
-    <p class="switch" id="forgotLine"><a href="#" id="forgotLink">Forgot your password?</a></p>
-    <p class="switch"><a href="/terms" target="_blank" rel="noopener">Terms and Privacy</a></p>
+    <p class="switch" id="forgotLine"><a href="#" id="forgotLink" data-t="login.forgot">Forgot your password?</a></p>
+    <p class="switch"><a href="/terms" target="_blank" rel="noopener" data-t="login.termsAndPrivacy">Terms and Privacy</a></p>
   </form>
   <form class="login hidden" id="recoverForm" autocomplete="off">
-    <h2>Reset your password</h2>
-    <p class="hint">Use the recovery code you saved from your Profile page, or a reset code an admin gave you. It works once: afterwards, make a new recovery code on your Profile page.</p>
+    <h2 data-t="recover.title">Reset your password</h2>
+    <p class="hint" data-t="recover.intro">Use the recovery code you saved from your Profile page, or a reset code an admin gave you. It works once: afterwards, make a new recovery code on your Profile page.</p>
     <p id="recoverMsg" class="note hidden"></p>
-    <div class="field"><label for="r_name">Username</label>
+    <div class="field"><label for="r_name" data-t="login.username">Username</label>
       <input id="r_name" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
-    <div class="field"><label for="r_code">Recovery or reset code</label>
+    <div class="field"><label for="r_code" data-t="recover.code">Recovery or reset code</label>
       <input id="r_code" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"></div>
-    <div class="field"><label for="r_new">New password</label>
+    <div class="field"><label for="r_new" data-t="recover.newPassword">New password</label>
       <input id="r_new" type="password" maxlength="200" autocomplete="new-password"></div>
-    <div class="field"><label for="r_new2">New password again</label>
+    <div class="field"><label for="r_new2" data-t="recover.newPasswordAgain">New password again</label>
       <input id="r_new2" type="password" maxlength="200" autocomplete="new-password"></div>
-    <p class="hint">Resetting signs this account out of every browser, computer and Android device.</p>
-    <button class="primary" id="recoverGo" type="submit">Reset password</button>
-    <p class="switch"><a href="#" id="recoverBack">Back to sign in</a></p>
+    <p class="hint" data-t="recover.signsOut">Resetting signs this account out of every browser, computer and Android device.</p>
+    <button class="primary" id="recoverGo" type="submit" data-t="recover.go">Reset password</button>
+    <p class="switch"><a href="#" id="recoverBack" data-t="recover.back">Back to sign in</a></p>
   </form>
 </div>
 <div id="tabs" class="hidden">
@@ -523,87 +523,87 @@
   </div>
 
   <div id="viewProfile" class="hidden profile">
-    <p id="p_waiting" class="note hidden"><strong>Your account is waiting for an admin to approve it.</strong> Until then you can read the guides and look after your account here (username, password, recovery code). The game and the Card Creator open once it is approved: sign in to the game then with this username and password.</p>
+    <p id="p_waiting" class="note hidden" data-t-rich="profile.waiting"><strong>Your account is waiting for an admin to approve it.</strong> Until then you can read the guides and look after your account here (username, password, recovery code). The game and the Card Creator open once it is approved: sign in to the game then with this username and password.</p>
     <section>
-      <h2>Username</h2>
-      <p class="hint">5 to 30 letters, digits, . ' - or _, no spaces. Your cards keep following you under the new name. In-game display names are separate and are not changed by this.</p>
+      <h2 data-t="profile.username">Username</h2>
+      <p class="hint" data-t="profile.usernameRules">5 to 30 letters, digits, . ' - or _, no spaces. Your cards keep following you under the new name. In-game display names are separate and are not changed by this.</p>
       <form id="renameForm">
         <div class="row">
-          <div class="field"><label for="p_name">New username</label><input id="p_name" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
-          <div class="field"><label for="p_namePass">Your password</label><input id="p_namePass" type="password" maxlength="200" autocomplete="current-password"></div>
+          <div class="field"><label for="p_name" data-t="profile.newUsername">New username</label><input id="p_name" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+          <div class="field"><label for="p_namePass" data-t="profile.yourPassword">Your password</label><input id="p_namePass" type="password" maxlength="200" autocomplete="current-password"></div>
         </div>
-        <button type="submit">Change username</button>
+        <button type="submit" data-t="profile.changeUsername">Change username</button>
       </form>
     </section>
     <section>
-      <h2>Password</h2>
-      <p class="hint">At least 6 characters, no spaces. Changing it signs this account out everywhere except here.</p>
+      <h2 data-t="login.password">Password</h2>
+      <p class="hint" data-t="profile.passwordRules">At least 6 characters, no spaces. Changing it signs this account out everywhere except here.</p>
       <form id="passForm">
         <div class="row">
-          <div class="field"><label for="p_old">Current password</label><input id="p_old" type="password" maxlength="200" autocomplete="current-password"></div>
+          <div class="field"><label for="p_old" data-t="profile.currentPassword">Current password</label><input id="p_old" type="password" maxlength="200" autocomplete="current-password"></div>
         </div>
         <div class="row">
-          <div class="field"><label for="p_new">New password</label><input id="p_new" type="password" maxlength="200" autocomplete="new-password"></div>
-          <div class="field"><label for="p_new2">New password again</label><input id="p_new2" type="password" maxlength="200" autocomplete="new-password"></div>
+          <div class="field"><label for="p_new" data-t="recover.newPassword">New password</label><input id="p_new" type="password" maxlength="200" autocomplete="new-password"></div>
+          <div class="field"><label for="p_new2" data-t="recover.newPasswordAgain">New password again</label><input id="p_new2" type="password" maxlength="200" autocomplete="new-password"></div>
         </div>
-        <button type="submit">Change password</button>
+        <button type="submit" data-t="profile.changePassword">Change password</button>
       </form>
     </section>
     <section>
-      <h2>Recovery code</h2>
-      <p class="hint">If you forget your password, a recovery code lets you set a new one from the sign-in page (<strong>Forgot your password?</strong>). It is shown only once and downloaded as a file: keep it somewhere safe, away from this computer if you can. Anyone with the code and your username can take over the account. Making a new code cancels the old one, and using a code uses it up. <span id="p_recAt"></span></p>
-      <p class="note"><strong>No admin will ever ask you for your recovery code or a password reset code.</strong> Anyone who asks for one is trying to take over your account. Do not send it, and tell us at <a href="mailto:wf-revival@silentanarchist.com">wf-revival@silentanarchist.com</a>.</p>
+      <h2 data-t="profile.recoveryCode">Recovery code</h2>
+      <p class="hint" data-t-rich="profile.recoveryHelp">If you forget your password, a recovery code lets you set a new one from the sign-in page (<strong>Forgot your password?</strong>). It is shown only once and downloaded as a file: keep it somewhere safe, away from this computer if you can. Anyone with the code and your username can take over the account. Making a new code cancels the old one, and using a code uses it up. <span id="p_recAt" data-t-part="when"></span></p>
+      <p class="note" data-t-rich="profile.noAdminAsksCode"><strong>No admin will ever ask you for your recovery code or a password reset code.</strong> Anyone who asks for one is trying to take over your account. Do not send it, and tell us at <a href="mailto:wf-revival@silentanarchist.com" data-t-part="email">wf-revival@silentanarchist.com</a>.</p>
       <form id="recoveryForm">
-        <div class="row"><div class="field"><label for="p_recPass">Your password</label><input id="p_recPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
+        <div class="row"><div class="field"><label for="p_recPass" data-t="profile.yourPassword">Your password</label><input id="p_recPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
         <button type="submit" id="p_recMake">Make a recovery code</button>
-        <button type="button" id="p_recRemove" class="hidden">Remove recovery code</button>
+        <button type="button" id="p_recRemove" class="hidden" data-t="profile.removeRecovery">Remove recovery code</button>
       </form>
-      <div id="p_recShow" class="box hidden" style="margin-top:10px; border-color:var(--ok)">Your recovery code: <code id="p_recCode" style="font-size:1.2em; user-select:all"></code><br><span class="hint">It has also been downloaded. It will not be shown again.</span></div>
+      <div id="p_recShow" class="box hidden" style="margin-top:10px; border-color:var(--ok)"><span data-t="profile.yourRecoveryCode">Your recovery code:</span> <code id="p_recCode" style="font-size:1.2em; user-select:all"></code><br><span class="hint" data-t="profile.recoveryShownOnce">It has also been downloaded. It will not be shown again.</span></div>
     </section>
     <section id="p_cardArt" class="localArt">
-      <h2>Card art and text from your game</h2>
+      <h2 data-t="profile.cardArt">Card art and text from your game</h2>
       <p><span id="laStatus">Checking…</span></p>
-      <p id="ltLangRow" class="hidden"><label>Card text language <select id="ltLang"></select></label></p>
-      <p class="hint" id="laHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded. The Card viewer and other pages draw official cards with it, with their names, rules and lore in any of the game's languages (exports from mod 0.13.19 on); without it they show cards without pictures. Step by step for Windows and Android: <a href="/guides/card-art">the card art guide</a>.</p>
+      <p id="ltLangRow" class="hidden"><label><span data-t="profile.cardTextLanguage">Card text language</span> <select id="ltLang"></select></label></p>
+      <p class="hint" id="laHelp" data-t-rich="profile.cardArtHelp">The pictures come from your own copy of the game, never from this server. In the game, open <strong>Settings &gt; Mod</strong> and press <strong>Export card art</strong>. It saves <code>card-art-export.zip</code> in the game's folder, under <code>UserData\WarpforgeRevival</code> (Steam: right-click the game &gt; Manage &gt; Browse local files). Then pick that file here. It stays in this browser only: nothing is uploaded. The Card viewer and other pages draw official cards with it, with their names, rules and lore in any of the game's languages (exports from mod 0.13.19 on); without it they show cards without pictures. Step by step for Windows and Android: <a href="/guides/card-art" data-t-part="guide" data-t="profile.cardArtGuideLink">the card art guide</a>.</p>
         <div class="row" style="align-items:center; gap:10px">
-          <label class="button small" style="cursor:pointer">Pick card-art-export.zip<input type="file" id="laFile" accept=".zip,application/zip" style="display:none"></label>
-          <button class="small hidden" id="laRemove" type="button">Remove from this browser</button>
+          <label class="button small" style="cursor:pointer"><span data-t="profile.pickExport">Pick card-art-export.zip</span><input type="file" id="laFile" accept=".zip,application/zip" style="display:none"></label>
+          <button class="small hidden" id="laRemove" type="button" data-t="profile.removeFromBrowser">Remove from this browser</button>
         </div>
     </section>
     <section id="p_game">
-      <h2>Game account</h2>
+      <h2 data-t="profile.gameAccount">Game account</h2>
       <p id="p_link"></p>
       <div id="p_gameLogin" class="hidden">
-        <p class="hint">A <strong>game login file</strong> lets the game sign in as this game account without Steam – for another computer, or when Steam is not working – so you keep your decks and progress. Put the file in the game's folder under <code>UserData\WarpforgeRevival\</code> and start the game. While the file is there the game always signs in with it.</p>
-        <p class="hint">You normally do not need it: signing in from the game's own sign-in window writes this file for you. Treat it like a password: anyone who has the file can play as you. Changing your password cancels every file and game sign-in at once; signing out in the game cancels that computer's or device's. <span id="p_gameLoginAt"></span></p>
-        <p class="note"><strong>No admin will ever ask you for your game login file.</strong> Anyone who asks for it is trying to take over your account. Do not send it, and tell us at <a href="mailto:wf-revival@silentanarchist.com">wf-revival@silentanarchist.com</a>.</p>
+        <p class="hint" data-t-rich="profile.gameLoginHelp">A <strong>game login file</strong> lets the game sign in as this game account without Steam – for another computer, or when Steam is not working – so you keep your decks and progress. Put the file in the game's folder under <code>UserData\WarpforgeRevival\</code> and start the game. While the file is there the game always signs in with it.</p>
+        <p class="hint" data-t-rich="profile.gameLoginNormally">You normally do not need it: signing in from the game's own sign-in window writes this file for you. Treat it like a password: anyone who has the file can play as you. Changing your password cancels every file and game sign-in at once; signing out in the game cancels that computer's or device's. <span id="p_gameLoginAt" data-t-part="when"></span></p>
+        <p class="note" data-t-rich="profile.noAdminAsksFile"><strong>No admin will ever ask you for your game login file.</strong> Anyone who asks for it is trying to take over your account. Do not send it, and tell us at <a href="mailto:wf-revival@silentanarchist.com" data-t-part="email">wf-revival@silentanarchist.com</a>.</p>
         <form id="gameLoginForm">
-          <div class="row"><div class="field"><label for="p_glPass">Your password</label><input id="p_glPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
-          <button type="submit">Download game login file</button>
+          <div class="row"><div class="field"><label for="p_glPass" data-t="profile.yourPassword">Your password</label><input id="p_glPass" type="password" maxlength="200" autocomplete="current-password"></div></div>
+          <button type="submit" data-t="profile.downloadGameLogin">Download game login file</button>
         </form>
       </div>
     </section>
     <section id="p_discord">
       <h2>Discord</h2>
-      <div id="p_discordReset" class="note bad hidden"><strong>A password reset was asked for through Discord.</strong> <span id="p_discordResetWhen"></span> If that was not you, cancel it now and change your password. <button type="button" id="p_discordResetCancel" class="danger small">Cancel the reset</button></div>
+      <div id="p_discordReset" class="note bad hidden" data-t-rich="profile.discordResetAsked"><strong>A password reset was asked for through Discord.</strong> <span id="p_discordResetWhen" data-t-part="when"></span> If that was not you, cancel it now and change your password. <button type="button" id="p_discordResetCancel" class="danger small" data-t-part="cancel" data-t="profile.cancelReset">Cancel the reset</button></div>
       <p id="p_discordState"></p>
-      <p class="hint">Linking your Discord account to this one lets our Discord server know who you are here. If you lose your password and recovery code, type <strong>/password-reset</strong> in our Discord server: after a short wait the bot shows you a one-time reset code (it needs two-factor sign-in on your Discord account). <strong>/account</strong> there shows which account your Discord is linked to. Your roles here (Approved, Tester, Reviewer, Admin) show in our Discord too. You do not sign in with Discord; we only see your Discord username and whether it has two-factor sign-in on. Your password is asked to link or unlink.</p>
+      <p class="hint" data-t-rich="profile.discordHelp">Linking your Discord account to this one lets our Discord server know who you are here. If you lose your password and recovery code, type <strong>/password-reset</strong> in our Discord server: after a short wait the bot shows you a one-time reset code (it needs two-factor sign-in on your Discord account). <strong>/account</strong> there shows which account your Discord is linked to. Your roles here (Approved, Tester, Reviewer, Admin) show in our Discord too. You do not sign in with Discord; we only see your Discord username and whether it has two-factor sign-in on. Your password is asked to link or unlink.</p>
       <div class="row" style="gap:10px">
         <button type="button" id="p_discordLink">Link Discord</button>
-        <button type="button" id="p_discordUnlink" class="hidden">Unlink Discord</button>
+        <button type="button" id="p_discordUnlink" class="hidden" data-t="profile.discordUnlink">Unlink Discord</button>
       </div>
     </section>
     <section class="dangerBox">
-      <h2>Delete my account</h2>
-      <p class="hint">Signs you out of the website and the game everywhere at once, and deletes the account after 7 days. Signing in again with your password before then cancels it.
+      <h2 data-t="profile.deleteAccount">Delete my account</h2>
+      <p class="hint" data-t-rich="profile.deleteHelp">Signs you out of the website and the game everywhere at once, and deletes the account after 7 days. Signing in again with your password before then cancels it.
         Your game player (decks, progress, friends, recordings), drafts and rejected cards are deleted. Approved cards stay in the game, credited to “deleted account”, and your chat messages still kept are emptied.
-        See the <a href="/terms" target="_blank" rel="noopener">Terms and Privacy notice</a>.</p>
+        See the <a href="/terms" target="_blank" rel="noopener" data-t-part="terms" data-t="login.termsLink">Terms and Privacy notice</a>.</p>
       <form id="deleteForm" autocomplete="off">
         <div class="row">
-          <div class="field"><label for="p_delPass">Your password</label><input id="p_delPass" type="password" maxlength="200" autocomplete="current-password"></div>
-          <div class="field"><label for="p_delName">Type your username to confirm</label><input id="p_delName" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+          <div class="field"><label for="p_delPass" data-t="profile.yourPassword">Your password</label><input id="p_delPass" type="password" maxlength="200" autocomplete="current-password"></div>
+          <div class="field"><label for="p_delName" data-t="profile.typeUsername">Type your username to confirm</label><input id="p_delName" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
         </div>
-        <button type="submit" class="danger">Delete my account</button>
+        <button type="submit" class="danger" data-t="profile.deleteAccount">Delete my account</button>
       </form>
     </section>
   </div>
@@ -919,9 +919,9 @@
   </div>
 </main>
 <footer class="site">
-  <p>Warpforge Revival is an unofficial, non-commercial fan project. It is not affiliated with, endorsed or supported by Games Workshop or Everguild Ltd. Warhammer 40,000, Warhammer 40,000: Warpforge and all related names, images and game content belong to their owners.</p>
-  <p>The game itself is not provided by this project: players install their own copy. The project runs a replacement server and a mod so the game keeps working now that its official servers are closed. The project makes no money.</p>
-  <p>If any of your work appears here without your permission, let us know at <a href="mailto:wf-revival@silentanarchist.com">wf-revival@silentanarchist.com</a> and we'll take it down. Questions are welcome there too. <a href="/terms" target="_blank" rel="noopener">Terms and Privacy</a></p>
+  <p data-t="footer.unofficial">Warpforge Revival is an unofficial, non-commercial fan project. It is not affiliated with, endorsed or supported by Games Workshop or Everguild Ltd. Warhammer 40,000, Warhammer 40,000: Warpforge and all related names, images and game content belong to their owners.</p>
+  <p data-t="footer.noGame">The game itself is not provided by this project: players install their own copy. The project runs a replacement server and a mod so the game keeps working now that its official servers are closed. The project makes no money.</p>
+  <p><span data-t="footer.takedown">If any of your work appears here without your permission, let us know at <a href="mailto:wf-revival@silentanarchist.com" data-t-part="email">wf-revival@silentanarchist.com</a> and we'll take it down. Questions are welcome there too.</span> <a href="/terms" target="_blank" rel="noopener" data-t="login.termsAndPrivacy">Terms and Privacy</a></p>
 </footer>
 <datalist id="cardList"></datalist>
 <datalist id="enchList"></datalist>
@@ -950,7 +950,8 @@ const $ = id => document.getElementById(id);
    has) is kept in this browser; until one is picked, the browser's own language is used when the game has it.
    Texts come from the server (localization/site/<code>.json, listed with checksums in localization/index.json);
    the English is in the page itself: on elements as data-t="key" (data-t-title / data-t-placeholder for those
-   attributes), in scripts as T(key, english, { name: value }) with both written as plain "..." strings. tools/localization/extract-site.py (mod repo)
+   attributes; data-t-rich="key" for a paragraph with <strong>, <em>, <code> or <br> in it, which translations may use
+   too and nothing else; a child marked data-t-part="name", a link say, stands in the text as {name} and is kept), in scripts as T(key, english, { name: value }) with both written as plain "..." strings. tools/localization/extract-site.py (mod repo)
    collects both into localization/site/en.json for the translators. A text without a translation shows in English. */
 const SITE_LANG = "wfr.siteLang";
 const LOC = "/api/v1/content/files/localization/";
@@ -962,10 +963,49 @@ function T(key, english, args) {
 }
 function siteLang() { return siteLoc.code; }
 function onSiteLang(f) { siteLoc.listeners.push(f); }      // pages drawn by script redraw themselves on a change
+const RICH_TAGS = new Set(["STRONG", "EM", "CODE", "BR", "B", "I"]);
+function richEnglish(e) {                                  // an element's English as a translatable text
+  const esc = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const walk = n => Array.from(n.childNodes).map(c => c.nodeType === 3 ? esc(c.textContent)
+    : c.nodeType !== 1 ? "" : c.dataset.tPart ? "{" + c.dataset.tPart + "}"
+    : RICH_TAGS.has(c.tagName) ? (c.tagName === "BR" ? "<br>" : "<" + c.tagName.toLowerCase() + ">" + walk(c) + "</" + c.tagName.toLowerCase() + ">")
+    : esc(c.textContent)).join("");
+  return walk(e).replace(/\s+/g, " ").trim();
+}
+function richFill(e, text, parts) {                        // a translation into an element: only the simple tags, parts kept
+  const doc = new DOMParser().parseFromString("<body>" + text + "</body>", "text/html");
+  const copy = (from, to) => {
+    for (const c of from.childNodes) {
+      if (c.nodeType === 3) {
+        for (const bit of c.textContent.split(/(\{\w+\})/)) {
+          const m = /^\{(\w+)\}$/.exec(bit);
+          if (m && parts[m[1]]) to.append(parts[m[1]]); else if (bit) to.append(bit);
+        }
+      } else if (c.nodeType === 1 && RICH_TAGS.has(c.tagName)) { const n = document.createElement(c.tagName); copy(c, n); to.append(n); }
+      else if (c.nodeType === 1) copy(c, to);              // any other tag: its text only
+    }
+  };
+  e.textContent = ""; copy(doc.body, e);
+}
 function siteLangApply(root) {                             // the page's own marked texts, in the current language
+  for (const e of (root || document).querySelectorAll("[data-t-rich]")) {
+    if (!e._tParts) { e._tParts = {}; for (const c of e.querySelectorAll("[data-t-part]")) e._tParts[c.dataset.tPart] = c; }
+    const parts = e._tParts;                     // kept, so a translation that leaves one out does not lose it for the next
+    if (e.dataset.tEn == null) e.dataset.tEn = richEnglish(e);
+    richFill(e, T(e.dataset.tRich, e.dataset.tEn), parts);
+  }
   for (const e of (root || document).querySelectorAll("[data-t]")) {
-    if (e.dataset.tEn == null) e.dataset.tEn = e.textContent;
-    e.textContent = T(e.dataset.t, e.dataset.tEn);
+    if (!e._tParts) { e._tParts = {}; for (const c of e.children) if (c.dataset.tPart) e._tParts[c.dataset.tPart] = c; }
+    const parts = e._tParts;
+    if (e.dataset.tEn == null)                   // the English; a child marked data-t-part="name" stands as {name}
+      e.dataset.tEn = Array.from(e.childNodes).map(n => n.nodeType === 1 ? (n.dataset.tPart ? "{" + n.dataset.tPart + "}" : n.textContent) : n.textContent).join("");
+    const text = T(e.dataset.t, e.dataset.tEn);
+    if (!Object.keys(parts).length) { e.textContent = text; continue; }
+    e.textContent = "";                          // the sentence around its parts (a link...), the parts kept as they are
+    for (const bit of text.split(/(\{\w+\})/)) {
+      const m = /^\{(\w+)\}$/.exec(bit);
+      if (m && parts[m[1]]) e.append(parts[m[1]]); else if (bit) e.append(bit);
+    }
   }
   for (const a of ["title", "placeholder"]) {
     const d = "t" + a[0].toUpperCase() + a.slice(1);
@@ -2554,36 +2594,42 @@ async function save(submit) {
 let creating = false, termsAsked = false;          // termsAsked: an existing account must agree to new terms
 function loginMode(create) {
   creating = create;
-  $("loginTitle").textContent = create ? "Create an account" : "Sign in";
-  $("loginIntro").textContent = create ? "Pick a username and a password. That is all an account needs." : "Sign in to design cards for Warpforge Revival.";
-  $("loginGo").textContent = create ? "Create account" : "Sign in";
-  $("loginAsk").textContent = create ? "Already have an account?" : "New here?";
-  $("loginSwitch").textContent = create ? "Sign in" : "Create an account";
+  loginTexts();
   $("pass2Field").classList.toggle("hidden", !create); $("forgotLine").classList.toggle("hidden", create); $("loginRules").classList.toggle("hidden", !create);
   termsAsked = false; $("termsBox").checked = false; $("termsField").classList.toggle("hidden", !create);
   $("pass").autocomplete = create ? "new-password" : "current-password";
   loginSay("");
 }
+function loginTexts() {                          // the sign-in page's words for signing in or creating an account
+  const create = creating;
+  $("loginTitle").textContent = create ? T("login.createTitle", "Create an account") : T("login.signIn", "Sign in");
+  $("loginIntro").textContent = create ? T("login.createIntro", "Pick a username and a password. That is all an account needs.") : T("login.intro", "Sign in to design cards for Warpforge Revival.");
+  $("loginGo").textContent = create ? T("login.createGo", "Create account") : T("login.signIn", "Sign in");
+  $("loginAsk").textContent = create ? T("login.haveAccount", "Already have an account?") : T("login.newHere", "New here?");
+  $("loginSwitch").textContent = create ? T("login.signIn", "Sign in") : T("login.createTitle", "Create an account");
+  if (!me) document.title = T("login.signIn", "Sign in") + " – WF-Revival";
+}
+onSiteLang(() => loginTexts());
 function loginSay(text) { const m = $("loginMsg"); m.textContent = text; m.classList.toggle("hidden", !text); }
 async function sign() {
   const name = val("author").trim(), passphrase = val("pass");
-  if (!name || !passphrase) return loginSay("Enter your username and password.");
-  if (creating && passphrase !== val("pass2")) return loginSay("The two passwords do not match.");
+  if (!name || !passphrase) return loginSay(T("login.needBoth", "Enter your username and password."));
+  if (creating && passphrase !== val("pass2")) return loginSay(T("login.noMatch", "The two passwords do not match."));
   const agree = $("termsBox").checked;
-  if ((creating || termsAsked) && !agree) return loginSay("Tick the box to agree to the Terms and Privacy notice.");
+  if ((creating || termsAsked) && !agree) return loginSay(T("login.tickTerms", "Tick the box to agree to the Terms and Privacy notice."));
   $("loginGo").disabled = true;
   try {
     const d = await call("CreatorSignIn", Object.assign({ name, passphrase, create: creating }, agree ? { agreeTerms: true } : {}));
     setSession(d.session); $("pass").value = ""; $("pass2").value = ""; loginSay("");
     const waits = !!(d.account && d.account.access === "requested");
-    say(creating && waits ? `Account created. Welcome, ${d.name}. An admin has to approve it before you can play or use the Card Creator; meanwhile the guides and your profile are open.`
-        : creating ? `Account created. Welcome, ${d.name}.` : d.deletionCancelled ? "Welcome back. Your account will not be deleted after all." : "",
+    say(creating && waits ? T("login.createdWaits", "Account created. Welcome, {name}. An admin has to approve it before you can play or use the Card Creator; meanwhile the guides and your profile are open.", { name: d.name })
+        : creating ? T("login.created", "Account created. Welcome, {name}.", { name: d.name }) : d.deletionCancelled ? T("login.deletionCancelled", "Welcome back. Your account will not be deleted after all.") : "",
         creating || d.deletionCancelled ? "ok" : "");
     loginMode(false); await loadList();
   } catch (e) {
     if (e.code === "TermsNotAgreed" && !creating) {
       termsAsked = true; $("termsField").classList.remove("hidden");
-      loginSay("The Terms and Privacy notice have changed since you last signed in. Read them, tick the box and sign in again.");
+      loginSay(T("login.termsChanged", "The Terms and Privacy notice have changed since you last signed in. Read them, tick the box and sign in again."));
       $("loginGo").disabled = false; return;
     }
     if (e.code === "AccountNotApproved") {
@@ -2591,7 +2637,8 @@ async function sign() {
       const made = creating;
       if (creating) { loginMode(false); $("pass2").value = ""; }
       $("pass").value = "";
-      loginSay((made ? "Account created. " : "") + "An admin has to approve it before you can use the site or play. Sign in again once it is approved.");
+      loginSay(made ? T("login.createdNeedsApproval", "Account created. An admin has to approve it before you can use the site or play. Sign in again once it is approved.")
+                    : T("login.needsApproval", "An admin has to approve it before you can use the site or play. Sign in again once it is approved."));
     } else loginSay(e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".");
   }
   $("loginGo").disabled = false;
@@ -2604,7 +2651,7 @@ function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.ke
 function goto(path, replace) { if (location.pathname !== path) history[replace ? "replaceState" : "pushState"](null, "", path); }
 function gate() {                                // signed out: only the sign-in page
   const out = !me;
-  if (out) { if (location.pathname !== LOGIN) { wanted = pageOf(location.pathname); goto(LOGIN, true); } document.title = "Sign in – WF-Revival"; }
+  if (out) { if (location.pathname !== LOGIN) { wanted = pageOf(location.pathname); goto(LOGIN, true); } document.title = T("login.signIn", "Sign in") + " – WF-Revival"; }
   else if (!pageOf(location.pathname)) { show(wanted || "Home", true); wanted = ""; }
   else document.title = TITLES[pageOf(location.pathname)] + " – WF-Revival";
   $("viewLogin").classList.toggle("hidden", !out); $("tabs").classList.toggle("hidden", out); $("app").classList.toggle("hidden", out);
@@ -2777,14 +2824,16 @@ async function laUse(blob, remember) {
   localArt.blob = blob; localArt.entries = entries;
   try { localArt.info = JSON.parse(await (await laRead("export.json")).text()); } catch (e) { localArt.info = {}; }
   await ltLoad();
-  if (remember) { try { await laStore("put", blob); } catch (e) { say("The card art is shown, but this browser would not keep it: pick the file again next time.", "info"); } }
+  if (remember) { try { await laStore("put", blob); } catch (e) { say(T("profile.artNotKept", "The card art is shown, but this browser would not keep it: pick the file again next time."), "info"); } }
   laShow();
 }
 function laShow() {
   const i = localArt.info;
   $("laStatus").textContent = localArt.entries
-    ? `Loaded: ${i.art ?? "?"} pictures, ${i.frames ?? "?"} frames${localText.langs ? `, card text in ${localText.langs.length} languages` : ", no card text (export again with mod 0.13.19 or later)"}${i.made ? ", exported " + String(i.made).slice(0, 10) : ""}${i.game ? " from game " + i.game : ""}`
-    : "Not loaded: cards show without pictures";
+    ? T("profile.artLoaded", "Loaded: {pictures} pictures, {frames} frames", { pictures: i.art ?? "?", frames: i.frames ?? "?" }) + ", " +
+      (localText.langs ? T("profile.artTextLangs", "card text in {count} languages", { count: localText.langs.length }) : T("profile.artNoText", "no card text (export again with mod 0.13.19 or later)")) +
+      (i.made ? ", " + T("profile.artExported", "exported {date}", { date: String(i.made).slice(0, 10) }) : "") + (i.game ? " " + T("profile.artFromGame", "from game {version}", { version: i.game }) : "")
+    : T("profile.artNotLoaded", "Not loaded: cards show without pictures");
   $("laRemove").classList.toggle("hidden", !localArt.entries);
   $("laHelp").classList.toggle("hidden", !!localArt.entries);
   laNotes();
@@ -2795,11 +2844,12 @@ function laShow() {
 function laNotes() {
   for (const p of document.querySelectorAll(".laNote")) {
     p.textContent = "";
-    const link = el("a", { href: "/profile", text: localArt.entries ? "change it on your Profile page" : "Load them on your Profile page",
+    const link = el("a", { href: "/profile", text: localArt.entries ? T("art.changeOnProfile", "change it on your Profile page") : T("art.loadOnProfile", "Load them on your Profile page"),
       onclick: e => { if (!plainClick(e)) return; e.preventDefault(); laGoProfile(); } });
     p.append(localArt.entries
-      ? `Official frames, card art${localText.langs ? " and card text" : ""}: from your game's export${localArt.info && localArt.info.made ? " of " + String(localArt.info.made).slice(0, 10) : ""} (kept in this browser) – `
-      : "Official card names, rules text, frames and art come from your own copy of the game, not from this site – without them cards show their ids. ", link, ".");
+      ? (localText.langs ? T("art.fromExportText", "Official frames, card art and card text: from your game's export (kept in this browser)") : T("art.fromExport", "Official frames and card art: from your game's export (kept in this browser)")) +
+        (localArt.info && localArt.info.made ? " " + T("art.exportDate", "made {date}", { date: String(localArt.info.made).slice(0, 10) }) : "") + " – "
+      : T("art.fromYourGame", "Official card names, rules text, frames and art come from your own copy of the game, not from this site – without them cards show their ids.") + " ", link, ".");
   }
 }
 /* Official card text from the export (card-text.json: the game's own text entries in every language it
@@ -2865,9 +2915,9 @@ async function laStart() {                  // once per page: what this browser 
   $("laFile").addEventListener("change", async e => {
     const f = e.target.files && e.target.files[0]; e.target.value = "";
     if (!f) return;
-    $("laStatus").textContent = "Reading " + f.name + "…";
-    try { await laUse(f, true); say("Card art loaded from your game's export. It stays in this browser.", "ok"); if (cvPick) viewCard(cvPick); }
-    catch (x) { laShow(); say("Could not use that file: " + x.message + ".", "bad"); }
+    $("laStatus").textContent = T("profile.artReading", "Reading {file}…", { file: f.name });
+    try { await laUse(f, true); say(T("profile.artDone", "Card art loaded from your game's export. It stays in this browser."), "ok"); if (cvPick) viewCard(cvPick); }
+    catch (x) { laShow(); say(T("profile.artBadFile", "Could not use that file: {error}.", { error: x.message }), "bad"); }
   });
   $("ltLang").addEventListener("change", e => { try { localStorage.setItem(LT_LANG, e.target.value); } catch (x) { } ltPick(e.target.value); ltApply(); });
   $("laRemove").addEventListener("click", async () => {
@@ -2973,12 +3023,12 @@ function drawProfile() {
   drawDiscord();
   if (limited) { drawRecovery(); return; }
   const linked = account && account.player;
-  $("p_link").textContent = linked ? `Linked to game player ${account.playerName}.` : "Not linked to a game account. To link, open the game and go to Settings > Account, then enter this username and password.";
+  $("p_link").textContent = linked ? T("profile.linkedTo", "Linked to game player {name}.", { name: account.playerName }) : T("profile.notLinked", "Not linked to a game account. To link, open the game and go to Settings > Account, then enter this username and password.");
   $("p_gameLogin").classList.toggle("hidden", !linked);
   if (account && !$("viewDecks").classList.contains("hidden")) drawDecksPage();
   if (account && !$("viewReplays").classList.contains("hidden")) drawReplaysPage();
   drawRecovery();
-  $("p_gameLoginAt").textContent = account && account.gameLoginAt ? `${account.gameLogins || 1} game sign-in(s) active; the latest made on ${account.gameLoginAt.slice(0, 10)}.` : "The game has not been signed in with this account yet.";
+  $("p_gameLoginAt").textContent = account && account.gameLoginAt ? T("profile.gameSignIns", "Game sign-ins active: {count}; the latest made on {date}.", { count: account.gameLogins || 1, date: account.gameLoginAt.slice(0, 10) }) : T("profile.noGameSignIn", "The game has not been signed in with this account yet.");
 }
 // The Decks page (main ribbon): the decks on the linked game account, and importing one.
 function drawDecksPage() {
@@ -2993,26 +3043,27 @@ function drawDiscord() {
   const d = account && account.discord;
   const ready = !!(account && account.discordReady);
   $("p_discordState").textContent = d
-    ? `Linked to Discord account ${d.name}${d.shown && d.shown !== d.name ? " (" + d.shown + ")" : ""} since ${d.linkedAt.slice(0, 10)}. Two-factor sign-in on Discord: ${d.mfa ? "on" : "off (it will be needed for password resets through Discord; switch it on in Discord, then link again)"}.`
-    : ready ? "No Discord account linked." : "Discord linking is not available on this server yet.";
-  $("p_discordLink").textContent = d ? "Link a different Discord account" : "Link Discord";
+    ? T("profile.discordLinked", "Linked to Discord account {name} since {date}.", { name: d.name + (d.shown && d.shown !== d.name ? " (" + d.shown + ")" : ""), date: d.linkedAt.slice(0, 10) }) + " " +
+      (d.mfa ? T("profile.discordMfaOn", "Two-factor sign-in on Discord: on.") : T("profile.discordMfaOff", "Two-factor sign-in on Discord: off (it will be needed for password resets through Discord; switch it on in Discord, then link again)."))
+    : ready ? T("profile.discordNone", "No Discord account linked.") : T("profile.discordUnavailable", "Discord linking is not available on this server yet.");
+  $("p_discordLink").textContent = d ? T("profile.discordLinkOther", "Link a different Discord account") : T("profile.discordLink", "Link Discord");
   $("p_discordLink").disabled = !ready;
   $("p_discordUnlink").classList.toggle("hidden", !d);
   drawDiscordReset();
 }
 async function linkDiscord() {
-  const d = await confirmWithPassword("Link Discord", "Discord asks you to allow WF-Revival to see your username, then sends you back here.",
-    "Continue to Discord", passphrase => call("CreatorDiscordStart", { passphrase }));
+  const d = await confirmWithPassword(T("profile.discordLink", "Link Discord"), T("profile.discordLinkAsk", "Discord asks you to allow WF-Revival to see your username, then sends you back here."),
+    T("profile.discordContinue", "Continue to Discord"), passphrase => call("CreatorDiscordStart", { passphrase }));
   if (!d) return;
-  if (d instanceof Error) return say("Not linked: " + d.message + ".", "bad");
+  if (d instanceof Error) return say(T("profile.notLinkedError", "Not linked: {error}.", { error: d.message }), "bad");
   location.href = d.url;
 }
 async function unlinkDiscord() {
-  const d = await confirmWithPassword("Unlink Discord", "Your Discord account will no longer be linked to this account.",
-    "Unlink", passphrase => call("CreatorDiscordUnlink", { passphrase }));
+  const d = await confirmWithPassword(T("profile.discordUnlink", "Unlink Discord"), T("profile.discordUnlinkAsk", "Your Discord account will no longer be linked to this account."),
+    T("profile.unlink", "Unlink"), passphrase => call("CreatorDiscordUnlink", { passphrase }));
   if (!d) return;
-  if (d instanceof Error) return say("Not unlinked: " + d.message + ".", "bad");
-  say("Discord unlinked.", "ok"); loadList();
+  if (d instanceof Error) return say(T("profile.notUnlinkedError", "Not unlinked: {error}.", { error: d.message }), "bad");
+  say(T("profile.discordUnlinked", "Discord unlinked."), "ok"); loadList();
 }
 // A password reset asked through Discord (/password-reset) waits a little; the owner can cancel it here.
 let resetWarned = 0;
@@ -3021,30 +3072,30 @@ function drawDiscordReset() {
   const live = !!due && due > Date.now() - 5000;
   $("p_discordReset").classList.toggle("hidden", !live);
   if (!live) return;
-  $("p_discordResetWhen").textContent = `The code is shown on Discord at ${new Date(due).toLocaleTimeString()}.`;
-  if (resetWarned !== due) { resetWarned = due; say("A password reset was asked for through Discord. If that was not you, cancel it on your Profile page (Discord section) now.", "bad"); }
+  $("p_discordResetWhen").textContent = T("profile.discordResetAt", "The code is shown on Discord at {time}.", { time: new Date(due).toLocaleTimeString(siteLang()) });
+  if (resetWarned !== due) { resetWarned = due; say(T("profile.discordResetWarn", "A password reset was asked for through Discord. If that was not you, cancel it on your Profile page (Discord section) now."), "bad"); }
   setTimeout(() => { if (account && account.discordReset === due) { account.discordReset = 0; drawDiscordReset(); } }, Math.max(0, due - Date.now()) + 1000);
 }
 async function cancelDiscordReset() {
   try {
     const d = await call("CreatorDiscordResetCancel");
-    say(d.cancelled ? "Password reset cancelled. No code will be made. If you did not ask for it, change your password." : "There was no reset waiting (it may already have been shown).", d.cancelled ? "ok" : "info");
+    say(d.cancelled ? T("profile.resetCancelled", "Password reset cancelled. No code will be made. If you did not ask for it, change your password.") : T("profile.noResetWaiting", "There was no reset waiting (it may already have been shown)."), d.cancelled ? "ok" : "info");
   } catch (e) { say(sentence(e), "bad"); }
   loadList();
 }
 // Back from Discord's page (/discord-linked?code=...&state=...): finish the link, then show the Profile.
 async function finishDiscord(q) {
-  if (q.get("error")) return say(q.get("error") === "access_denied" ? "Discord linking was cancelled." : "Discord did not link: " + q.get("error") + ".", "bad");
+  if (q.get("error")) return say(q.get("error") === "access_denied" ? T("profile.discordCancelled", "Discord linking was cancelled.") : T("profile.discordFailed", "Discord did not link: {error}.", { error: q.get("error") }), "bad");
   try {
     const d = await call("CreatorDiscordFinish", { discordCode: q.get("code") || "", discordState: q.get("state") || "" });
-    say(`Discord account ${d.discord.name} linked.` + (d.discord.mfa ? "" : " Two-factor sign-in is off on that Discord account: password resets through Discord will need it."), "ok");
-  } catch (e) { say("Not linked: " + e.message + ".", "bad"); }
+    say(T("profile.discordDone", "Discord account {name} linked.", { name: d.discord.name }) + (d.discord.mfa ? "" : " " + T("profile.discordDoneNoMfa", "Two-factor sign-in is off on that Discord account: password resets through Discord will need it.")), "ok");
+  } catch (e) { say(T("profile.notLinkedError", "Not linked: {error}.", { error: e.message }), "bad"); }
   loadList();
 }
 function drawRecovery() {
   const hasCode = !!(account && account.recoveryAt);
-  $("p_recAt").textContent = hasCode ? `You have a recovery code, made on ${account.recoveryAt.slice(0, 10)}.` : "You do not have a recovery code.";
-  $("p_recMake").textContent = hasCode ? "Make a new code (cancels the old one)" : "Make a recovery code";
+  $("p_recAt").textContent = hasCode ? T("profile.recoveryMade", "You have a recovery code, made on {date}.", { date: account.recoveryAt.slice(0, 10) }) : T("profile.recoveryNone", "You do not have a recovery code.");
+  $("p_recMake").textContent = hasCode ? T("profile.recoveryRemake", "Make a new code (cancels the old one)") : T("profile.recoveryMake", "Make a recovery code");
   $("p_recRemove").classList.toggle("hidden", !hasCode);
 }
 
@@ -3139,62 +3190,64 @@ function drawHome() {
 const sentence = e => e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".";
 async function rename() {
   const name = val("p_name").trim();
-  if (!name || !val("p_namePass")) return say("Enter the new username and your password.", "bad");
+  if (!name || !val("p_namePass")) return say(T("profile.renameNeed", "Enter the new username and your password."), "bad");
   try {
     const d = await call("CreatorRename", { name, passphrase: val("p_namePass") });
-    $("p_name").value = ""; $("p_namePass").value = ""; await loadList(); say(`Your username is now ${d.name}.`, "ok");
+    $("p_name").value = ""; $("p_namePass").value = ""; await loadList(); say(T("profile.renamed", "Your username is now {name}.", { name: d.name }), "ok");
   } catch (e) { say(sentence(e), "bad"); }
 }
 async function changePassphrase() {
-  if (!val("p_old") || !val("p_new")) return say("Enter your current password and the new one.", "bad");
-  if (val("p_new") !== val("p_new2")) return say("The two new passwords do not match.", "bad");
+  if (!val("p_old") || !val("p_new")) return say(T("profile.passNeed", "Enter your current password and the new one."), "bad");
+  if (val("p_new") !== val("p_new2")) return say(T("recover.noMatch", "The two new passwords do not match."), "bad");
   try {
     await call("CreatorPassphrase", { passphrase: val("p_old"), newPassphrase: val("p_new") });
     for (const id of ["p_old", "p_new", "p_new2"]) $(id).value = "";
-    say("Password changed. Other browsers signed in to this account have been signed out.", "ok");
+    say(T("profile.passChanged", "Password changed. Other browsers signed in to this account have been signed out."), "ok");
   } catch (e) { say(sentence(e), "bad"); }
 }
 async function deleteAccount() {
-  if (!val("p_delPass") || !val("p_delName").trim()) return say("Enter your password and type your username.", "bad");
-  if (val("p_delName").trim().toLowerCase() !== (me || "").toLowerCase()) return say("Type your username exactly as it is to confirm.", "bad");
+  if (!val("p_delPass") || !val("p_delName").trim()) return say(T("profile.deleteNeed", "Enter your password and type your username."), "bad");
+  if (val("p_delName").trim().toLowerCase() !== (me || "").toLowerCase()) return say(T("profile.deleteExact", "Type your username exactly as it is to confirm."), "bad");
   try {
     const d = await call("CreatorDeleteAccount", { passphrase: val("p_delPass"), confirm: val("p_delName").trim() });
     $("p_delPass").value = ""; $("p_delName").value = "";
     setSession(""); fill(null); await loadList();
-    loginSay(`Your account will be deleted on ${new Date(d.deleteAt).toLocaleDateString()}. You have been signed out everywhere. To keep the account, sign in again before then.`);
+    loginSay(T("login.willBeDeleted", "Your account will be deleted on {date}. You have been signed out everywhere. To keep the account, sign in again before then.", { date: new Date(d.deleteAt).toLocaleDateString(siteLang()) }));
   } catch (e) { say(sentence(e), "bad"); }
 }
 async function gameLogin() {
-  if (!val("p_glPass")) return say("Enter your password to make the file.", "bad");
+  if (!val("p_glPass")) return say(T("profile.gameLoginNeed", "Enter your password to make the file."), "bad");
   try {
     const d = await call("CreatorGameLogin", { passphrase: val("p_glPass") });
     $("p_glPass").value = "";
     const a = el("a", { href: URL.createObjectURL(new Blob([d.token + "\n"], { type: "text/plain" })), download: d.file });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    await loadList(); say(`${d.file} downloaded. Any earlier file no longer works.`, "ok");
+    await loadList(); say(T("profile.gameLoginDone", "{file} downloaded. Any earlier file no longer works.", { file: d.file }), "ok");
   } catch (e) { say(sentence(e), "bad"); }
 }
 async function recoveryCode() {
-  if (!val("p_recPass")) return say("Enter your password to make a recovery code.", "bad");
+  if (!val("p_recPass")) return say(T("profile.recoveryNeed", "Enter your password to make a recovery code."), "bad");
   try {
     const d = await call("CreatorRecoveryCode", { passphrase: val("p_recPass") });
     $("p_recPass").value = "";
     $("p_recCode").textContent = d.recoveryCode; $("p_recShow").classList.remove("hidden");
-    const text = `Warpforge Revival - account recovery code\n\nUsername: ${d.name}\nRecovery code: ${d.recoveryCode}\nMade: ${d.at.slice(0, 10)}\n\n` +
-      `If you forget your password: open the card creator site, choose "Forgot your password?" and enter your username, this code and a new password.\n` +
-      `The code works once. Anyone with it can take over your account, so keep this file private.\n`;
+    const text = T("profile.recoveryFileTitle", "Warpforge Revival - account recovery code") + "\n\n" +
+      T("login.username", "Username") + ": " + d.name + "\n" + T("profile.recoveryCode", "Recovery code") + ": " + d.recoveryCode + "\n" +
+      T("profile.recoveryFileMade", "Made: {date}", { date: d.at.slice(0, 10) }) + "\n\n" +
+      T("profile.recoveryFileHow", "If you forget your password: open the website, choose \"Forgot your password?\" and enter your username, this code and a new password.") + "\n" +
+      T("profile.recoveryFileOnce", "The code works once. Anyone with it can take over your account, so keep this file private.") + "\n";
     const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "text/plain" })), download: `warpforge-recovery-${d.name}.txt` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    await loadList(); say("Recovery code made and downloaded. Any earlier code no longer works.", "ok");
+    await loadList(); say(T("profile.recoveryDone", "Recovery code made and downloaded. Any earlier code no longer works."), "ok");
   } catch (e) { say(sentence(e), "bad"); }
 }
 async function removeRecoveryCode() {
-  if (!val("p_recPass")) return say("Enter your password to remove your recovery code.", "bad");
-  if (!confirm("Remove your recovery code? Without one there is no way back in if you forget your password.")) return;
+  if (!val("p_recPass")) return say(T("profile.recoveryRemoveNeed", "Enter your password to remove your recovery code."), "bad");
+  if (!confirm(T("profile.recoveryRemoveAsk", "Remove your recovery code? Without one there is no way back in if you forget your password."))) return;
   try {
     await call("CreatorRecoveryCode", { passphrase: val("p_recPass"), remove: true });
     $("p_recPass").value = ""; $("p_recShow").classList.add("hidden"); $("p_recCode").textContent = "";
-    await loadList(); say("Recovery code removed. The old code no longer works.", "ok");
+    await loadList(); say(T("profile.recoveryRemoved", "Recovery code removed. The old code no longer works."), "ok");
   } catch (e) { say(sentence(e), "bad"); }
 }
 // Forgotten password: the recovery form on the sign-in page.
@@ -3207,15 +3260,15 @@ function recoverMode(on) {
 function recoverSay(text) { const m = $("recoverMsg"); m.textContent = text; m.classList.toggle("hidden", !text); }
 async function recover() {
   const name = val("r_name").trim(), code = val("r_code").trim(), pass = val("r_new");
-  if (!name || !code || !pass) return recoverSay("Enter your username, your recovery code and a new password.");
-  if (pass !== val("r_new2")) return recoverSay("The two new passwords do not match.");
+  if (!name || !code || !pass) return recoverSay(T("recover.needAll", "Enter your username, your recovery code and a new password."));
+  if (pass !== val("r_new2")) return recoverSay(T("recover.noMatch", "The two new passwords do not match."));
   $("recoverGo").disabled = true;
   try {
     const d = await call("CreatorRecover", { name, recoveryCode: code, newPassphrase: pass });
     setSession(d.session); recoverMode(false); loginMode(false);
     await loadList();
-    say(d.usedResetCode ? `Password reset. Welcome back, ${d.name}. Make a recovery code on your Profile page so you can do this yourself next time.`
-      : `Password reset. Welcome back, ${d.name}. Your recovery code is used up: make a new one on your Profile page.`, "ok");
+    say(d.usedResetCode ? T("recover.doneReset", "Password reset. Welcome back, {name}. Make a recovery code on your Profile page so you can do this yourself next time.", { name: d.name })
+      : T("recover.doneRecovery", "Password reset. Welcome back, {name}. Your recovery code is used up: make a new one on your Profile page.", { name: d.name }), "ok");
   } catch (e) { recoverSay(sentence(e)); }
   $("recoverGo").disabled = false;
 }
@@ -3611,12 +3664,12 @@ function confirmWithPassword(title, text, button, send) {
     const dlg = el("dialog", { class: "confirmPass" },
       el("form", { method: "dialog" },
         el("h3", { text: title }), el("p", { class: "hint", text }),
-        el("label", { text: "Your password" }), pass, msg,
-        el("div", { class: "buttons" }, el("button", { type: "button", text: "Cancel", onclick: () => dlg.close() }), go)));
+        el("label", { text: T("profile.yourPassword", "Your password") }), pass, msg,
+        el("div", { class: "buttons" }, el("button", { type: "button", text: T("common.cancel", "Cancel"), onclick: () => dlg.close() }), go)));
     let answer = null;
     dlg.querySelector("form").addEventListener("submit", async e => {
       e.preventDefault();
-      if (!pass.value) { msg.textContent = "Enter your password."; msg.classList.remove("hidden"); return pass.focus(); }
+      if (!pass.value) { msg.textContent = T("common.enterPassword", "Enter your password."); msg.classList.remove("hidden"); return pass.focus(); }
       go.disabled = true;
       try { answer = await send(pass.value); dlg.close(); }
       catch (x) {
@@ -4170,7 +4223,7 @@ async function loadList() {
     if (editingId) { const fresh = allCards.find(c => c.id === editingId); if (fresh) editingCard = fresh; }
     if (schema) { preview(); drawList(); }
     if (!$("viewHome").classList.contains("hidden")) drawHome();
-  } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay("The server could not be reached: " + e.message); } }
+  } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay(T("login.unreachable", "The server could not be reached: {error}", { error: e.message })); } }
 }
 // An account waiting for an admin's approval sees only the guides and its own profile.
 let limited = false, shownOnce = false;
@@ -4372,6 +4425,7 @@ function reqTab(n) {                     // Admin > Requests, with the number wa
   $("tabRequests").textContent = reqCount ? T("nav.requestsCount", "Requests ({count})", { count: reqCount }) : T("nav.requests", "Requests");
 }
 onSiteLang(() => reqTab(reqCount));
+onSiteLang(() => { if (me) { drawProfile(); laShow(); } });
 siteLangStart();
 onSiteLang(() => {                       // official card text follows the site's language unless picked on the Profile page
   let own = null; try { own = localStorage.getItem(LT_LANG); } catch (e) { }
