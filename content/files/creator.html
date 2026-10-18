@@ -4425,7 +4425,7 @@ function reqTab(n) {                     // Admin > Requests, with the number wa
   $("tabRequests").textContent = reqCount ? T("nav.requestsCount", "Requests ({count})", { count: reqCount }) : T("nav.requests", "Requests");
 }
 onSiteLang(() => reqTab(reqCount));
-onSiteLang(() => { if (me) { drawProfile(); laShow(); } });
+onSiteLang(() => { try { drawProfile(); laShow(); } catch (e) { } });     // whatever arrived first, the texts or the account
 siteLangStart();
 onSiteLang(() => {                       // official card text follows the site's language unless picked on the Profile page
   let own = null; try { own = localStorage.getItem(LT_LANG); } catch (e) { }
