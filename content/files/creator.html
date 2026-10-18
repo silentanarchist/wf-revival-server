@@ -641,7 +641,7 @@
   </div>
 
   <div id="viewGuides" class="hidden">
-    <section class="guides" id="guidesText"><p class="hint">Loading the guides…</p></section>
+    <section class="guides" id="guidesText"><p class="hint" data-t="guides.loading">Loading the guides…</p></section>
   </div>
 
   <div id="viewBugs" class="hidden">
@@ -968,12 +968,13 @@ function richEnglish(e) {                                  // an element's Engli
   const esc = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const walk = n => Array.from(n.childNodes).map(c => c.nodeType === 3 ? esc(c.textContent)
     : c.nodeType !== 1 ? "" : c.dataset.tPart ? "{" + c.dataset.tPart + "}"
-    : RICH_TAGS.has(c.tagName) ? (c.tagName === "BR" ? "<br>" : "<" + c.tagName.toLowerCase() + ">" + walk(c) + "</" + c.tagName.toLowerCase() + ">")
+    : RICH_TAGS.has(c.tagName) || c.tagName === "A" ? (c.tagName === "BR" ? "<br>" : "<" + c.tagName.toLowerCase() + ">" + walk(c) + "</" + c.tagName.toLowerCase() + ">")
     : esc(c.textContent)).join("");
   return walk(e).replace(/\s+/g, " ").trim();
 }
-function richFill(e, text, parts) {                        // a translation into an element: only the simple tags, parts kept
+function richFill(e, text, parts, links) {                 // a translation into an element: only the simple tags, parts kept
   const doc = new DOMParser().parseFromString("<body>" + text + "</body>", "text/html");
+  let link = 0;                                              // each <a> takes the address of the English one in the same place
   const copy = (from, to) => {
     for (const c of from.childNodes) {
       if (c.nodeType === 3) {
@@ -982,6 +983,7 @@ function richFill(e, text, parts) {                        // a translation into
           if (m && parts[m[1]]) to.append(parts[m[1]]); else if (bit) to.append(bit);
         }
       } else if (c.nodeType === 1 && RICH_TAGS.has(c.tagName)) { const n = document.createElement(c.tagName); copy(c, n); to.append(n); }
+      else if (c.nodeType === 1 && c.tagName === "A" && links && links[link]) { const n = links[link++]; n.textContent = ""; copy(c, n); to.append(n); }   // the link itself, its handlers kept
       else if (c.nodeType === 1) copy(c, to);              // any other tag: its text only
     }
   };
@@ -4244,11 +4246,43 @@ const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", 
 let lastGuidePage = "GuideHome", guideParts = null, guideAsk = null;
 const INSTALL_GUIDES = ["GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu"];   // under Guides > Install Guides
 let lastInstallGuide = "GuidePc";
+/* The guides in the player's language: guides.html is not marked up; every text block that holds no other block is
+   looked up by "<guide>.<fingerprint>", the fingerprint being the SHA-1 of its English as richEnglish() writes it
+   (tools/localization/extract-guides.py in the mod repo makes the same keys for localization/guides/en.json).
+   A block whose English changed has a new fingerprint and shows in English until translated again. */
+const GUIDE_BLOCKS = "h1,h2,h3,h4,p,li,td,th,figcaption,summary,dt,dd";
+const GUIDE_NOT_INSIDE = GUIDE_BLOCKS + ",ul,ol,table,figure,img,pre,div,section";
+const guideLoc = {};                         // language -> { fingerprint: text }, once loaded
+async function guideTable(code) {
+  if (code === "en") return null;
+  if (guideLoc[code] !== undefined) return guideLoc[code];
+  const sha = siteLoc.index && siteLoc.index.guides && siteLoc.index.guides[code];
+  let table = null;
+  if (sha) {
+    try {
+      const r = await fetch(LOC + "guides/" + encodeURIComponent(code) + ".json?v=" + sha.slice(0, 12));
+      if (r.ok) { table = {}; for (const [k, v] of Object.entries(await r.json())) table[k.split(".").pop()] = v; }
+    } catch (e) { console.warn("guide texts:", e); }
+  }
+  return (guideLoc[code] = table);
+}
+async function guideTranslate(box) {
+  const code = siteLang(), table = await guideTable(code);
+  if (!table || siteLang() !== code || !box.isConnected) return;
+  for (const b of box.querySelectorAll(GUIDE_BLOCKS)) {
+    if (b.querySelector(GUIDE_NOT_INSIDE) || b.closest("header,nav")) continue;
+    const en = richEnglish(b);
+    if (!en) continue;
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(en))), x => x.toString(16).padStart(2, "0")).join("").slice(0, 10);
+    if (table[hash]) richFill(b, table[hash], {}, Array.from(b.querySelectorAll("a")));
+  }
+}
+onSiteLang(() => { if (!$("viewGuides").classList.contains("hidden")) showGuide(lastGuidePage); });
 async function showGuide(which) {
   if (!guideParts) {
     guideAsk = guideAsk || call("Guides");
     let d;
-    try { d = await guideAsk; } catch (e) { guideAsk = null; $("guidesText").textContent = ""; return say("Could not load the guides: " + e.message, "bad"); }
+    try { d = await guideAsk; } catch (e) { guideAsk = null; $("guidesText").textContent = ""; return say(T("guides.loadFailed", "Could not load the guides: {error}", { error: e.message }), "bad"); }
     const doc = document.createElement("div"); doc.innerHTML = d.html;    // our own page from the server's content folder
     guideParts = {};
     for (const sec of [...doc.querySelectorAll("section[id]")]) { guideParts[sec.id] = sec.innerHTML; sec.remove(); }
@@ -4259,6 +4293,7 @@ async function showGuide(which) {
   if (!(which in GUIDE_SECTIONS) || $("viewGuides").classList.contains("hidden")) return;   // moved on meanwhile
   const box = $("guidesText");
   box.innerHTML = (guideParts[GUIDE_SECTIONS[which]] || "") + guideParts.footer;
+  guideTranslate(box);                         // in the chosen language, block by block (links are set up below meanwhile)
   // a link to another guide (#pc, #mumu, ...) opens that guide's page
   for (const a of box.querySelectorAll('a[href^="#"]')) {
     const page = Object.keys(GUIDE_SECTIONS).find(k => GUIDE_SECTIONS[k] && GUIDE_SECTIONS[k] === a.getAttribute("href").slice(1));
