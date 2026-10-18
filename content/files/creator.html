@@ -349,102 +349,102 @@
   <div id="viewCreate" class="cols">
     <div>
       <section>
-        <h2>Basics</h2>
+        <h2 data-t="creator.basics">Basics</h2>
         <div class="row">
-          <div class="field grow"><label>Name</label><input id="f_name" maxlength="40"></div>
-          <div class="field"><label>Card template</label><select id="f_template"></select></div>
+          <div class="field grow"><label data-t="creator.name">Name</label><input id="f_name" maxlength="40"></div>
+          <div class="field"><label data-t="creator.template">Card template</label><select id="f_template"></select></div>
           <div class="field hidden"><label>Kind</label><select id="f_kind"></select></div>
-          <div class="field"><label>Faction</label><select id="f_army"></select></div>
-          <div class="field"><label>Rarity</label><select id="f_rarity"></select></div>
-          <div class="field"><label>Cost</label><input id="f_cost" type="number" min="-1" max="14" value="1"></div>
+          <div class="field"><label data-t="creator.faction">Faction</label><select id="f_army"></select></div>
+          <div class="field"><label data-t="creator.rarity">Rarity</label><select id="f_rarity"></select></div>
+          <div class="field"><label data-t="creator.cost">Cost</label><input id="f_cost" type="number" min="-1" max="14" value="1"></div>
         </div>
         <div class="row" id="statRow">
-          <div class="field"><label>Melee</label><input id="f_melee" type="number" min="0" max="30" value="1"></div>
-          <div class="field"><label>Ranged</label><input id="f_ranged" type="number" min="0" max="30" value="0"></div>
-          <div class="field"><label>Health</label><input id="f_health" type="number" min="1" max="60" value="1"></div>
-          <div class="field"><label>Armour</label><input id="f_armour" type="number" min="0" max="30" value="0"></div>
-          <div class="field"><label>Unit type</label><select id="f_keyword"></select></div>
+          <div class="field"><label data-t="creator.melee">Melee</label><input id="f_melee" type="number" min="0" max="30" value="1"></div>
+          <div class="field"><label data-t="creator.ranged">Ranged</label><input id="f_ranged" type="number" min="0" max="30" value="0"></div>
+          <div class="field"><label data-t="creator.health">Health</label><input id="f_health" type="number" min="1" max="60" value="1"></div>
+          <div class="field"><label data-t="creator.armour">Armour</label><input id="f_armour" type="number" min="0" max="30" value="0"></div>
+          <div class="field"><label data-t="creator.unitType">Unit type</label><select id="f_keyword"></select></div>
         </div>
         <p class="hint" id="tmplHint" style="margin:-4px 0 10px"></p>
         <div class="agree" id="tokenRow" style="margin:0 0 10px"><input type="checkbox" id="f_token" aria-describedby="f_token_txt">
-          <span id="f_token_txt">Created by another card only – not in the collection and cannot be put in a deck. Tick this for a stratagem or troop that another card adds to your hand or summons.</span></div>
+          <span id="f_token_txt" data-t="creator.tokenHelp">Created by another card only – not in the collection and cannot be put in a deck. Tick this for a stratagem or troop that another card adds to your hand or summons.</span></div>
         <div class="agree" id="enchRow" style="margin:0 0 10px"><input type="checkbox" id="f_enchantment" aria-describedby="f_enchantment_txt">
-          <span id="f_enchantment_txt">This card is an enchantment: a hidden card that other cards attach with an "Attach an enchantment" buff. It is never played itself; its abilities act on the card it is attached to (its cost, stats and text are not used). Official enchantments are stratagems.</span></div>
+          <span id="f_enchantment_txt" data-t="creator.enchantmentHelp">This card is an enchantment: a hidden card that other cards attach with an "Attach an enchantment" buff. It is never played itself; its abilities act on the card it is attached to (its cost, stats and text are not used). Official enchantments are stratagems.</span></div>
         <div class="row hidden" id="stratRow">
-          <div class="field"><label>Stratagem type (a family other cards can name)</label><select id="f_stratagemType"></select></div>
+          <div class="field"><label data-t="creator.stratagemType">Stratagem type (a family other cards can name)</label><select id="f_stratagemType"></select></div>
         </div>
         <div class="row">
-          <div class="field grow"><label>Artwork – borrow from an existing card</label>
-            <input id="f_art" list="cardList" placeholder="type a card name"></div>
+          <div class="field grow"><label data-t="creator.artBorrow">Artwork – borrow from an existing card</label>
+            <input id="f_art" list="cardList" placeholder="type a card name" data-t-placeholder="creator.artBorrowPlaceholder"></div>
         </div>
         <div class="row">
-          <button class="small" id="artPick">…or upload your own artwork</button>
+          <button class="small" id="artPick" data-t="creator.artUpload">…or upload your own artwork</button>
           <input type="file" id="artFile" accept="image/png,image/jpeg,image/webp" hidden>
-          <button class="small danger hidden" id="artRemove">Remove uploaded artwork</button>
+          <button class="small danger hidden" id="artRemove" data-t="creator.artRemove">Remove uploaded artwork</button>
           <span class="hint" id="artState"></span>
         </div>
         <div class="box hidden" id="creditBox" style="margin:0 0 10px">
-          <div class="head"><strong>Artwork credit</strong><span class="spacer"></span><span class="hint" id="creditState"></span></div>
+          <div class="head"><strong data-t="creator.credit">Artwork credit</strong><span class="spacer"></span><span class="hint" id="creditState"></span></div>
           <div class="row">
-            <div class="field grow"><label>Artist</label><input id="f_creditArtist" maxlength="80" placeholder="who made the picture (your name if it is yours)"></div>
-            <div class="field grow"><label>Link (optional)</label><input id="f_creditLink" maxlength="300" placeholder="https://… the original post or the artist's page"></div>
+            <div class="field grow"><label data-t="creator.creditArtist">Artist</label><input id="f_creditArtist" maxlength="80" placeholder="who made the picture (your name if it is yours)" data-t-placeholder="creator.creditArtistPlaceholder"></div>
+            <div class="field grow"><label data-t="creator.creditLink">Link (optional)</label><input id="f_creditLink" maxlength="300" placeholder="https://… the original post or the artist's page" data-t-placeholder="creator.creditLinkPlaceholder"></div>
           </div>
-          <div class="row"><button class="small" id="creditSave">Save credit</button></div>
-          <p class="hint">Saved with the uploaded picture itself, not only with this card. Only upload art you made, or art whose artist
+          <div class="row"><button class="small" id="creditSave" data-t="creator.creditSave">Save credit</button></div>
+          <p class="hint" data-t="creator.creditHelp">Saved with the uploaded picture itself, not only with this card. Only upload art you made, or art whose artist
             gave you permission – a credit alone is not permission.</p>
         </div>
         <div class="row hidden" id="maskRow">
-          <button class="small" id="maskPick">Add a pop-out mask (optional)</button>
+          <button class="small" id="maskPick" data-t="creator.maskAdd">Add a pop-out mask (optional)</button>
           <input type="file" id="maskFile" accept="image/png,image/jpeg,image/webp" hidden>
-          <button class="small danger hidden" id="maskRemove">Remove the mask</button>
+          <button class="small danger hidden" id="maskRemove" data-t="creator.maskRemove">Remove the mask</button>
           <span class="hint" id="maskState"></span>
         </div>
-        <p class="hint"><a href="/artwork" target="_blank" rel="noopener">Artwork guide and templates</a> – sizes, what the card covers, and how the pop-out mask works.</p>
+        <p class="hint" data-t="creator.artGuideLine"><a href="/artwork" target="_blank" rel="noopener" data-t-part="link" data-t="creator.artGuideLink">Artwork guide and templates</a> – sizes, what the card covers, and how the pop-out mask works.</p>
         <div id="artEditor" class="box hidden">
-          <div class="head"><strong>Place the artwork</strong><span class="spacer"></span><span class="hint">saved as 1024 × 1024, the size the game uses</span></div>
+          <div class="head"><strong data-t="creator.artPlace">Place the artwork</strong><span class="spacer"></span><span class="hint" data-t="creator.artPlaceSize">saved as 1024 × 1024, the size the game uses</span></div>
           <div class="artwrap">
             <canvas id="artCanvas" width="1024" height="1024"></canvas>
             <div>
               <p class="hint" id="artHelp"></p>
-              <div class="field"><label>Zoom</label><input type="range" id="artZoom" min="0" max="1000" value="500" style="width:220px"></div>
+              <div class="field"><label data-t="creator.zoom">Zoom</label><input type="range" id="artZoom" min="0" max="1000" value="500" style="width:220px"></div>
               <div class="row" style="margin-top:10px">
-                <button class="small" id="artFit">Fit</button><button class="small" id="artFill">Fill</button><button class="small" id="artCentre">Centre</button>
+                <button class="small" id="artFit" data-t="creator.artFit">Fit</button><button class="small" id="artFill" data-t="creator.artFill">Fill</button><button class="small" id="artCentre" data-t="creator.artCentre">Centre</button>
               </div>
-              <p class="hint">Drag the picture to move it; the mouse wheel zooms.</p>
-              <div class="row"><button class="primary" id="artUse">Use this artwork</button><button id="artCancel">Cancel</button></div>
+              <p class="hint" data-t="creator.artDragHelp">Drag the picture to move it; the mouse wheel zooms.</p>
+              <div class="row"><button class="primary" id="artUse" data-t="creator.artUse">Use this artwork</button><button id="artCancel" data-t="common.cancel">Cancel</button></div>
             </div>
           </div>
         </div>
       </section>
 
       <div class="agree" style="margin:0 0 14px"><input type="checkbox" id="advToggle" aria-describedby="advToggle_txt">
-          <span id="advToggle_txt">Show advanced options – settings only a few official cards use (timing, leftovers, card settings). Off, the editor shows only what the game uses for your choices.</span></div>
+          <span id="advToggle_txt" data-t="creator.advancedHelp">Show advanced options – settings only a few official cards use (timing, leftovers, card settings). Off, the editor shows only what the game uses for your choices.</span></div>
       <section>
-        <h2>Keywords and abilities</h2>
+        <h2 data-t="creator.keywordsTitle">Keywords and abilities</h2>
         <div id="entries"></div>
-        <button class="small" id="addEntry">+ Add a keyword or ability</button>
-        <p class="hint"><strong>Static</strong> keywords work by themselves (Flying, Stealth). <strong>Ability</strong> keywords say <em>when</em> something happens (Rally, Strike, Slay) and open a box for <em>what</em> happens. <strong>Action</strong> keywords (Duty, Pray, Oath, Agenda, Ferocity) are something the player uses during their turn; a card has at most one. <strong>Custom</strong> is an ability without a keyword: you pick when it happens. The number after a name is how many official cards use it.</p>
+        <button class="small" id="addEntry" data-t="creator.addEntry">+ Add a keyword or ability</button>
+        <p class="hint" data-t-rich="creator.keywordsHelp"><strong>Static</strong> keywords work by themselves (Flying, Stealth). <strong>Ability</strong> keywords say <em>when</em> something happens (Rally, Strike, Slay) and open a box for <em>what</em> happens. <strong>Action</strong> keywords (Duty, Pray, Oath, Agenda, Ferocity) are something the player uses during their turn; a card has at most one. <strong>Custom</strong> is an ability without a keyword: you pick when it happens. The number after a name is how many official cards use it.</p>
       </section>
 
       <section id="cardMoreSection">
-        <h2>Card settings</h2>
+        <h2 data-t="creator.settingsTitle">Card settings</h2>
         <div id="cardMore"></div>
       </section>
 
       <section>
-        <h2>Card text</h2>
-        <textarea id="f_text" maxlength="300" placeholder="What the card says"></textarea>
-        <div class="row"><button class="small" id="suggest">Suggest text from the abilities</button></div>
-        <label>Flavour text (optional)</label>
-        <textarea id="f_lore" maxlength="300" placeholder="A line of story or a quote, like the lore on official cards. Not rules."></textarea>
-        <label>Notes for the reviewer (not shown on the card)</label>
-        <textarea id="f_designNotes" maxlength="1000" placeholder="Anything the abilities above cannot express, balance thoughts, art ideas…"></textarea>
+        <h2 data-t="creator.textTitle">Card text</h2>
+        <textarea id="f_text" maxlength="300" placeholder="What the card says" data-t-placeholder="creator.textPlaceholder"></textarea>
+        <div class="row"><button class="small" id="suggest" data-t="creator.suggestText">Suggest text from the abilities</button></div>
+        <label data-t="creator.lore">Flavour text (optional)</label>
+        <textarea id="f_lore" maxlength="300" placeholder="A line of story or a quote, like the lore on official cards. Not rules." data-t-placeholder="creator.lorePlaceholder"></textarea>
+        <label data-t="creator.notes">Notes for the reviewer (not shown on the card)</label>
+        <textarea id="f_designNotes" maxlength="1000" placeholder="Anything the abilities above cannot express, balance thoughts, art ideas…" data-t-placeholder="creator.notesPlaceholder"></textarea>
       </section>
     </div>
 
     <div class="sticky">
       <section>
-        <h2>Preview</h2>
+        <h2 data-t="creator.preview">Preview</h2>
         <div id="pvFace"></div>
         <div class="card hidden" id="pvCard">
           <div class="top"><div class="cost" id="pvCost">1</div><div><div class="name" id="pvName">New card</div><div class="type" id="pvType"></div></div></div>
@@ -455,21 +455,21 @@
         <p class="hint" id="pvCredit"></p>
         <p class="hint laNote"></p>
         <label class="agree"><input type="checkbox" id="agree">
-          <span>This card follows all of the <a href="/rules" target="_blank" rel="noopener">card creator rules</a>.</span></label>
+          <span data-t="creator.agreeRules">This card follows all of the <a href="/rules" target="_blank" rel="noopener" data-t-part="link" data-t="creator.rulesLink">card creator rules</a>.</span></label>
         <div class="row">
           <button class="primary" id="save">Submit for review</button>
-          <button id="saveDraft">Save draft</button>
-          <button id="reset">New card</button>
+          <button id="saveDraft" data-t="creator.saveDraft">Save draft</button>
+          <button id="reset" data-t="creator.newCard">New card</button>
         </div>
         <p class="hint" id="editing"></p>
         <div class="note hidden" id="reviewNote"></div>
         <div id="factionBox" class="note hidden" style="background:#4a3f1c;color:#f0dca0"></div>
         <div id="buildBox" class="hidden">
-          <label>Build notes</label>
+          <label data-t="creator.buildNotes">Build notes</label>
           <ul id="buildNotes" class="hint" style="margin:4px 0 10px; padding-left:18px"></ul>
         </div>
-        <details><summary>Design data</summary><pre id="json"></pre></details>
-        <details><summary>Game data (the card as the game stores it)</summary>
+        <details><summary data-t="creator.designData">Design data</summary><pre id="json"></pre></details>
+        <details><summary data-t="creator.gameData">Game data (the card as the game stores it)</summary>
           <p class="hint" id="nativeHint"></p><pre id="native"></pre></details>
       </section>
     </div>
@@ -743,157 +743,157 @@
 
   <div id="viewCards" class="hidden">
     <section>
-      <h2>Card viewer</h2>
-      <p class="hint">Every official card, drawn with the game's own frame and art, with the data the game uses for it. <strong>Load in editor</strong> copies the card into the card creator as a new card, built the same way the game builds it, so you can see how it is made or start from it.</p>
+      <h2 data-t="creator.viewerTitle">Card viewer</h2>
+      <p class="hint" data-t-rich="creator.viewerHelp">Every official card, drawn with the game's own frame and art, with the data the game uses for it. <strong>Load in editor</strong> copies the card into the card creator as a new card, built the same way the game builds it, so you can see how it is made or start from it.</p>
       <p class="hint laNote"></p>
       <div class="row">
-        <div class="field grow"><label>Search (name, rules text or id)</label><input id="cvSearch" type="search" name="cvSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="e.g. Fenrisian Wolf, Rally, SW9"></div>
-        <div class="field"><label>Faction</label><select id="cvArmy"></select></div>
-        <div class="field"><label>Kind</label><select id="cvKind"></select></div>
-        <div class="field"><label>Show</label><select id="cvShow">
-          <option value="">All cards</option><option value="collectible">Collectible</option><option value="created">Created by other cards</option><option value="defence">Defence cards</option></select></div>
+        <div class="field grow"><label data-t="creator.viewerSearch">Search (name, rules text or id)</label><input id="cvSearch" type="search" name="cvSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="e.g. Fenrisian Wolf, Rally, SW9" data-t-placeholder="creator.viewerSearchPlaceholder"></div>
+        <div class="field"><label data-t="creator.faction">Faction</label><select id="cvArmy"></select></div>
+        <div class="field"><label data-t="creator.kindLabel">Kind</label><select id="cvKind"></select></div>
+        <div class="field"><label data-t="creator.show">Show</label><select id="cvShow">
+          <option value="" data-t="creator.allCards">All cards</option><option value="collectible" data-t="creator.collectible">Collectible</option><option value="created" data-t="creator.createdByOtherCards">Created by other cards</option><option value="defence" data-t="creator.defenceCards">Defence cards</option></select></div>
       </div>
       <p class="hint" id="cvCount"></p>
       <div class="cv">
         <div class="cvList" id="cvList" role="listbox" tabindex="0"></div>
-        <div class="cvDetail" id="cvDetail"><p class="hint">Pick a card from the list.</p></div>
+        <div class="cvDetail" id="cvDetail"><p class="hint" data-t="creator.pickFromList">Pick a card from the list.</p></div>
       </div>
     </section>
   </div>
 
   <div id="viewExamples" class="hidden">
     <section>
-      <h2>Official examples</h2>
-      <p class="hint">Pick a keyword to see official cards that use it, exactly as the game's card file stores them. Fields a card leaves empty are hidden, and numbers that stand for something are shown with their name, like <code>rally (10)</code>. The simplest cards are listed first.</p>
-      <div class="row"><div class="field grow"><label>Keyword</label><select id="exKeyword"></select></div><span class="hint" id="exCount"></span></div>
+      <h2 data-t="creator.examplesTitle">Official examples</h2>
+      <p class="hint" data-t-rich="creator.examplesHelp">Pick a keyword to see official cards that use it, exactly as the game's card file stores them. Fields a card leaves empty are hidden, and numbers that stand for something are shown with their name, like <code>rally (10)</code>. The simplest cards are listed first.</p>
+      <div class="row"><div class="field grow"><label data-t="creator.keyword">Keyword</label><select id="exKeyword"></select></div><span class="hint" id="exCount"></span></div>
       <div id="examples"></div>
     </section>
   </div>
 
   <div id="viewKeywords" class="hidden guide">
     <section>
-      <h2>Keyword cheat sheet</h2>
-      <p class="hint">What each keyword does, in short. Wording is taken from the unofficial fan rulebook (Warpforge Offline Rulebook 1.5) and shortened; where a card's own text differs, the card wins. X is a number printed on the card.</p>
+      <h2 data-t="creator.kwTitle">Keyword cheat sheet</h2>
+      <p class="hint" data-t="creator.kwHelp">What each keyword does, in short. Wording is taken from the unofficial fan rulebook (Warpforge Offline Rulebook 1.5) and shortened; where a card's own text differs, the card wins. X is a number printed on the card.</p>
       <div class="row">
-        <div class="field grow"><label for="kwSearch">Search</label><input id="kwSearch" type="search" placeholder="keyword or any word in its description"></div>
-        <div class="field"><label for="kwFaction">Faction</label><select id="kwFaction"></select></div>
+        <div class="field grow"><label for="kwSearch" data-t="common.search">Search</label><input id="kwSearch" type="search" placeholder="keyword or any word in its description" data-t-placeholder="creator.kwSearchPlaceholder"></div>
+        <div class="field"><label for="kwFaction" data-t="creator.faction">Faction</label><select id="kwFaction"></select></div>
       </div>
-      <table id="kwTable"><thead><tr><th>Keyword</th><th>What it does</th><th>Faction</th><th>Official cards</th></tr></thead><tbody></tbody></table>
+      <table id="kwTable"><thead><tr><th data-t="creator.keyword">Keyword</th><th data-t="creator.whatItDoes">What it does</th><th data-t="creator.faction">Faction</th><th data-t="creator.officialCards">Official cards</th></tr></thead><tbody></tbody></table>
       <p class="hint" id="kwNote"></p>
     </section>
     <section>
-      <h2>Stratagem type cheat sheet</h2>
-      <p class="hint">A stratagem's type is a label. Other cards use it to find a family of stratagems (“create a random Rune”), and a few types are handled outside the deck. <strong>Use Normal</strong> unless your card should belong to one of these families.</p>
-      <table id="stTable"><thead><tr><th>Type</th><th>What it is</th><th>Faction</th><th>Goes in a deck</th><th>Official cards</th></tr></thead><tbody></tbody></table>
+      <h2 data-t="creator.stTitle">Stratagem type cheat sheet</h2>
+      <p class="hint" data-t-rich="creator.stHelp">A stratagem's type is a label. Other cards use it to find a family of stratagems (“create a random Rune”), and a few types are handled outside the deck. <strong>Use Normal</strong> unless your card should belong to one of these families.</p>
+      <table id="stTable"><thead><tr><th data-t="creator.type">Type</th><th data-t="creator.whatItIs">What it is</th><th data-t="creator.faction">Faction</th><th data-t="creator.goesInDeck">Goes in a deck</th><th data-t="creator.officialCards">Official cards</th></tr></thead><tbody></tbody></table>
       <p class="hint" id="stUnused"></p>
       <p class="hint" id="stSource"></p>
     </section>
   </div>
 
   <div id="viewArtwork" class="hidden guide">
-        <section><h2>The short version</h2>
+        <section><h2 data-t="creator.art.shortVersion">The short version</h2>
     <ul>
-      <li>Every card's art is one <strong>1024 × 1024</strong> picture. Bring any size or shape: the card creator's editor crops and scales it for you.</li>
-      <li><strong>Troops, vehicles and warlords</strong> use a tall painting, background included, in the middle of that square. It does <em>not</em> need a transparent background.</li>
-      <li><strong>Stratagems</strong> use the whole square.</li>
-      <li>Parts that break out over the card frame (a gun barrel, a banner) are optional and come from a second picture, the <strong>pop-out mask</strong>.</li>
+      <li data-t-rich="creator.art.everyCardS">Every card's art is one <strong>1024 × 1024</strong> picture. Bring any size or shape: the card creator's editor crops and scales it for you.</li>
+      <li data-t-rich="creator.art.troopsVehiclesWarlords"><strong>Troops, vehicles and warlords</strong> use a tall painting, background included, in the middle of that square. It does <em>not</em> need a transparent background.</li>
+      <li data-t-rich="creator.art.stratagemsUseWhole"><strong>Stratagems</strong> use the whole square.</li>
+      <li data-t-rich="creator.art.partsBreakOut">Parts that break out over the card frame (a gun barrel, a banner) are optional and come from a second picture, the <strong>pop-out mask</strong>.</li>
     </ul>
 
     </section>
-        <section><h2>Downloads</h2>
+        <section><h2 data-t="creator.art.downloads">Downloads</h2>
     <div class="kit">
-      <div><strong>Everything in one file</strong>Both templates, the blank mask, the example sheet and this guide.<br><a class="btn" href="/api/v1/content/files/art-kit.zip" download>art-kit.zip</a></div>
-      <div><strong>Unit template</strong>Troops, vehicles, warlords. See-through overlay with the guides.<br><a class="btn" href="/api/v1/content/files/art-template-unit.png" download>art-template-unit.png</a></div>
-      <div><strong>Stratagem template</strong>See-through overlay with the guides.<br><a class="btn" href="/api/v1/content/files/art-template-stratagem.png" download>art-template-stratagem.png</a></div>
-      <div><strong>Blank mask</strong>All black, 1024 × 1024. Paint white on it.<br><a class="btn" href="/api/v1/content/files/art-mask-blank.png" download>art-mask-blank.png</a></div>
+      <div data-t-rich="creator.art.everythingOneFileboth"><strong>Everything in one file</strong>Both templates, the blank mask, the example sheet and this guide.<br><a data-t-part="link" class="btn" href="/api/v1/content/files/art-kit.zip" download>art-kit.zip</a></div>
+      <div data-t-rich="creator.art.unitTemplatetroopsVehicles"><strong>Unit template</strong>Troops, vehicles, warlords. See-through overlay with the guides.<br><a data-t-part="link" class="btn" href="/api/v1/content/files/art-template-unit.png" download>art-template-unit.png</a></div>
+      <div data-t-rich="creator.art.stratagemTemplateseeThrough"><strong>Stratagem template</strong>See-through overlay with the guides.<br><a data-t-part="link" class="btn" href="/api/v1/content/files/art-template-stratagem.png" download>art-template-stratagem.png</a></div>
+      <div data-t-rich="creator.art.blankMaskallBlack"><strong>Blank mask</strong>All black, 1024 × 1024. Paint white on it.<br><a data-t-part="link" class="btn" href="/api/v1/content/files/art-mask-blank.png" download>art-mask-blank.png</a></div>
     </div>
-    <p>The templates are see-through. In your paint program, open a template, put your picture on a layer <em>underneath</em> it, line the picture up, then hide the template layer before you export.</p>
+    <p data-t-rich="creator.art.templatesAreSee">The templates are see-through. In your paint program, open a template, put your picture on a layer <em>underneath</em> it, line the picture up, then hide the template layer before you export.</p>
 
     </section>
-        <section><h2>Troops, vehicles and warlords</h2>
+        <section><h2 data-t="creator.art.troopsVehiclesWarlords2">Troops, vehicles and warlords</h2>
     <div class="two">
       <div><img src="/api/v1/content/files/art-template-unit.png" alt="Unit art template"></div>
       <div>
         <table>
-          <tr><th>Guide</th><th>What it means</th></tr>
-          <tr><td>Gold box</td><td>The picture area: 670 pixels wide (x 177 to 847), the full 1024 high. Fill all of it. Nothing outside it is used.</td></tr>
-          <tr><td>Dashed line</td><td>The edge of the card. The frame covers a thin band just inside it.</td></tr>
-          <tr><td>Clear zone</td><td>Shown at full brightness. Put the face or focal point here.</td></tr>
-          <tr><td>Red line</td><td>The card's name and rules text can start about here. The picture carries on behind the text but is darkened. Short text starts lower, so the picture should still look good down there.</td></tr>
-          <tr><td>Red circles</td><td>Covered by the faction badge, cost, attack values, armour and health.</td></tr>
-          <tr><td>Gold tint</td><td>Outside the card. Only seen where the pop-out mask says so.</td></tr>
+          <tr><th data-t="creator.art.guide">Guide</th><th data-t="creator.art.whatMeans">What it means</th></tr>
+          <tr><td data-t="creator.art.goldBox">Gold box</td><td data-t="creator.art.pictureArea670">The picture area: 670 pixels wide (x 177 to 847), the full 1024 high. Fill all of it. Nothing outside it is used.</td></tr>
+          <tr><td data-t="creator.art.dashedLine">Dashed line</td><td data-t="creator.art.edgeCardFrame">The edge of the card. The frame covers a thin band just inside it.</td></tr>
+          <tr><td data-t="creator.art.clearZone">Clear zone</td><td data-t="creator.art.shownAtFull">Shown at full brightness. Put the face or focal point here.</td></tr>
+          <tr><td data-t="creator.art.redLine">Red line</td><td data-t="creator.art.cardSName">The card's name and rules text can start about here. The picture carries on behind the text but is darkened. Short text starts lower, so the picture should still look good down there.</td></tr>
+          <tr><td data-t="creator.art.redCircles">Red circles</td><td data-t="creator.art.coveredByFaction">Covered by the faction badge, cost, attack values, armour and health.</td></tr>
+          <tr><td data-t="creator.art.goldTint">Gold tint</td><td data-t="creator.art.outsideCardOnly">Outside the card. Only seen where the pop-out mask says so.</td></tr>
         </table>
       </div>
     </div>
 
-    <h3>The pop-out mask (optional)</h3>
-    <p>Official cards let part of the figure overlap the frame. That is controlled by a second picture of the same size: <strong>white</strong> where the art should be drawn on top of the frame, <strong>black</strong> everywhere else. Soft grey edges give a soft blend.</p>
+    <h3 data-t="creator.art.popOutMask">The pop-out mask (optional)</h3>
+    <p data-t-rich="creator.art.officialCardsLet">Official cards let part of the figure overlap the frame. That is controlled by a second picture of the same size: <strong>white</strong> where the art should be drawn on top of the frame, <strong>black</strong> everywhere else. Soft grey edges give a soft blend.</p>
     <ul>
-      <li>Start from <code>art-mask-blank.png</code> and paint white over the part that should break out. Keep it small: a weapon, a hand, a crest. The official cards pop out one or two details, not the whole figure.</li>
-      <li>The mask must line up with the picture <em>as saved by the creator</em>. The safe way: place and save the artwork in the creator first, then paint the mask over that saved 1024 × 1024 picture.</li>
-      <li>No mask means everything stays neatly inside the frame. That is fine, and it is the default.</li>
+      <li data-t-rich="creator.art.startFromArt">Start from <code>art-mask-blank.png</code> and paint white over the part that should break out. Keep it small: a weapon, a hand, a crest. The official cards pop out one or two details, not the whole figure.</li>
+      <li data-t-rich="creator.art.maskMustLine">The mask must line up with the picture <em>as saved by the creator</em>. The safe way: place and save the artwork in the creator first, then paint the mask over that saved 1024 × 1024 picture.</li>
+      <li data-t="creator.art.noMaskMeans">No mask means everything stays neatly inside the frame. That is fine, and it is the default.</li>
     </ul>
 
     </section>
-        <section><h2>Stratagems</h2>
+        <section><h2 data-t="creator.art.stratagems">Stratagems</h2>
     <div class="two">
       <div><img src="/api/v1/content/files/art-template-stratagem.png" alt="Stratagem art template"></div>
       <div>
         <table>
-          <tr><th>Guide</th><th>What it means</th></tr>
-          <tr><td>Gold box</td><td>The whole square is the picture. Fill all of it.</td></tr>
-          <tr><td>Clear zone</td><td>Nearly everything is shown.</td></tr>
-          <tr><td>Red circles</td><td>Top right corner: covered by the faction badge and the cost.</td></tr>
-          <tr><td>Red line</td><td>Below it the card's text box begins, so the bottom strip is hidden.</td></tr>
+          <tr><th data-t="creator.art.guide2">Guide</th><th data-t="creator.art.whatMeans2">What it means</th></tr>
+          <tr><td data-t="creator.art.goldBox2">Gold box</td><td data-t="creator.art.wholeSquarePicture">The whole square is the picture. Fill all of it.</td></tr>
+          <tr><td data-t="creator.art.clearZone2">Clear zone</td><td data-t="creator.art.nearlyEverythingShown">Nearly everything is shown.</td></tr>
+          <tr><td data-t="creator.art.redCircles2">Red circles</td><td data-t="creator.art.topRightCorner">Top right corner: covered by the faction badge and the cost.</td></tr>
+          <tr><td data-t="creator.art.redLine2">Red line</td><td data-t="creator.art.belowCardS">Below it the card's text box begins, so the bottom strip is hidden.</td></tr>
         </table>
-        <p>Stratagems have no pop-out mask.</p>
+        <p data-t="creator.art.stratagemsHaveNo">Stratagems have no pop-out mask.</p>
       </div>
     </div>
 
     </section>
-        <section><h2>Picture quality</h2>
+        <section><h2 data-t="creator.art.pictureQuality">Picture quality</h2>
     <ul>
-      <li>PNG, JPG or WebP, up to 20 MB. The creator saves it as a 1024 × 1024 PNG.</li>
-      <li>For units aim for at least 670 × 1024; for stratagems at least 1024 × 1024. Smaller pictures are enlarged and look soft.</li>
-      <li>Unit pictures are portrait (about 2 : 3). A landscape picture will be cropped hard at the sides.</li>
-      <li>Only upload artwork you made or have the right to use, and follow the <a href="/rules">card creator rules</a>.</li>
+      <li data-t="creator.art.pngJpgOr">PNG, JPG or WebP, up to 20 MB. The creator saves it as a 1024 × 1024 PNG.</li>
+      <li data-t="creator.art.unitsAimAt">For units aim for at least 670 × 1024; for stratagems at least 1024 × 1024. Smaller pictures are enlarged and look soft.</li>
+      <li data-t="creator.art.unitPicturesAre">Unit pictures are portrait (about 2 : 3). A landscape picture will be cropped hard at the sides.</li>
+      <li data-t="creator.art.onlyUploadArtwork">Only upload artwork you made or have the right to use, and follow the <a data-t-part="link" href="/rules" data-t="creator.rulesLink">card creator rules</a>.</li>
     </ul>
 
     </section>
-        <section><h2>Uploading</h2>
+        <section><h2 data-t="creator.art.uploading">Uploading</h2>
     <ol>
-      <li>In the card creator, fill in the card, then choose <strong>…or upload your own artwork</strong>.</li>
-      <li>Drag and zoom the picture under the guides (the same guides as the templates), then <strong>Use this artwork</strong>.</li>
-      <li>For a unit, optionally choose <strong>Add a pop-out mask</strong> and pick your mask picture.</li>
+      <li data-t-rich="creator.art.cardCreatorFill">In the card creator, fill in the card, then choose <strong>…or upload your own artwork</strong>.</li>
+      <li data-t-rich="creator.art.dragZoomPicture">Drag and zoom the picture under the guides (the same guides as the templates), then <strong>Use this artwork</strong>.</li>
+      <li data-t-rich="creator.art.unitOptionallyChoose">For a unit, optionally choose <strong>Add a pop-out mask</strong> and pick your mask picture.</li>
     </ol>
 
     </section>
-        <section><h2>Example: official cards</h2>
-    <p>Four official cards, showing the picture in the art file, the pop-out mask stored with it, and the finished card.</p>
+        <section><h2 data-t="creator.art.exampleOfficialCards">Example: official cards</h2>
+    <p data-t="creator.art.fourOfficialCards">Four official cards, showing the picture in the art file, the pop-out mask stored with it, and the finished card.</p>
     <p><a href="/api/v1/content/files/art-example.jpg"><img src="/api/v1/content/files/art-example.jpg" alt="Art file, pop-out mask and finished card for four official cards"></a></p>
-    <p class="dim">Measurements were taken by lining official art up against finished official cards. Example artwork belongs to its owners and is shown for reference only.</p>
+    <p class="dim" data-t="creator.art.measurementsWereTaken">Measurements were taken by lining official art up against finished official cards. Example artwork belongs to its owners and is shown for reference only.</p>
     </section>
   </div>
 
   <div id="viewHome" class="hidden home">
     <section>
       <h2 id="homeHello">Welcome</h2>
-      <p>Welcome to WF-Revival, the community project that keeps <em>Warhammer 40,000: Warpforge</em> playable now that its official servers have closed. Sign in to the game with this same account, design your own cards in the Card Creator, and play against the rest of the community.</p>
-      <p class="hint">An unofficial fan project, not affiliated with Everguild or Games Workshop. You need your own copy of the game.</p>
+      <p data-t-rich="home.intro">Welcome to WF-Revival, the community project that keeps <em>Warhammer 40,000: Warpforge</em> playable now that its official servers have closed. Sign in to the game with this same account, design your own cards in the Card Creator, and play against the rest of the community.</p>
+      <p class="hint" data-t="home.unofficial">An unofficial fan project, not affiliated with Everguild or Games Workshop. You need your own copy of the game.</p>
     </section>
     <section>
-      <h2>Community</h2>
+      <h2 data-t="home.community">Community</h2>
       <ul class="homeLinks">
-        <li><a href="https://discord.gg/f4N6RU2sYy" target="_blank" rel="noopener">Join the Discord</a> <span class="hint">- news, install help, finding matches and talking cards</span></li>
-        <li><a href="/guides">Install guides</a> <span class="hint">- PC, Android devices (phones and tablets), and Android on PC with MuMu Player</span></li>
-        <li><a href="/terms" target="_blank" rel="noopener">Terms and Privacy notice</a> <span class="hint">- the rules, what the server keeps, and deleting your account</span></li>
+        <li><a href="https://discord.gg/f4N6RU2sYy" target="_blank" rel="noopener" data-t="home.discord">Join the Discord</a> <span class="hint" data-t="home.discordHint">- news, install help, finding matches and talking cards</span></li>
+        <li><a href="/guides" data-t="home.guides">Install guides</a> <span class="hint" data-t="home.guidesHint">- PC, Android devices (phones and tablets), and Android on PC with MuMu Player</span></li>
+        <li><a href="/terms" target="_blank" rel="noopener" data-t="home.terms">Terms and Privacy notice</a> <span class="hint" data-t="home.termsHint">- the rules, what the server keeps, and deleting your account</span></li>
       </ul>
     </section>
     <section>
-      <h2>On GitHub</h2>
+      <h2 data-t="home.github">On GitHub</h2>
       <ul class="homeLinks">
-        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod" target="_blank" rel="noopener">WF-Revival mod</a> <span class="hint">- PC and Android in one repository: source, install steps and the releases</span></li>
-        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod/releases" target="_blank" rel="noopener">Releases</a> <span class="hint">- the mod for PC and Android, and the Warpforge Patcher app</span></li>
+        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod" target="_blank" rel="noopener" data-t="home.mod">WF-Revival mod</a> <span class="hint" data-t="home.modHint">- PC and Android in one repository: source, install steps and the releases</span></li>
+        <li><a href="https://github.com/silentanarchist/warpforge-revival-mod/releases" target="_blank" rel="noopener" data-t="home.releases">Releases</a> <span class="hint" data-t="home.releasesHint">- the mod for PC and Android, and the Warpforge Patcher app</span></li>
       </ul>
     </section>
   </div>
@@ -907,11 +907,11 @@
       <h2 id="listTitle">My cards</h2>
       <p class="hint" id="listHint"></p>
       <div class="row">
-        <div class="field"><label>Show</label><select id="filter">
-          <option value="">Everything</option><option value="draft" id="optDraft">Drafts</option>
-          <option value="pending">Waiting for review</option>
-          <option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
-        <button class="small" id="refresh">Refresh</button>
+        <div class="field"><label data-t="creator.show">Show</label><select id="filter">
+          <option value="" data-t="creator.everything">Everything</option><option value="draft" id="optDraft" data-t="creator.drafts">Drafts</option>
+          <option value="pending" data-t="creator.waitingForReview">Waiting for review</option>
+          <option value="approved" data-t="creator.approved">Approved</option><option value="rejected" data-t="creator.rejected">Rejected</option></select></div>
+        <button class="small" id="refresh" data-t="common.refresh">Refresh</button>
         <span class="hint" id="count"></span>
       </div>
       <div class="list" id="list"></div>
@@ -1071,8 +1071,8 @@ function el(tag, props, ...kids) {
 function say(text, kind) {                       // the banner; its x hides it until the next message
   const m = $("msg"); m.textContent = ""; m.className = text ? (kind || "info") : "";
   if (!text) return;
-  m.append(el("span", { text }), el("button", { class: "close", type: "button", title: "Close", text: "×", onclick: () => say("") }));
-  m.querySelector(".close").setAttribute("aria-label", "Close this message");
+  m.append(el("span", { text }), el("button", { class: "close", type: "button", title: T("common.close", "Close"), text: "×", onclick: () => say("") }));
+  m.querySelector(".close").setAttribute("aria-label", T("creator.closeMessage", "Close this message"));
 }
 async function call(name, body) {
   body = Object.assign({ session: session() }, body || {});
@@ -1089,11 +1089,11 @@ function options(select, list, withCount, blank) {
   // Faction mechanics are grouped: this card's faction first, the general ones next, other factions' last.
   const army = $("f_army").value, armyName = lab(schema.armies, army);
   const general = o => !o.faction;
-  const groups = [[`${armyName} mechanics`, o => o.faction === army],
-                  ["Used by 10 or more official cards", o => general(o) && o.official >= 10],
-                  ["Used by a few official cards", o => general(o) && o.official > 0 && o.official < 10],
-                  ["In the engine, unused by official cards", o => general(o) && !o.official],
-                  ["Other factions' mechanics", o => o.faction && o.faction !== army]];
+  const groups = [[T("creator.groupFaction", "{faction} mechanics", { faction: armyName }), o => o.faction === army],
+                  [T("creator.groupCommon", "Used by 10 or more official cards"), o => general(o) && o.official >= 10],
+                  [T("creator.groupFew", "Used by a few official cards"), o => general(o) && o.official > 0 && o.official < 10],
+                  [T("creator.groupUnused", "In the engine, unused by official cards"), o => general(o) && !o.official],
+                  [T("creator.groupOtherFactions", "Other factions' mechanics"), o => o.faction && o.faction !== army]];
   for (const [title, test] of groups) {
     const items = list.filter(test);
     if (!items.length) continue;
@@ -1169,32 +1169,32 @@ function changeKeyword(t, v) {
 function drawKeywordAbility(t, def) {           // the box under a keyword that comes with an ability
   if (def.action) {
     const a = state.action && state.action.keyword === t.name ? state.action : null;
-    if (!a) return el("div", { class: "kwbox" }, el("span", { class: "hint", text: state.action ? "This card already has a different action (see Action below); a card has only one." : "This keyword is an action the player uses." }),
-      state.action ? null : el("button", { class: "small", text: "+ Set up its action", onclick: () => { state.action = newAction(t.name); redraw(); } }));
+    if (!a) return el("div", { class: "kwbox" }, el("span", { class: "hint", text: state.action ? T("creator.otherActionExists", "This card already has a different action (see Action below); a card has only one.") : T("creator.keywordIsAction", "This keyword is an action the player uses.") }),
+      state.action ? null : el("button", { class: "small", text: T("creator.setUpAction", "+ Set up its action"), onclick: () => { state.action = newAction(t.name); redraw(); } }));
     const b = el("div", { class: "kwbox" },
-      el("div", { class: "head" }, el("strong", { text: `${def.label}: what the player can do` })),
+      el("div", { class: "head" }, el("strong", { text: T("creator.actionHead", "{keyword}: what the player can do", { keyword: kwName(t.name) }) })),
       el("div", { class: "row" },
         field(actionCostLabel(a), num(a.cost, v => { a.cost = v; }, 0, 12)),
-        field("Limits or conditions (optional)", el("input", { value: a.note || "", maxLength: 200, placeholder: "e.g. once per turn",
+        field(T("creator.actionNote", "Limits or conditions (optional)"), el("input", { value: a.note || "", maxLength: 200, placeholder: T("creator.actionNotePlaceholder", "e.g. once per turn"),
           oninput: e => { a.note = e.target.value; redraw(true); } }), true)));
     if (actionHint(a)) b.append(el("p", { class: "hint", text: actionHint(a) }));
     a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
-    b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
+    b.append(el("button", { class: "small", text: T("creator.addEffect", "+ Add effect"), onclick: () => { a.effects.push(newEffect()); redraw(); } }));
     return b;
   }
   if (!def.needsAbility) return null;
   if (!def.trigger) return null;      // used in several ways on official cards: no fixed ability (add a custom one if needed)
   const ab = linkedAbility(t.name);
-  if (!ab) return el("div", { class: "kwbox" }, el("span", { class: "hint", text: `${def.label} always comes with an ability.` }),
-    el("button", { class: "small", text: "+ Set up its ability", onclick: () => { abilityFor(t.name); redraw(); } }));
+  if (!ab) return el("div", { class: "kwbox" }, el("span", { class: "hint", text: T("creator.keywordNeedsAbility", "{keyword} always comes with an ability.", { keyword: kwName(t.name) }) }),
+    el("button", { class: "small", text: T("creator.setUpAbility", "+ Set up its ability"), onclick: () => { abilityFor(t.name); redraw(); } }));
   const b = el("div", { class: "kwbox" },
-    el("div", { class: "head" }, el("strong", { text: `${def.label}: what happens` }),
-      el("span", { class: "hint", text: lab(schema.triggers, ab.trigger) })));
+    el("div", { class: "head" }, el("strong", { text: T("creator.abilityHead", "{keyword}: what happens", { keyword: kwName(t.name) }) }),
+      el("span", { class: "hint", text: trigName(ab.trigger) })));
   const pk = drawAbilityPick(ab); if (pk) b.append(pk);
   const subj = drawSubject(ab); if (subj) b.append(subj);
   b.append(drawAbilityOptions(ab));
   ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
-  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
+  b.append(el("button", { class: "small", text: T("creator.addEffect", "+ Add effect"), onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
   return b;
 }
 // One list for everything: keywords (static, ability, action) and custom abilities (no keyword).
@@ -1206,30 +1206,30 @@ function drawEntries() {
   state.traits.forEach((t, i) => box.append(drawKeywordEntry(t, i)));
   if (state.action) box.append(drawActionEntry());
   state.abilities.forEach((ab, i) => { if (!keywordOf(ab) && !ab.locked && !(state.action && isActionAbility(ab))) box.append(drawCustomEntry(ab, i)); });
-  if (!box.children.length) box.append(el("p", { class: "hint", text: "No keywords or abilities yet." }));
+  if (!box.children.length) box.append(el("p", { class: "hint", text: T("creator.noEntries", "No keywords or abilities yet.") }));
 }
 function drawKeywordEntry(t, i) {
   const def = schema.traits.find(x => x.id === t.name) || {};
   const type = kwType(t.name), owns = type === "ability" || (def.needsAbility && !def.trigger);
   const ab = owns ? linkedAbility(t.name) : null;
   const head = el("div", { class: "entryHead" },
-    el("span", { class: "kind " + type, text: KIND_LABEL[type] }),
-    el("button", { class: "small pickBtn", text: (def.label || t.name) + "  ▾", title: "Change the keyword",
-      onclick: () => openPicker({ title: "Change the keyword", tabs: [{ id: "static", label: "Static" }, { id: "ability", label: "Ability" }], tab: type === "ability" ? "ability" : "static",
+    el("span", { class: "kind " + type, text: kindLabel(type) }),
+    el("button", { class: "small pickBtn", text: (def.label ? kwName(t.name) : t.name) + "  ▾", title: T("creator.changeKeyword", "Change the keyword"),
+      onclick: () => openPicker({ title: T("creator.changeKeyword", "Change the keyword"), tabs: [{ id: "static", label: kindLabel("static") }, { id: "ability", label: kindLabel("ability") }], tab: type === "ability" ? "ability" : "static",
         items: keywordItems, onPick: v => { changeKeyword(t, v); redraw(); } }) }),
-    def.takesValue ? field("Value", num(t.value, v => { t.value = v; }, 0, 20)) : null,
+    def.takesValue ? field(T("creator.value", "Value"), num(t.value, v => { t.value = v; }, 0, 20)) : null,
     el("span", { class: "spacer" }),
-    def.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(t.name); window.scrollTo(0, 0); } }) : null,
-    ADV && ab ? el("button", { class: "small", text: "Remove keyword only", title: "The ability stays, as a custom ability; a few official cards have the ability without the keyword",
+    def.official ? el("button", { class: "small", text: T("creator.officialExamples", "Official examples"), onclick: async () => { show("Examples"); await showExamples(t.name); window.scrollTo(0, 0); } }) : null,
+    ADV && ab ? el("button", { class: "small", text: T("creator.removeKeywordOnly", "Remove keyword only"), title: T("creator.removeKeywordOnlyHelp", "The ability stays, as a custom ability; a few official cards have the ability without the keyword"),
       onclick: () => { if (ab.keyword === t.name) ab.keyword = ""; state.traits.splice(i, 1); redraw(); } }) : null,
-    tmpl().ephemeral && t.name === "ephemeral" && !ADV ? el("span", { class: "hint", text: "always on a talent card" })
-      : el("button", { class: "small danger", text: "Remove", onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }));
+    tmpl().ephemeral && t.name === "ephemeral" && !ADV ? el("span", { class: "hint", text: T("creator.alwaysOnTalent", "always on a talent card") })
+      : el("button", { class: "small danger", text: T("common.remove", "Remove"), onclick: () => { unlinkKeyword(t.name); state.traits.splice(i, 1); redraw(); } }));
   const b = el("div", { class: "box" }, head,
     kwDesc(t.name) ? el("p", { class: "hint pickDesc", text: kwDesc(t.name) }) : null,
-    def.onlyOn && def.onlyOn !== val("f_kind") && !(t.name === "codex" && stratLike()) ? el("p", { class: "hint", style: "color:var(--warn)", text: `Official cards only have this on ${lab(schema.kinds, def.onlyOn).toLowerCase()}s.` }) : null,
+    def.onlyOn && def.onlyOn !== val("f_kind") && !(t.name === "codex" && stratLike()) ? el("p", { class: "hint", style: "color:var(--warn)", text: T("creator.onlyOnKind", "Official cards only have this on {kind} cards.", { kind: kindName(def.onlyOn).toLowerCase() }) }) : null,
     advOr(t.hidden || (!def.takesValue && t.value)) ? el("div", { class: "row tight" },
-      def.takesValue ? null : field("Number (a few official cards set one)", num(t.value, v => { t.value = v; }, 0, 20)),
-      el("div", { class: "checks" }, check("Hidden on the card", t, "hidden"))) : null);
+      def.takesValue ? null : field(T("creator.keywordNumber", "Number (a few official cards set one)"), num(t.value, v => { t.value = v; }, 0, 20)),
+      el("div", { class: "checks" }, check(T("creator.hiddenOnCard", "Hidden on the card"), t, "hidden"))) : null);
   if (owns) b.append(drawKeywordAbility(t, def));
   return b;
 }
@@ -1245,7 +1245,7 @@ function drawKeywordEntry(t, i) {
 const SPECIAL_TYPES = ["OffensiveCard", "DefensiveCard", "Sabotage"];
 const TEMPLATES = [
   { id: "troop", label: "Troop", kind: "troop", text: "A unit that is deployed to the battlefield." },
-  { id: "hero", label: "Warlord", kind: "hero", text: "The warlord a deck is built around." },
+  { id: "hero", label: "Warlord", kind: "hero", text: "The warlord a deck is built around." },        // labels/texts shown through tmplLabel()/tmplText()
   { id: "stratagem", label: "Stratagem", kind: "tactic", played: true, types: "family",
     text: "A card the player puts in a deck and plays. It always has a \u201cWhen this is played\u201d ability; more can follow it (follow-ups, Faith, Oath ...)." },
   { id: "talent", label: "Talent card", kind: "tactic", played: true, token: true, ephemeral: true, types: "family",
@@ -1260,6 +1260,22 @@ const TEMPLATES = [
     text: "A card another card puts into the enemy's hand. Its abilities work while it sits in that hand (e.g. at the end of the turn), like Poisoned Supplies." }
 ];
 function tmpl() { return TEMPLATES.find(t => t.id === state.template) || TEMPLATES[0]; }
+// a template's label and description in the site's language (the English stays in TEMPLATES)
+function tmplLabel(t) { return T("creator.template." + t.id, t.label); }
+function tmplText(t) { return T("creator.templateText." + t.id, t.text); }
+// extract-site.py reads only literal T() calls, so the keys are listed once here:
+function creatorTemplateKeys() {
+  T("creator.template.troop", "Troop"); T("creator.template.hero", "Warlord"); T("creator.template.stratagem", "Stratagem"); T("creator.template.talent", "Talent card");
+  T("creator.template.defence", "Defence card"); T("creator.template.offence", "Offence card"); T("creator.template.enchantment", "Enchantment"); T("creator.template.sabotage", "Sabotage card");
+  T("creator.templateText.troop", "A unit that is deployed to the battlefield.");
+  T("creator.templateText.hero", "The warlord a deck is built around.");
+  T("creator.templateText.stratagem", "A card the player puts in a deck and plays. It always has a \u201cWhen this is played\u201d ability; more can follow it (follow-ups, Faith, Oath ...).");
+  T("creator.templateText.talent", "A card a warlord's Talent adds to the hand. Created by a card, always Ephemeral (all 92 official ones are). Give your warlord a Talent ability that adds this card.");
+  T("creator.templateText.defence", "The card a deck uses when it goes second, picked in the deck editor's own slot.");
+  T("creator.templateText.offence", "A card the player going first can pick at the start of a battle. Effects that last all battle (weather, turn start or end, skulls) go on an Enchantment card that this one attaches.");
+  T("creator.templateText.enchantment", "A hidden card another card attaches with an \u201cAttach an enchantment\u201d buff. Its abilities act for the card it is attached to; its cost, stats and text are not used. Battlefield effects (turn start or end, earning a skull) are enchantments.");
+  T("creator.templateText.sabotage", "A card another card puts into the enemy's hand. Its abilities work while it sits in that hand (e.g. at the end of the turn), like Poisoned Supplies.");
+}
 function stratLike() { const t = tmpl(); return t.kind === "tactic" && !t.ench; }
 function templateOf(c) {
   if (c.enchantment) return "enchantment";          // usually a stratagem; two official ones are troops
@@ -1293,7 +1309,7 @@ function setTemplate(id) {                      // the author picked a template
 // Keeps the card in line with its template (called on every redraw). "full" also changes the abilities.
 function enforceTemplate(full) {
   const t = tmpl();
-  $("f_template").value = t.id; if (!t.keepKind || val("f_kind") === "hero") $("f_kind").value = t.kind; $("tmplHint").textContent = t.text;
+  $("f_template").value = t.id; if (!t.keepKind || val("f_kind") === "hero") $("f_kind").value = t.kind; $("tmplHint").textContent = tmplText(t);
   if (t.token !== undefined) $("f_token").checked = t.token;
   $("f_enchantment").checked = !!t.ench;
   if (t.type) $("f_stratagemType").value = t.type;
@@ -1312,14 +1328,14 @@ function enforceTemplate(full) {
 }
 // Triggers a custom ability can use on stratagem-type cards, and where the ability then listens.
 const STRAT_TRIGGERS = [
-  { group: "When played", rank: 0, ctx: "", ids: ["ThisCardPlayed"] },
-  { group: "Straight after it is played (it waits in the graveyard)", rank: 1, ctx: "InPlayOrCementery",
+  { key: "played", group: "When played", rank: 0, ctx: "", ids: ["ThisCardPlayed"] },
+  { key: "after", group: "Straight after it is played (it waits in the graveyard)", rank: 1, ctx: "InPlayOrCementery",
     ids: ["FollowUpResolution", "UseFaith", "UseSpiritStone", "OtherUnitDeath"] },
-  { group: "While it is in your hand", rank: 2, ctx: "Hand",
+  { key: "hand", group: "While it is in your hand", rank: 2, ctx: "Hand",
     ids: ["WhileInPlayVariable", "OtherUnitSummoned", "OtherUnitDeath", "TurnStart", "TurnEnd", "OtherCardPlayed", "TriggeredCodex"],
     labels: { WhileInPlayVariable: "Its cost follows a count while in hand" },
     texts: { WhileInPlayVariable: "A cost that changes with a count while the card waits in your hand, e.g. \u201ccosts 1 less if you control a unit with Stealth\u201d." } }];
-const SABOTAGE_TRIGGERS = [{ group: "While it is in the enemy's hand", rank: 0, ctx: "Hand",
+const SABOTAGE_TRIGGERS = [{ key: "enemyHand", group: "While it is in the enemy's hand", rank: 0, ctx: "Hand",
   ids: ["ThisCardPlayed", "TurnStart", "TurnEnd", "OtherCardPlayed", "OtherUnitSummoned", "OtherUnitDeath", "OtherCardDrawn"] }];
 const ONLY_ENCH_TRIGGERS = ["TriggerEnchantment"];
 // Effects that need this card itself on the board (or to be an enchantment).
@@ -1344,8 +1360,32 @@ function keywordAllowed(id, type) {
 // Static = works by itself; Ability = says when something happens (Rally, Strike); Action = used by the player.
 function kwType(id) { const d = traitDef(id); return d.action ? "action" : d.needsAbility && d.trigger ? "ability" : "static"; }
 const KIND_LABEL = { static: "Static", ability: "Ability", action: "Action", custom: "Custom" };
-function kwDesc(id) { return (help.keywords[id] || {}).text || kwText[id] || ""; }
-function trigDesc(id) { return (help.triggers[id] || {}).text || ""; }
+function kindLabel(k) { return T("creator.kind." + k, KIND_LABEL[k]); }
+function rarityName(r) { return T("creator.rarity." + r, r); }
+function creatorRarityKeys() { T("creator.rarity.Common", "Common"); T("creator.rarity.Rare", "Rare"); T("creator.rarity.Epic", "Epic"); T("creator.rarity.Legendary", "Legendary"); T("creator.rarity.Special", "Special"); T("creator.rarity.None", "None"); }
+function kindName(kind) { return T("creator.cardKind." + kind, lab(schema.kinds, kind)); }
+function creatorCardKindKeys() { T("creator.cardKind.troop", "Troop"); T("creator.cardKind.tactic", "Stratagem"); T("creator.cardKind.hero", "Warlord"); }
+function creatorKindKeys() { T("creator.kind.static", "Static"); T("creator.kind.ability", "Ability"); T("creator.kind.action", "Action"); T("creator.kind.custom", "Custom"); }
+// A keyword's name as the player sees it. The card's text stays English, so in another language the name is
+// the game's own word for it (from the player's export: Card_Trait/<id>) with the English in brackets,
+// e.g. "Refuerzo (Rally)". Without the game's word, the English alone.
+function kwName(id) {
+  const en = lab(schema.traits, id);
+  if (siteLang() === "en") return en;
+  const game = ltTerm("Card_Trait/" + id);
+  if (game && game.toLowerCase() !== en.toLowerCase()) return `${game} (${en})`;
+  return help.keywords[id] ? T("creatorHelp.keywordName." + id, en) : en;     // our own names for keywords the game has no word for
+}
+// a trigger's name: the trigger help is translated; triggers named after a keyword (Strike, Slay ...) use the keyword's name
+function trigName(id) {
+  const kw = schema.traits.find(x => x.id.toLowerCase() === id.toLowerCase());
+  if (kw) return kwName(kw.id);
+  const en = lab(schema.triggers, id);
+  return T("creatorHelp.trigger." + id + ".name", en);
+}
+const usedNote = official => official ? T("creator.nOfficial", "{n} official", { n: official }) : T("creator.noOfficial", "no official card");
+function kwDesc(id) { const en = (help.keywords[id] || {}).text || kwText[id] || ""; return en ? T("creatorHelp.keyword." + id, en) : ""; }
+function trigDesc(id) { const en = (help.triggers[id] || {}).text || ""; return en ? T("creatorHelp.trigger." + id + ".text", en) : ""; }
 function trigStatus(id) { return (help.triggers[id] || {}).status || ""; }
 // A list to pick from: tabs, a search box, and each entry with its one-line description. items(tab) returns
 // [{id, label, text, note, off}]; onPick(id, tab).
@@ -1353,7 +1393,7 @@ function openPicker(opts) {
   closePicker();
   let tab = opts.tab || (opts.tabs ? opts.tabs[0].id : ""), sel = 0, shown = [];
   const list = el("div", { class: "list" });
-  const search = el("input", { placeholder: "Search…", oninput: () => { sel = 0; fillList(); } });
+  const search = el("input", { placeholder: T("common.searchPlaceholder", "Search…"), oninput: () => { sel = 0; fillList(); } });
   const tabs = opts.tabs ? el("div", { class: "tabs" }) : null;
   const fillTabs = () => { if (!tabs) return; tabs.textContent = "";
     for (const t of opts.tabs) tabs.append(el("button", { class: "small" + (t.id === tab ? " on" : ""), text: t.label, onclick: () => { tab = t.id; sel = 0; fillTabs(); fillList(); search.focus(); } })); };
@@ -1363,7 +1403,7 @@ function openPicker(opts) {
     shown = opts.items(tab).filter(x => !q || (x.label + " " + (x.text || "") + " " + x.id).toLowerCase().includes(q))
       .sort((x, y) => (x.rank || 0) - (y.rank || 0) || x.label.localeCompare(y.label));
     list.textContent = "";
-    if (!shown.length) list.append(el("p", { class: "hint", text: "Nothing matches." }));
+    if (!shown.length) list.append(el("p", { class: "hint", text: T("creator.nothingMatches", "Nothing matches.") }));
     let group = null;
     shown.forEach((x, i) => {
       if (x.group && x.group !== group) { group = x.group; list.append(el("div", { class: "grp", text: group })); }
@@ -1380,7 +1420,7 @@ function openPicker(opts) {
   });
   const box = el("div", { id: "picker", onclick: e => { if (e.target.id === "picker") closePicker(); } },
     el("div", { class: "panel" }, el("div", { class: "row", style: "padding:10px 12px 0" }, el("strong", { text: opts.title }), el("span", { class: "spacer" }),
-      el("button", { class: "small", text: "Close", onclick: closePicker })), tabs, search, list));
+      el("button", { class: "small", text: T("common.close", "Close"), onclick: closePicker })), tabs, search, list));
   document.body.append(box); fillTabs(); fillList(); search.focus();
 }
 function closePicker() { const p = $("picker"); if (p) p.remove(); }
@@ -1388,11 +1428,11 @@ function keywordItems(type) {
   return schema.traits.filter(t => kwType(t.id) === type && t.id !== "none" || (type === "static" && t.id === "none" && ADV))
     .filter(t => t.official || ADV)
     .filter(t => keywordAllowed(t.id, type))
-    .map(t => Object.assign({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card",
+    .map(t => Object.assign({ id: t.id, label: kwName(t.id), text: kwDesc(t.id), note: usedNote(t.official),
                  off: state.traits.some(x => x.name === t.id) }, usedGroup(t.official)));
 }
 // The two groups every picker list uses: what official cards use, then (advanced options only) the rest.
-function usedGroup(official) { return official ? { rank: 0, group: "Used by official cards" } : { rank: 1, group: "Untested \u2013 no official card uses it" }; }
+function usedGroup(official) { return official ? { rank: 0, group: T("creator.groupOfficial", "Used by official cards") } : { rank: 1, group: T("creator.groupUntested", "Untested \u2013 no official card uses it") }; }
 // Triggers for a custom ability. Triggers that belong to an Ability keyword (Strike, Talent, Codex ...) are
 // added through that keyword, so they only show here with advanced options on.
 function keywordTrigger(id) { return schema.traits.some(k => k.trigger === id && k.id.toLowerCase() === id.toLowerCase() && kwType(k.id) === "ability"); }
@@ -1414,26 +1454,33 @@ function triggerItems() {
   const t = tmpl(), sets = ADV ? null : t.hand ? SABOTAGE_TRIGGERS : stratLike() ? STRAT_TRIGGERS : null;
   if (sets) return sets.flatMap(g => g.ids.filter(id => schema.triggers.some(x => x.id === id)).map(id => {
     const d = schema.triggers.find(x => x.id === id);
-    return { id: id + "@" + g.ctx, label: (g.labels || {})[id] || d.label, text: (g.texts || {})[id] || trigDesc(id), note: d.official ? d.official + " official" : "untested", rank: g.rank, group: g.group };
+    return { id: id + "@" + g.ctx, label: (g.labels || {})[id] ? T("creator.trig." + g.ctx + "." + id, g.labels[id]) : trigName(id), text: (g.texts || {})[id] ? T("creator.trigText." + g.ctx + "." + id, g.texts[id]) : trigDesc(id),
+             note: d.official ? usedNote(d.official) : T("creator.untested", "untested"), rank: g.rank, group: T("creator.trigGroup." + g.key, g.group) };
   }));
   return schema.triggers.filter(x => !ACTION_TRIGGERS.includes(x.id) && (ADV || t.ench || !ONLY_ENCH_TRIGGERS.includes(x.id))).filter(t => trigStatus(t.id) !== "dead" && !keywordTrigger(t.id) && (ADV || t.official))
-    .map(t => Object.assign({ id: t.id, label: t.label, text: trigDesc(t.id), note: t.official ? t.official + " official" : "untested" }, usedGroup(t.official)));
+    .map(t => Object.assign({ id: t.id, label: trigName(t.id), text: trigDesc(t.id), note: t.official ? usedNote(t.official) : T("creator.untested", "untested") }, usedGroup(t.official)));
+}
+function creatorTrigGroupKeys() {
+  T("creator.trigGroup.played", "When played"); T("creator.trigGroup.after", "Straight after it is played (it waits in the graveyard)");
+  T("creator.trigGroup.hand", "While it is in your hand"); T("creator.trigGroup.enemyHand", "While it is in the enemy's hand");
+  T("creator.trig.Hand.WhileInPlayVariable", "Its cost follows a count while in hand");
+  T("creator.trigText.Hand.WhileInPlayVariable", "A cost that changes with a count while the card waits in your hand, e.g. \u201ccosts 1 less if you control a unit with Stealth\u201d.");
 }
 function actionItems() {
   const items = schema.traits.filter(t => t.action && keywordAllowed(t.id, "action") && (t.official || ADV))
-    .map(t => Object.assign({ id: t.id, label: t.label, text: kwDesc(t.id), note: t.official ? t.official + " official" : "no official card" }, usedGroup(t.official)));
+    .map(t => Object.assign({ id: t.id, label: kwName(t.id), text: kwDesc(t.id), note: usedNote(t.official) }, usedGroup(t.official)));
   return items;
 }
 function splitTrig(v) { const [id, ctx] = String(v).split("@"); return { id, ctx: ctx || "" }; }
 function addEntry(id, tab) {
   if (tab === "custom") { const tc = splitTrig(id); id = tc.id; const ab = newAbility(id, ""); if (tc.ctx) ab.context = tc.ctx; if (WATCHES.test(id)) ab.subject = null; state.abilities.push(ab); keywordFor(ab); }
-  else if (tab === "action") { if (state.action) return say("A card has only one action. Remove the current one first.", "bad"); state.action = newAction(id); }
+  else if (tab === "action") { if (state.action) return say(T("creator.oneAction", "A card has only one action. Remove the current one first."), "bad"); state.action = newAction(id); }
   else { state.traits.push({ name: id, value: 0 }); abilityFor(id); }
   redraw();
 }
 function openAdd() {
-  openPicker({ title: "Add a keyword or ability", tab: "static",
-    tabs: [{ id: "static", label: "Static" }, { id: "ability", label: "Ability" }, { id: "action", label: "Action" }, { id: "custom", label: "Custom (pick a trigger)" }],
+  openPicker({ title: T("creator.addEntryTitle", "Add a keyword or ability"), tab: "static",
+    tabs: [{ id: "static", label: kindLabel("static") }, { id: "ability", label: kindLabel("ability") }, { id: "action", label: kindLabel("action") }, { id: "custom", label: T("creator.customTab", "Custom (pick a trigger)") }],
     items: tab => tab === "custom" ? triggerItems() : tab === "action" ? actionItems().map(x => Object.assign(x, { off: !!state.action })) : keywordItems(tab),
     onPick: addEntry });
 }
@@ -1528,7 +1575,7 @@ function cardListEditor(arr, label, list) {          // several cards (summon mo
 }
 function statFilter(t, key, label) {
   const f = t[key];
-  return el("div", { class: "row tight" }, field(label, sel(schema.comparisons, f.is, v => { f.is = v; }, false, "any")),
+  return el("div", { class: "row tight" }, field(label, sel(schema.comparisons, f.is, v => { f.is = v; }, false, T("creator.any", "any"))),
     f.is ? field("Number", num(f.value, v => { f.value = v; }, 0, 30)) : null);
 }
 const TARGET_ADV = ["whispers", "weapons", "warlordParts", "onlySelf", "excludeSimilar", "excludeTargeted", "excludeFriendlyWarlord", "excludeEnemyWarlord",
@@ -1563,6 +1610,15 @@ const WHO = [
 const EVENT_UNIT_TRIGGERS = ["UnitAttack", "Strike", "UnitStunned", "ThisUnitDeath", "OtherUnitDeath", "TriggeredSwarm"];
 const NOPICK_WHO = { pick: "The unit the event is about (e.g. the unit attacked)", ifMatches: "That unit, only if it also matches…",
                      adjTarget: "Units next to that unit that match…" };
+function whoLabel(x, nopick) { return nopick && NOPICK_WHO[x.id] ? T("creator.whoEvent." + x.id, NOPICK_WHO[x.id]) : T("creator.who." + x.id, x.label); }
+function creatorWhoKeys() {
+  T("creator.who.pick", "A unit the player picks"); T("creator.who.ifMatches", "The picked unit, only if it also matches…"); T("creator.who.random", "Random unit(s) that match…");
+  T("creator.who.all", "Every unit that matches…"); T("creator.who.self", "This card"); T("creator.who.friendlyHero", "Your warlord"); T("creator.who.enemyHero", "The enemy warlord");
+  T("creator.who.actingCard", "The unit that set it off"); T("creator.who.hand", "Cards in hand that match…"); T("creator.who.deck", "Cards in the deck that match…");
+  T("creator.who.cemetery", "Cards in the cemetery that match…"); T("creator.who.adjSelf", "Units next to this card that match…"); T("creator.who.adjTarget", "Units next to the picked unit that match…");
+  T("creator.who.any", "Not needed for this effect"); T("creator.who.other", "Other (advanced)…");
+  T("creator.whoEvent.pick", "The unit the event is about (e.g. the unit attacked)"); T("creator.whoEvent.ifMatches", "That unit, only if it also matches…"); T("creator.whoEvent.adjTarget", "Units next to that unit that match…");
+}
 function whoMode(ab) {
   if (!ab.trigger || choosesTrigger(ab.trigger)) return true;              // an action, or a trigger where the player picks
   return EVENT_UNIT_TRIGGERS.includes(ab.trigger) || tmpl().ench ? "nopick" : "noevent";
@@ -1571,7 +1627,7 @@ function whoOf(t) { if (t.pool === "allFiltered") return t.max ? "random" : "all
 // Groups the game fills in directly, without checking any filter (GetTargets adds this card or the warlord
 // as it is): their ticks and filters do nothing.
 const NO_FILTER_POOLS = ["self", "friendlyHero", "enemyHero"];
-const NO_FILTER_NOTE = "The game takes this card (or the warlord) directly and never checks these filters, so they do nothing here. They are only kept because some official cards carry them.";
+const NO_FILTER_NOTE = () => T("creator.noFilterNote", "The game takes this card (or the warlord) directly and never checks these filters, so they do nothing here. They are only kept because some official cards carry them.");
 function setWho(t, id) {
   const w = WHO.find(x => x.id === id); if (!w || !w.pool) return;          // "other": keep the group, show the full list
   t.pool = w.pool;
@@ -1587,60 +1643,60 @@ function setWho(t, id) {
 // who: show "Who does it affect?" in plain words (effect targets) instead of the bare group list
 // pick: the player's pick, always "every unit matching the filter": its group row only shows when unusual
 function drawTargets(t, title, pools, maxLabel, foldNote, who, pick) {
-  if (!foldNote && NO_FILTER_POOLS.includes(t.pool)) foldNote = NO_FILTER_NOTE;
+  if (!foldNote && NO_FILTER_POOLS.includes(t.pool)) foldNote = NO_FILTER_NOTE();
   const filtered = !foldNote && /Filtered|Criteria|^target$|lowestHealth/.test(t.pool);
   const adv = TARGET_ADV.some(k => isSet(t[k]));
   const ticks = el("div", { class: "checks", style: "margin-bottom:10px" },
-      check("Friendly", t, "friendly"), check("Enemy", t, "enemy"), check("Troops", t, "troops"), check("Warlords", t, "warlords"),
-      check("Stratagems", t, "stratagems"), check("Remnants", t, "remnants"), check("Include this card", t, "self"));
+      check(T("creator.friendly", "Friendly"), t, "friendly"), check(T("creator.enemy", "Enemy"), t, "enemy"), check(T("creator.troops", "Troops"), t, "troops"), check(T("creator.warlords", "Warlords"), t, "warlords"),
+      check(T("creator.stratagems", "Stratagems"), t, "stratagems"), check(T("creator.remnants", "Remnants"), t, "remnants"), check(T("creator.includeThisCard", "Include this card"), t, "self"));
   const filters = el("div", { class: "row" },
-      field("Only with keyword", sel(schema.traits, t.trait, v => { t.trait = v; }, true, "any")),
-      el("div", { class: "checks" }, check("…without it instead", t, "excludeTrait")),
-      field("Only unit type", sel(schema.keywords, t.keyword, v => { t.keyword = v; }, false, "any")),
-      el("div", { class: "checks" }, check("…any other type instead", t, "excludeKeyword")),
-      field("Only if", sel(schema.conditions, t.condition, v => { t.condition = v; }, true, "any")),
-      el("div", { class: "checks" }, check("…unless instead", t, "excludeCondition")));
-  const moreFilters = more(t, "More filters", adv,
+      field(T("creator.onlyWithKeyword", "Only with keyword"), sel(schema.traits, t.trait, v => { t.trait = v; }, true, T("creator.any", "any"))),
+      el("div", { class: "checks" }, check(T("creator.withoutItInstead", "…without it instead"), t, "excludeTrait")),
+      field(T("creator.onlyUnitType", "Only unit type"), sel(schema.keywords, t.keyword, v => { t.keyword = v; }, false, T("creator.any", "any"))),
+      el("div", { class: "checks" }, check(T("creator.anyOtherTypeInstead", "…any other type instead"), t, "excludeKeyword")),
+      field(T("creator.onlyIf", "Only if"), sel(schema.conditions, t.condition, v => { t.condition = v; }, true, T("creator.any", "any"))),
+      el("div", { class: "checks" }, check(T("creator.unlessInstead", "…unless instead"), t, "excludeCondition")));
+  const moreFilters = more(t, T("creator.moreFilters", "More filters"), adv,
       el("div", { class: "checks", style: "margin-bottom:8px" },
-        check("Whispers", t, "whispers"), check("Weapons", t, "weapons"), check("Warlord parts", t, "warlordParts"),
-        check("Only this card itself", t, "onlySelf"), check("Not cards with the same name", t, "excludeSimilar"), check("Not the chosen target", t, "excludeTargeted"),
-        check("Not your warlord", t, "excludeFriendlyWarlord"), check("Not the enemy warlord", t, "excludeEnemyWarlord"),
-        check("From the choice window", t, "fromChoice"), check("Dying units too", t, "anyState")),
+        check(T("creator.whispers", "Whispers"), t, "whispers"), check(T("creator.weapons", "Weapons"), t, "weapons"), check(T("creator.warlordParts", "Warlord parts"), t, "warlordParts"),
+        check(T("creator.onlyThisCardItself", "Only this card itself"), t, "onlySelf"), check(T("creator.notCardsWithTheSameName", "Not cards with the same name"), t, "excludeSimilar"), check(T("creator.notTheChosenTarget", "Not the chosen target"), t, "excludeTargeted"),
+        check(T("creator.notYourWarlord", "Not your warlord"), t, "excludeFriendlyWarlord"), check(T("creator.notTheEnemyWarlord", "Not the enemy warlord"), t, "excludeEnemyWarlord"),
+        check(T("creator.fromTheChoiceWindow", "From the choice window"), t, "fromChoice"), check(T("creator.dyingUnitsToo", "Dying units too"), t, "anyState")),
       el("div", { class: "row" },
-        field("Faction", sel(schema.armies, t.army, v => { t.army = v; if (v && !t.armyMode) t.armyMode = "OnlyChosenArmy"; if (!v) t.armyMode = ""; }, false, "any")),
-        t.army ? field("Faction rule", sel(schema.armyModes, t.armyMode, v => { t.armyMode = v; })) : null,
-        field("Stratagem type", sel(schema.stratagemTypes, t.stratagemType, v => { t.stratagemType = v; }, false, "any"))),
-      statFilter(t, "attack", "Attack"), statFilter(t, "health", "Current health"), statFilter(t, "cost", "Cost"),
-      el("div", { class: "row tight" }, field("Rarity", sel(schema.comparisons, t.rarity.is, v => { t.rarity.is = v; }, false, "any")),
-        t.rarity.is ? field("Rarity", sel(schema.rarityValues || [], String(t.rarity.value), v => { t.rarity.value = parseInt(v, 10) || 0; })) : null),
-      cardListEditor(t.cards, "Only these cards"),
-      cardListEditor(t.notEnchantedBy, "Not already carrying this enchantment", "enchList"));
+        field(T("creator.faction", "Faction"), sel(schema.armies, t.army, v => { t.army = v; if (v && !t.armyMode) t.armyMode = "OnlyChosenArmy"; if (!v) t.armyMode = ""; }, false, T("creator.any", "any"))),
+        t.army ? field(T("creator.factionRule", "Faction rule"), sel(schema.armyModes, t.armyMode, v => { t.armyMode = v; })) : null,
+        field(T("creator.stratagemTypeShort", "Stratagem type"), sel(schema.stratagemTypes, t.stratagemType, v => { t.stratagemType = v; }, false, T("creator.any", "any")))),
+      statFilter(t, "attack", T("creator.attack", "Attack")), statFilter(t, "health", T("creator.currentHealth", "Current health")), statFilter(t, "cost", T("creator.cost", "Cost")),
+      el("div", { class: "row tight" }, field(T("creator.rarity", "Rarity"), sel(schema.comparisons, t.rarity.is, v => { t.rarity.is = v; }, false, T("creator.any", "any"))),
+        t.rarity.is ? field(T("creator.rarity", "Rarity"), sel(schema.rarityValues || [], String(t.rarity.value), v => { t.rarity.value = parseInt(v, 10) || 0; })) : null),
+      cardListEditor(t.cards, T("creator.onlyTheseCards", "Only these cards")),
+      cardListEditor(t.notEnchantedBy, T("creator.notAlreadyCarryingThisEnchantment", "Not already carrying this enchantment"), "enchList"));
   const leftover = adv || TARGET_BASE.some(k => isSet(t[k]));
-  const fold = filtered ? null : (foldNote ? (ADV ? more(foldKey(t), "Filters (not used here)", false, el("p", { class: "hint", text: foldNote }), ticks, filters, moreFilters) : null)
+  const fold = filtered ? null : (foldNote ? (ADV ? more(foldKey(t), T("creator.filtersNotUsed", "Filters (not used here)"), false, el("p", { class: "hint", text: foldNote }), ticks, filters, moreFilters) : null)
     : advOr(leftover) ? more(foldKey(t), "Filters (this group rarely needs them)", leftover,
-      el("p", { class: "hint", text: "Most cards leave these empty for this group; a few official cards set them." }), ticks, filters, moreFilters) : null);
+      el("p", { class: "hint", text: T("creator.filtersRarelyNeededHelp", "Most cards leave these empty for this group; a few official cards set them.") }), ticks, filters, moreFilters) : null);
   let head;
   if (who) {
     const w = whoOf(t);
     // on triggers where the player picks nothing (Strike, Slay, "when a unit attacks" ...) "the target" is the
     // unit the event is about, e.g. the unit that was attacked (Venomthrope, Blastmaster Noise Marine)
-    let list = WHO;
+    let list = WHO.map(x => Object.assign({}, x, { label: whoLabel(x, false) }));
     if (who === "nopick" || who === "noevent") list = WHO.flatMap(x => {
-      if (!NOPICK_WHO[x.id]) return [x];
-      if (who === "nopick") return [Object.assign({}, x, { label: NOPICK_WHO[x.id] })];
-      return ADV || x.id === w ? [Object.assign({}, x, { label: NOPICK_WHO[x.id] + " \u2013 untested on this trigger" })] : [];
+      if (!NOPICK_WHO[x.id]) return [Object.assign({}, x, { label: whoLabel(x, false) })];
+      if (who === "nopick") return [Object.assign({}, x, { label: whoLabel(x, true) })];
+      return ADV || x.id === w ? [Object.assign({}, x, { label: T("creator.whoUntested", "{who} \u2013 untested on this trigger", { who: whoLabel(x, true) }) })] : [];
     });
     head = el("div", { class: "row" },
-      field("Who does it affect?", sel(list, w, v => { setWho(t, v); }), true),
-      w === "other" ? field("Group", sel(schema.targetPools, t.pool, v => { t.pool = v; }, true), true) : null,
-      w === "random" ? field("How many", num(t.max, v => { t.max = Math.max(1, v); }, 1, 20))
-        : w !== "all" && advOr(t.max) ? field("At most (0 = all)", num(t.max, v => { t.max = v; }, 0, 20)) : null,
-      advOr(t.select) ? field(w === "random" ? "Which ones (blank = random)" : "If picking some", sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–")) : null);
+      field(T("creator.whoDoesItAffect", "Who does it affect?"), sel(list, w, v => { setWho(t, v); }), true),
+      w === "other" ? field(T("creator.group", "Group"), sel(schema.targetPools, t.pool, v => { t.pool = v; }, true), true) : null,
+      w === "random" ? field(T("creator.howMany", "How many"), num(t.max, v => { t.max = Math.max(1, v); }, 1, 20))
+        : w !== "all" && advOr(t.max) ? field(T("creator.atMost", "At most (0 = all)"), num(t.max, v => { t.max = v; }, 0, 20)) : null,
+      advOr(t.select) ? field(w === "random" ? T("creator.whichOnes", "Which ones (blank = random)") : T("creator.ifPickingSome", "If picking some"), sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–")) : null);
   } else if (pick && !advOr(t.pool !== "allFiltered" || t.max || t.select)) head = null;
   else head = el("div", { class: "row" },
-      field("Affects", sel(pools || schema.targetPools, t.pool, v => { t.pool = v; }, true), true),
-      field(maxLabel || "At most (0 = all)", num(t.max, v => { t.max = v; }, 0, 20)),
-      field("If picking some", sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–")));
+      field(T("creator.affects", "Affects"), sel(pools || schema.targetPools, t.pool, v => { t.pool = v; }, true), true),
+      field(maxLabel || T("creator.atMostAll", "At most (0 = all)"), num(t.max, v => { t.max = v; }, 0, 20)),
+      field(T("creator.ifPickingSome", "If picking some"), sel(schema.selectMethods, t.select, v => { t.select = v; }, false, "–")));
   return el("div", { class: "targets" },
     title ? el("label", { text: title }) : null, head,
     filtered ? ticks : null, filtered ? filters : null, filtered ? moreFilters : null, fold);
@@ -1657,66 +1713,66 @@ function drawBuff(b) {
     || (type !== "markOfChaos" && b.mark) || (type !== "daemonHost" && b.daemonHost) || b.mutation || (!race && b.race) || (!ench && b.enchantment);
   const adv = ["meleeFrom", "rangedFrom", "healthFrom", "armourFrom", "costFrom", "random", "permanent", "doNotStack", "enchantAnim", "effectName", "effectText", "alsoLasts"].some(k => isSet(b[k]))
     || (ench && b.traitValue) || !!other;
-  const statFields = () => [field("Melee", num(b.melee, v => { b.melee = v; }, -30, 30)), field("Ranged", num(b.ranged, v => { b.ranged = v; }, -30, 30)),
-    field("Health", num(b.health, v => { b.health = v; }, -30, 30)), field("Armour", num(b.armour, v => { b.armour = v; }, -30, 30))];
-  const from = (key, label) => field(label, sel(schema.valueSources, b[key], v => { b[key] = v; }, false, "the number"));
+  const statFields = () => [field(T("creator.melee", "Melee"), num(b.melee, v => { b.melee = v; }, -30, 30)), field(T("creator.ranged", "Ranged"), num(b.ranged, v => { b.ranged = v; }, -30, 30)),
+    field(T("creator.health", "Health"), num(b.health, v => { b.health = v; }, -30, 30)), field(T("creator.armour", "Armour"), num(b.armour, v => { b.armour = v; }, -30, 30))];
+  const from = (key, label) => field(label, sel(schema.valueSources, b[key], v => { b[key] = v; }, false, T("creator.theNumber", "the number")));
   return el("div", {},
     el("div", { class: "row" },
-      field("What it gives", sel(schema.buffTypes, type, v => { b.type = v; }, true, "Stats, a keyword or a cost change (as filled in)"), true),
-      ench ? field("Enchantment", cardPicker(b, "enchantment", "enchList"), true) : null,
-      type === "markOfChaos" ? field("Mark", sel(schema.marks, b.mark, v => { b.mark = v; })) : null,
-      type === "daemonHost" ? field("Gift", sel(schema.daemonHosts, b.daemonHost, v => { b.daemonHost = v; })) : null,
-      ["changeRace", "addRace"].includes(type) ? field("Unit type", sel(schema.keywords, b.race, v => { b.race = v; })) : null),
+      field(T("creator.whatItGives", "What it gives"), sel(schema.buffTypes, type, v => { b.type = v; }, true, T("creator.buffTypeDefault", "Stats, a keyword or a cost change (as filled in)")), true),
+      ench ? field(T("creator.enchantmentField", "Enchantment"), cardPicker(b, "enchantment", "enchList"), true) : null,
+      type === "markOfChaos" ? field(T("creator.mark", "Mark"), sel(schema.marks, b.mark, v => { b.mark = v; })) : null,
+      type === "daemonHost" ? field(T("creator.gift", "Gift"), sel(schema.daemonHosts, b.daemonHost, v => { b.daemonHost = v; })) : null,
+      ["changeRace", "addRace"].includes(type) ? field(T("creator.unitType", "Unit type"), sel(schema.keywords, b.race, v => { b.race = v; })) : null),
     el("div", { class: "row" },
-      stats ? field("Melee", num(b.melee, v => { b.melee = v; }, -30, 30)) : null, stats ? field("Ranged", num(b.ranged, v => { b.ranged = v; }, -30, 30)) : null,
-      stats ? field("Health", num(b.health, v => { b.health = v; }, -30, 30)) : null, stats ? field("Armour", num(b.armour, v => { b.armour = v; }, -30, 30)) : null,
-      cost ? field(type === "setCost" ? "Cost" : "Cost change", num(b.cost, v => { b.cost = v; }, -12, 12)) : null,
-      trait ? field(type === "removeTrait" ? "Keyword" : "Give keyword", sel(schema.traits, b.trait, v => { b.trait = v; }, true, "none")) : null,
-      trait ? field("Keyword value", num(b.traitValue, v => { b.traitValue = v; }, 0, 20)) : null,
-      field("Lasts", sel(schema.durations, b.duration, v => { b.duration = v; }, false, "Permanently"))),
-    ench ? el("p", { class: "hint", text: "An enchantment is a hidden card whose abilities act on the card it is attached to. Pick an official one, or one of your own cards marked \"This card is an enchantment\"." }) : null,
-    more(b, "More buff options", adv,
-      el("div", { class: "row" }, from("meleeFrom", "Melee from"), from("rangedFrom", "Ranged from"), from("healthFrom", "Health from"), from("armourFrom", "Armour from"), from("costFrom", "Cost from"),
-        field("Random ±", num(b.random, v => { b.random = v; }, 0, 30))),
-      el("p", { class: "hint", text: "\"From\" takes the number from the game instead of the box (the target's attack, this card's health, ...). Random ± adds or takes away up to that much." }),
+      stats ? field(T("creator.melee", "Melee"), num(b.melee, v => { b.melee = v; }, -30, 30)) : null, stats ? field(T("creator.ranged", "Ranged"), num(b.ranged, v => { b.ranged = v; }, -30, 30)) : null,
+      stats ? field(T("creator.health", "Health"), num(b.health, v => { b.health = v; }, -30, 30)) : null, stats ? field(T("creator.armour", "Armour"), num(b.armour, v => { b.armour = v; }, -30, 30)) : null,
+      cost ? field(type === "setCost" ? T("creator.cost", "Cost") : T("creator.costChange", "Cost change"), num(b.cost, v => { b.cost = v; }, -12, 12)) : null,
+      trait ? field(type === "removeTrait" ? T("creator.keyword", "Keyword") : T("creator.giveKeyword", "Give keyword"), sel(schema.traits, b.trait, v => { b.trait = v; }, true, "none")) : null,
+      trait ? field(T("creator.keywordValue", "Keyword value"), num(b.traitValue, v => { b.traitValue = v; }, 0, 20)) : null,
+      field(T("creator.lasts", "Lasts"), sel(schema.durations, b.duration, v => { b.duration = v; }, false, T("creator.permanently", "Permanently")))),
+    ench ? el("p", { class: "hint", text: T("creator.enchantmentBuffHelp", "An enchantment is a hidden card whose abilities act on the card it is attached to. Pick an official one, or one of your own cards marked \"This card is an enchantment\".") }) : null,
+    more(b, T("creator.moreBuffOptions", "More buff options"), adv,
+      el("div", { class: "row" }, from("meleeFrom", T("creator.meleeFrom", "Melee from")), from("rangedFrom", T("creator.rangedFrom", "Ranged from")), from("healthFrom", T("creator.healthFrom", "Health from")), from("armourFrom", T("creator.armourFrom", "Armour from")), from("costFrom", T("creator.costFrom", "Cost from")),
+        field(T("creator.randomPlusMinus", "Random ±"), num(b.random, v => { b.random = v; }, 0, 30))),
+      el("p", { class: "hint", text: T("creator.buffFromHelp", "\"From\" takes the number from the game instead of the box (the target's attack, this card's health, ...). Random ± adds or takes away up to that much.") }),
       el("div", { class: "row" },
-        b.duration ? field("…and also ends", sel(schema.durations.filter(d => d.id !== b.duration), b.alsoLasts, v => { b.alsoLasts = v; }, false, "no second limit")) : null,
-        !trait ? field("Number (e.g. an enchantment's value)", num(b.traitValue, v => { b.traitValue = v; }, 0, 20)) : null),
-      el("div", { class: "checks", style: "margin-bottom:8px" }, check("Permanent (survives silence)", b, "permanent"), check("Does not stack", b, "doNotStack"), check("Play the enchant animation", b, "enchantAnim")),
-      el("div", { class: "row" }, field("Shown as (name)", textInput(b, "effectName", "name shown on the card"), true), field("Shown as (text)", textInput(b, "effectText", "text shown on the card", 200), true)),
-      advOr(other) ? el("p", { class: "hint", text: "Parts of other kinds of buff (official cards sometimes carry them with this one):" }) : null,
-      advOr(other) ? el("div", { class: "row" }, ...(stats ? [] : statFields()), cost ? null : field("Cost change", num(b.cost, v => { b.cost = v; }, -12, 12)),
-        trait ? null : field("Keyword", sel(schema.traits, b.trait, v => { b.trait = v; }, true, "none"))) : null,
+        b.duration ? field(T("creator.andAlsoEnds", "…and also ends"), sel(schema.durations.filter(d => d.id !== b.duration), b.alsoLasts, v => { b.alsoLasts = v; }, false, T("creator.noSecondLimit", "no second limit"))) : null,
+        !trait ? field(T("creator.buffNumber", "Number (e.g. an enchantment's value)"), num(b.traitValue, v => { b.traitValue = v; }, 0, 20)) : null),
+      el("div", { class: "checks", style: "margin-bottom:8px" }, check(T("creator.permanentSurvivesSilence", "Permanent (survives silence)"), b, "permanent"), check(T("creator.doesNotStack", "Does not stack"), b, "doNotStack"), check(T("creator.playTheEnchantAnimation", "Play the enchant animation"), b, "enchantAnim")),
+      el("div", { class: "row" }, field(T("creator.shownAsName", "Shown as (name)"), textInput(b, "effectName", T("creator.nameShownOnTheCard", "name shown on the card")), true), field(T("creator.shownAsText", "Shown as (text)"), textInput(b, "effectText", T("creator.textShownOnTheCard", "text shown on the card"), 200), true)),
+      advOr(other) ? el("p", { class: "hint", text: T("creator.buffOtherPartsHelp", "Parts of other kinds of buff (official cards sometimes carry them with this one):") }) : null,
+      advOr(other) ? el("div", { class: "row" }, ...(stats ? [] : statFields()), cost ? null : field(T("creator.costChange", "Cost change"), num(b.cost, v => { b.cost = v; }, -12, 12)),
+        trait ? null : field(T("creator.keyword", "Keyword"), sel(schema.traits, b.trait, v => { b.trait = v; }, true, "none"))) : null,
       advOr(other) ? el("div", { class: "row" },
-        type === "markOfChaos" ? null : field("Mark", sel(schema.marks, b.mark, v => { b.mark = v; }, false, "none")),
-        type === "daemonHost" ? null : field("Gift", sel(schema.daemonHosts, b.daemonHost, v => { b.daemonHost = v; }, false, "none")),
-        field("Mutation", sel(schema.mutations, b.mutation, v => { b.mutation = v; }, false, "none")),
-        race ? null : field("Unit type", sel(schema.keywords, b.race, v => { b.race = v; }, false, "none")),
-        ench ? null : field("Enchantment", cardPicker(b, "enchantment", "enchList"), true)) : null));
+        type === "markOfChaos" ? null : field(T("creator.mark", "Mark"), sel(schema.marks, b.mark, v => { b.mark = v; }, false, "none")),
+        type === "daemonHost" ? null : field(T("creator.gift", "Gift"), sel(schema.daemonHosts, b.daemonHost, v => { b.daemonHost = v; }, false, "none")),
+        field(T("creator.mutation", "Mutation"), sel(schema.mutations, b.mutation, v => { b.mutation = v; }, false, "none")),
+        race ? null : field(T("creator.unitType", "Unit type"), sel(schema.keywords, b.race, v => { b.race = v; }, false, "none")),
+        ench ? null : field(T("creator.enchantmentField", "Enchantment"), cardPicker(b, "enchantment", "enchList"), true)) : null));
 }
 function drawManaBlock(fx) {
   const m = fx.mana;
   return el("div", { class: "row" },
-    field("Resource", sel(schema.resources, m.resource, v => { m.resource = v; })),
-    field("Whose", sel(schema.players, m.player, v => { m.player = v; })),
-    field("How", sel(schema.manaModes, m.mode, v => { m.mode = v; }, false, "as official cards do")),
-    el("div", { class: "checks" }, check("Only until end of turn", m, "untilEndOfTurn")));
+    field(T("creator.resource", "Resource"), sel(schema.resources, m.resource, v => { m.resource = v; })),
+    field(T("creator.whose", "Whose"), sel(schema.players, m.player, v => { m.player = v; })),
+    field(T("creator.how", "How"), sel(schema.manaModes, m.mode, v => { m.mode = v; }, false, T("creator.asOfficialCardsDo", "as official cards do"))),
+    el("div", { class: "checks" }, check(T("creator.onlyUntilEndOfTurn", "Only until end of turn"), m, "untilEndOfTurn")));
 }
 function drawSummonBlock(fx) {
   const s = fx.summon;
   return el("div", {},
-    cardListEditor(s.cards, "More cards to summon"),
+    cardListEditor(s.cards, T("creator.moreCardsToSummon", "More cards to summon")),
     el("div", { class: "row" },
-      field("Created at", sel(schema.positions, s.createAt, v => { s.createAt = v; }, false, "default")),
-      field("Moved to", sel(schema.positions, s.moveTo, v => { s.moveTo = v; }, false, "default"))),
+      field(T("creator.createdAt", "Created at"), sel(schema.positions, s.createAt, v => { s.createAt = v; }, false, "default")),
+      field(T("creator.movedTo", "Moved to"), sel(schema.positions, s.moveTo, v => { s.moveTo = v; }, false, "default"))),
     el("div", { class: "checks", style: "margin-bottom:8px" },
-      check("For the enemy", s, "forEnemy"), check("Summon all the targets", s, "allTargets"), check("Pick a card in play", s, "chooseInPlay"),
-      check("Keep its effects", s, "keepEffects"), check("Remove it from the cemetery", s, "removeFromCemetery")));
+      check(T("creator.forTheEnemy", "For the enemy"), s, "forEnemy"), check(T("creator.summonAllTheTargets", "Summon all the targets"), s, "allTargets"), check(T("creator.pickACardInPlay", "Pick a card in play"), s, "chooseInPlay"),
+      check(T("creator.keepItsEffects", "Keep its effects"), s, "keepEffects"), check(T("creator.removeItFromTheCemetery", "Remove it from the cemetery"), s, "removeFromCemetery")));
 }
 // A "chosen target" effect whose pick is set in "What the player picks": the game uses the picked unit and does
 // not check the effect's own ticks (official Commissar Denkler picks a friendly unit with "Enemy" ticked here).
 // They are kept, so official cards rebuild exactly, but folded away.
-const PICK_NOTE = "The game does not check these ticks on \u201cthe chosen target\u201d: that is the unit the player picked (set in \u201cWhat the player picks\u201d), or, on triggers where nothing is picked, the unit the event is about (narrowed with the ability\u2019s \u201cOnly when the event hit certain units\u201d). They are only kept because some official cards carry them. To act only when that unit matches more (e.g. \u201cif it is a Vehicle\u201d), aim the effect at \u201cthe target, if it matches\u201d and use its filter.";
+const PICK_NOTE = () => T("creator.pickNote", "The game does not check these ticks on \u201cthe chosen target\u201d: that is the unit the player picked (set in \u201cWhat the player picks\u201d), or, on triggers where nothing is picked, the unit the event is about (narrowed with the ability\u2019s \u201cOnly when the event hit certain units\u201d). They are only kept because some official cards carry them. To act only when that unit matches more (e.g. \u201cif it is a Vehicle\u201d), aim the effect at \u201cthe target, if it matches\u201d and use its filter.");
 function pickSaidElsewhere(ab, fx) { return !!fx.targets && fx.targets.pool === "target"; }
 function drawEffect(ab, fx, i) {
   const def = schema.effects.find(x => x.id === fx.effect) || { fields: ["targets", "note"], uses: [] };
@@ -1729,36 +1785,36 @@ function drawEffect(ab, fx, i) {
     || (uses("summon") && isSet(fx.summon));
   return el("div", { class: "effect" },
     el("div", { class: "row" },
-      field("Effect " + (i + 1), sel(effectList(fx.effect), fx.effect, v => { fx.effect = v; }, true), true),
+      field(T("creator.effectN", "Effect {n}", { n: i + 1 }), sel(effectList(fx.effect), fx.effect, v => { fx.effect = v; }, true), true),
       has("amount") ? field("Amount", num(fx.amount, v => { fx.amount = v; }, -30, 60)) : null,
-      has("amountMax") || uses("damage") || uses("heal") ? field("Up to (0 = fixed)", num(fx.amountMax, v => { fx.amountMax = v; }, 0, 60)) : null,
-      has("count") ? field("How many", num(fx.count, v => { fx.count = v; }, 1, 10)) : null,
-      has("card") ? field(ench ? "Which enchantment" : "Which card", cardPicker(fx, "card", ench ? "enchList" : "cardList"), true) : null,
-      el("button", { class: "small danger", text: "Remove", onclick: () => { ab.effects.splice(i, 1); redraw(); } })),
+      has("amountMax") || uses("damage") || uses("heal") ? field(T("creator.upTo0Fixed", "Up to (0 = fixed)"), num(fx.amountMax, v => { fx.amountMax = v; }, 0, 60)) : null,
+      has("count") ? field(T("creator.howMany", "How many"), num(fx.count, v => { fx.count = v; }, 1, 10)) : null,
+      has("card") ? field(ench ? T("creator.whichEnchantment", "Which enchantment") : T("creator.whichCard", "Which card"), cardPicker(fx, "card", ench ? "enchList" : "cardList"), true) : null,
+      el("button", { class: "small danger", text: T("creator.remove", "Remove"), onclick: () => { ab.effects.splice(i, 1); redraw(); } })),
     has("buff") ? drawBuff(fx.buff) : null,
-    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE : null, whoMode(ab))
-      : fx.tgOn && advOr(tgSaid) ? drawTargets(fx.targets, "Works on (as official cards set it for this effect)") : null,
-    has("note") ? field("Describe what this should do", el("input", { value: fx.note || "", maxLength: 200,
+    has("targets") ? drawTargets(fx.targets, null, null, null, pickSaidElsewhere(ab, fx) ? PICK_NOTE() : null, whoMode(ab))
+      : fx.tgOn && advOr(tgSaid) ? drawTargets(fx.targets, T("creator.worksOn", "Works on (as official cards set it for this effect)")) : null,
+    has("note") ? field(T("creator.describeWhatThisShouldDo", "Describe what this should do"), el("input", { value: fx.note || "", maxLength: 200,
       oninput: e => { fx.note = e.target.value; redraw(true); } }), true) : null,
-    more(fx, "More options", adv,
+    more(fx, T("creator.moreOptions", "More options"), adv,
       el("div", { class: "row" },
-        (uses("damage") || uses("heal")) ? field("Amount from", sel(schema.valueSources, fx.amountFrom, v => { fx.amountFrom = v; }, true, "the number above")) : null,
-        uses("damage") ? field("Damage type", sel(schema.damageTypes, fx.damageType, v => { fx.damageType = v; }, true, "default")) : null,
-        field("Repeat (times)", num(fx.times, v => { fx.times = v; }, 0, 20)),
-        field("Chance % (0 = always)", num(fx.chance, v => { fx.chance = v; }, 0, 100)),
-        uses("players") || advOr(fx.players) ? field("Which player", sel(schema.players, fx.players, v => { fx.players = v; }, false, uses("players") ? "you" : "not set (the game does not use it here)")) : null,
-        uses("enchantment") && !has("buff") ? field("Buff type written with it", sel(schema.buffTypes, fx.buff.type, v => { fx.buff.type = v; }, true, "none")) : null,
-        uses("summon") && !has("buff") ? field("Card whose effect it sets off", cardPicker(fx.buff, "enchantment"), true) : null),
+        (uses("damage") || uses("heal")) ? field(T("creator.amountFrom", "Amount from"), sel(schema.valueSources, fx.amountFrom, v => { fx.amountFrom = v; }, true, T("creator.theNumberAbove", "the number above"))) : null,
+        uses("damage") ? field(T("creator.damageType", "Damage type"), sel(schema.damageTypes, fx.damageType, v => { fx.damageType = v; }, true, "default")) : null,
+        field(T("creator.repeatTimes", "Repeat (times)"), num(fx.times, v => { fx.times = v; }, 0, 20)),
+        field(T("creator.chance0Always", "Chance % (0 = always)"), num(fx.chance, v => { fx.chance = v; }, 0, 100)),
+        uses("players") || advOr(fx.players) ? field(T("creator.whichPlayer", "Which player"), sel(schema.players, fx.players, v => { fx.players = v; }, false, uses("players") ? "you" : "not set (the game does not use it here)")) : null,
+        uses("enchantment") && !has("buff") ? field(T("creator.buffTypeWrittenWithIt", "Buff type written with it"), sel(schema.buffTypes, fx.buff.type, v => { fx.buff.type = v; }, true, "none")) : null,
+        uses("summon") && !has("buff") ? field(T("creator.cardWhoseEffectItSetsOff", "Card whose effect it sets off"), cardPicker(fx.buff, "enchantment"), true) : null),
       el("div", { class: "checks", style: "margin-bottom:8px" },
-        check("Only while this card is in play", fx, "casterMustBeInPlay"),
-        has("targets") || !advOr(tgSaid) ? null : el("label", {}, el("input", { type: "checkbox", checked: !!fx.tgOn, onchange: e => { fx.tgOn = e.target.checked; if (fx.tgOn) fx.targets = mergeTargets({ pool: "self" }); redraw(); } }), "Set what it works on"),
-        el("label", {}, el("input", { type: "checkbox", checked: !!fx.per, onchange: e => { fx.per = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Once for each …")),
-      fx.per ? drawTargets(fx.per, "Once for each of these") : null,
-      uses("hand") ? el("div", { class: "row" }, field("Whose hand", sel(schema.players, fx.hand.players, v => { fx.hand.players = v; }, false, "as the filter says")),
-        field("Uses (0 = unlimited)", num(fx.hand.uses, v => { fx.hand.uses = v; }, 0, 20)),
+        check(T("creator.onlyWhileThisCardIsInPlay", "Only while this card is in play"), fx, "casterMustBeInPlay"),
+        has("targets") || !advOr(tgSaid) ? null : el("label", {}, el("input", { type: "checkbox", checked: !!fx.tgOn, onchange: e => { fx.tgOn = e.target.checked; if (fx.tgOn) fx.targets = mergeTargets({ pool: "self" }); redraw(); } }), T("creator.setWorksOn", "Set what it works on")),
+        el("label", {}, el("input", { type: "checkbox", checked: !!fx.per, onchange: e => { fx.per = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), T("creator.perEach", "Once for each …"))),
+      fx.per ? drawTargets(fx.per, T("creator.onceForEach", "Once for each of these")) : null,
+      uses("hand") ? el("div", { class: "row" }, field(T("creator.whoseHand", "Whose hand"), sel(schema.players, fx.hand.players, v => { fx.hand.players = v; }, false, T("creator.asTheFilterSays", "as the filter says"))),
+        field(T("creator.handUses", "Uses (0 = unlimited)"), num(fx.hand.uses, v => { fx.hand.uses = v; }, 0, 20)),
         el("div", { class: "checks" }, el("label", {}, el("input", { type: "checkbox", checked: !!fx.hand.targets, onchange: e => { fx.hand.targets = e.target.checked ? mergeTargets({ pool: "inHandFiltered", friendly: true, enemy: false, troops: true, stratagems: true }) : null; redraw(); } }),
-          "The cards in hand are a different set from the effect's target above"))) : null,
-      uses("hand") && fx.hand.targets ? drawTargets(fx.hand.targets, "The cards in hand to change") : null,
+          T("creator.handTargetsHelp", "The cards in hand are a different set from the effect's target above")))) : null,
+      uses("hand") && fx.hand.targets ? drawTargets(fx.hand.targets, T("creator.handCardsToChange", "The cards in hand to change")) : null,
       uses("mana") ? drawManaBlock(fx) : null,
       uses("summon") ? drawSummonBlock(fx) : null));
 }
@@ -1773,12 +1829,12 @@ function traitDef(id) {
   return d.action && d.stratagemKeyword && val("f_kind") === "tactic" ? Object.assign({}, d, { action: false }) : d;
 }
 // What the action's number means and what the game adds by itself, per kind of action.
-function actionCostLabel(a) { return a.keyword === "oath" ? "Oath number (energy to use)" : "Energy cost to use"; }
+function actionCostLabel(a) { return a.keyword === "oath" ? T("creator.oathNumber", "Oath number (energy to use)") : T("creator.actionCost", "Energy cost to use"); }
 function actionHint(a) {
-  if (a.keyword === "ferocity") return "Ferocity: the troop does this and then returns to your deck – the game handles the return, so only add the effect itself.";
-  if (a.keyword === "pray") return "Pray: add only what the prayer does. The step that sets off Pray (for cards that react to a friendly prayer) and the praying state are added automatically, as on the official Sororitas cards.";
-  if (a.keyword === "oath") return "Oath: the number is written on the Oath keyword, as on the official Ultramarines cards (shown as \"Oath 2: ...\").";
-  if (a.keyword === "agenda") return "Agenda: a plain action like Duty. Official Dark Angels cards usually also gain quest points in it (Gain or lose energy, resource quest points).";
+  if (a.keyword === "ferocity") return T("creator.hint.ferocity", "Ferocity: the troop does this and then returns to your deck – the game handles the return, so only add the effect itself.");
+  if (a.keyword === "pray") return T("creator.hint.pray", "Pray: add only what the prayer does. The step that sets off Pray (for cards that react to a friendly prayer) and the praying state are added automatically, as on the official Sororitas cards.");
+  if (a.keyword === "oath") return T("creator.hint.oath", "Oath: the number is written on the Oath keyword, as on the official Ultramarines cards (shown as \"Oath 2: ...\").");
+  if (a.keyword === "agenda") return T("creator.hint.agenda", "Agenda: a plain action like Duty. Official Dark Angels cards usually also gain quest points in it (Gain or lose energy, resource quest points).");
   return "";
 }
 function addKeyword(id) {
@@ -1813,22 +1869,22 @@ function drawActionEntry() {
   const kind = a.keyword ? traitDef(a.keyword) : {};
   const b = el("div", { class: "box" },
     el("div", { class: "entryHead" },
-      el("span", { class: "kind action", text: "Action" }),
-      el("button", { class: "small pickBtn", text: (a.keyword ? (kind.label || a.keyword) : "Plain action (no keyword)") + "  ▾", title: "Change the kind of action",
-        onclick: () => openPicker({ title: "Change the kind of action", items: actionItems, onPick: v => { a.keyword = v; redraw(); } }) }),
+      el("span", { class: "kind action", text: kindLabel("action") }),
+      el("button", { class: "small pickBtn", text: (a.keyword ? (kind.label ? kwName(a.keyword) : a.keyword) : T("creator.plainAction", "Plain action (no keyword)")) + "  ▾", title: T("creator.changeAction", "Change the kind of action"),
+        onclick: () => openPicker({ title: T("creator.changeAction", "Change the kind of action"), items: actionItems, onPick: v => { a.keyword = v; redraw(); } }) }),
       el("span", { class: "spacer" }),
-      kind.official ? el("button", { class: "small", text: "Official examples", onclick: async () => { show("Examples"); await showExamples(a.keyword); window.scrollTo(0, 0); } }) : null,
-      el("button", { class: "small danger", text: "Remove", onclick: () => { state.action = null; redraw(); } })),
+      kind.official ? el("button", { class: "small", text: T("creator.officialExamples", "Official examples"), onclick: async () => { show("Examples"); await showExamples(a.keyword); window.scrollTo(0, 0); } }) : null,
+      el("button", { class: "small danger", text: T("common.remove", "Remove"), onclick: () => { state.action = null; redraw(); } })),
     a.keyword && kwDesc(a.keyword) ? el("p", { class: "hint pickDesc", text: kwDesc(a.keyword) }) : null,
     el("div", { class: "row" },
       field(actionCostLabel(a), num(a.cost, v => { a.cost = v; }, 0, 12)),
-      field("Limits or conditions (optional, for the reviewer)", el("input", { value: a.note || "", maxLength: 200, placeholder: "e.g. once per turn",
+      field(T("creator.actionNoteReviewer", "Limits or conditions (optional, for the reviewer)"), el("input", { value: a.note || "", maxLength: 200, placeholder: T("creator.actionNotePlaceholder", "e.g. once per turn"),
         oninput: e => { a.note = e.target.value; redraw(true); } }), true)));
   if (actionHint(a)) b.append(el("p", { class: "hint", text: actionHint(a) + (a.keyword === "ferocity" ? " Note: Ferocity could not be activated on the rebuilt Space Wolves cards yet, so treat these as untested." : "") }));
-  b.append(drawPick(a, a.effects, "What the player picks for the action", "+ Say what the player picks for the action"));
+  b.append(drawPick(a, a.effects, T("creator.pickAction", "What the player picks for the action"), T("creator.pickActionAdd", "+ Say what the player picks for the action")));
   a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
-  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
-  if (advOr(a.playAnim)) b.append(el("div", { class: "checks" }, check("Play the action animation", a, "playAnim")));
+  b.append(el("button", { class: "small", text: T("creator.addEffect", "+ Add effect"), onclick: () => { a.effects.push(newEffect()); redraw(); } }));
+  if (advOr(a.playAnim)) b.append(el("div", { class: "checks" }, check(T("creator.playAnim", "Play the action animation"), a, "playAnim")));
   state.abilities.forEach((ab, i) => { if (isActionAbility(ab)) b.append(drawActionAbility(ab, i)); });
   if (advOr(state.alternative)) drawAlternative(b);
   return b;
@@ -1836,16 +1892,16 @@ function drawActionEntry() {
 // An ability on the action's own trigger (Pray ...): part of the action. The standard praying state every
 // official Pray card has is only a line unless advanced options are on.
 function drawActionAbility(ab, i) {
-  const name = lab(schema.triggers, ab.trigger);
-  if (isStandardPray(ab) && !ADV) return el("p", { class: "hint", text: "Also gives the praying state when it prays, as every official Pray card does." });
+  const name = trigName(ab.trigger);
+  if (isStandardPray(ab) && !ADV) return el("p", { class: "hint", text: T("creator.prayStateShort", "Also gives the praying state when it prays, as every official Pray card does.") });
   const b = el("div", { class: "kwbox" },
-    el("div", { class: "head" }, el("strong", { text: `When it is used (${name}): what else happens` }), el("span", { class: "spacer" }),
-      el("button", { class: "small danger", text: "Remove", onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
-    isStandardPray(ab) ? el("p", { class: "hint", text: "The praying state, as on every official Pray card (the server adds it to a Pray card that has none)." }) : null);
+    el("div", { class: "head" }, el("strong", { text: T("creator.actionAbilityHead", "When it is used ({trigger}): what else happens", { trigger: name }) }), el("span", { class: "spacer" }),
+      el("button", { class: "small danger", text: T("common.remove", "Remove"), onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
+    isStandardPray(ab) ? el("p", { class: "hint", text: T("creator.prayStateLong", "The praying state, as on every official Pray card (the server adds it to a Pray card that has none).") }) : null);
   const subj = drawSubject(ab); if (subj) b.append(subj);
   b.append(drawAbilityOptions(ab));
   ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
-  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
+  b.append(el("button", { class: "small", text: T("creator.addEffect", "+ Add effect"), onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
   return b;
 }
 // "Say what the player picks" when no effect aims at the chosen target (official cards whose effects
@@ -1859,17 +1915,17 @@ function newAlternative() { return Object.assign(newAction(""), { when: newAbili
 function drawAlternative(box) {
   if (val("f_kind") === "tactic") return;
   const a = state.alternative;
-  if (!a) { box.append(el("div", { class: "row" }, el("button", { class: "small", text: "+ Add an alternative action", onclick: () => { state.alternative = newAlternative(); redraw(); } }),
-    el("span", { class: "hint", text: "used instead of the action above while a condition is not met (as Wulfen Pack Leader)" }))); return; }
+  if (!a) { box.append(el("div", { class: "row" }, el("button", { class: "small", text: T("creator.addAlternative", "+ Add an alternative action"), onclick: () => { state.alternative = newAlternative(); redraw(); } }),
+    el("span", { class: "hint", text: T("creator.alternativeHelp", "used instead of the action above while a condition is not met (as Wulfen Pack Leader)") }))); return; }
   const b = el("div", { class: "box" },
-    el("div", { class: "head" }, el("strong", { text: "Alternative action" }), el("span", { class: "spacer" }),
-      el("button", { class: "small danger", text: "Remove", onclick: () => { state.alternative = null; redraw(); } })),
-    el("p", { class: "hint", text: "The card uses its action above while this condition is met, and this action otherwise." }),
+    el("div", { class: "head" }, el("strong", { text: T("creator.alternativeTitle", "Alternative action") }), el("span", { class: "spacer" }),
+      el("button", { class: "small danger", text: T("common.remove", "Remove"), onclick: () => { state.alternative = null; redraw(); } })),
+    el("p", { class: "hint", text: T("creator.alternativeWhen", "The card uses its action above while this condition is met, and this action otherwise.") }),
     drawWhen(a.when),
-    el("div", { class: "row" }, field("Energy cost to use", num(a.cost, v => { a.cost = v; }, 0, 12)), el("div", { class: "checks" }, check("Play the action animation", a, "playAnim"))));
-  b.append(drawPick(a, a.effects, "What the player picks for it", "+ Say what the player picks for it"));
+    el("div", { class: "row" }, field(T("creator.actionCost", "Energy cost to use"), num(a.cost, v => { a.cost = v; }, 0, 12)), el("div", { class: "checks" }, check(T("creator.playAnim", "Play the action animation"), a, "playAnim"))));
+  b.append(drawPick(a, a.effects, T("creator.pickIt", "What the player picks for it"), T("creator.pickItAdd", "+ Say what the player picks for it")));
   a.effects.forEach((fx, j) => b.append(drawEffect(a, fx, j)));
-  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { a.effects.push(newEffect()); redraw(); } }));
+  b.append(el("button", { class: "small", text: T("creator.addEffect", "+ Add effect"), onclick: () => { a.effects.push(newEffect()); redraw(); } }));
   box.append(b);
 }
 function labelsFor(trigger) { return schema.traits.filter(t => t.trigger === trigger && t.id.toLowerCase() !== trigger.toLowerCase()); }
@@ -1878,40 +1934,40 @@ function newSubject() { return mergeTargets({ pool: "allFiltered", friendly: tru
 // "Triggered by": which card has to do the thing for the ability to go off. Laid out like an effect's
 // targets: first the group, then (for "every card matching the filter") who counts. Official cards use
 // these three groups: allFiltered 89, self 30, any 13 (e.g. Invictor Warsuit: allFiltered, enemy troops and warlords).
-const SUBJECT_POOLS = [
-  { id: "allFiltered", label: "A card matching the filter below" },
-  { id: "self", label: "Only this card itself" },
-  { id: "any", label: "Any card at all" }];
+const SUBJECT_POOLS = () => [
+  { id: "allFiltered", label: T("creator.subjectFiltered", "A card matching the filter below") },
+  { id: "self", label: T("creator.subjectSelf", "Only this card itself") },
+  { id: "any", label: T("creator.subjectAny", "Any card at all") }];
 // Triggers about another unit or card always have it; any other trigger can have it too (official cards
 // filter "who" on a few), switched on under the ability's "More options".
 function drawSubject(ab) {
   const watches = WATCHES.test(ab.trigger);
   if (!watches && !ab.subject) return null;
   if (!ab.subject) return el("div", { class: "row", style: "margin-bottom:10px" },
-    el("span", { class: "hint", text: "Triggered by: the usual cards for this trigger (as most official cards). " }),
-    el("button", { class: "small", text: "Say which cards set it off", onclick: () => { ab.subject = newSubject(); redraw(); } }));
+    el("span", { class: "hint", text: T("creator.subjectUsual", "Triggered by: the usual cards for this trigger (as most official cards). ") }),
+    el("button", { class: "small", text: T("creator.subjectSet", "Say which cards set it off"), onclick: () => { ab.subject = newSubject(); redraw(); } }));
   const t = ab.subject;
   if (!t.pool) t.pool = "allFiltered";            // older designs left it empty, which builds the same thing
   return el("div", { style: "margin-bottom:10px" },
-    drawTargets(t, "Triggered by", SUBJECT_POOLS),
-    el("p", { class: "hint", text: 'Tick who counts: e.g. "Enemy" + "Troops" + "Warlords" = when an enemy unit does it (Invictor Warsuit). In the effects below, "The card that caused the trigger" means that card.' }),
-    el("button", { class: "small danger", text: watches ? "Back to the usual cards for this trigger" : "Remove this filter", onclick: () => { ab.subject = null; redraw(); } }));
+    drawTargets(t, T("creator.triggeredBy", "Triggered by"), SUBJECT_POOLS()),
+    el("p", { class: "hint", text: T("creator.subjectHelp", "Tick who counts: e.g. \"Enemy\" + \"Troops\" + \"Warlords\" = when an enemy unit does it (Invictor Warsuit). In the effects below, \"The card that caused the trigger\" means that card.") }),
+    el("button", { class: "small danger", text: watches ? T("creator.subjectBack", "Back to the usual cards for this trigger") : T("creator.removeFilter", "Remove this filter"), onclick: () => { ab.subject = null; redraw(); } }));
 }
 // The parts of an ability beyond its trigger and effects: where the card has to be, whose turn,
 // a condition on the board, a cost in points, and the "for each" count. Same for every trigger.
-const TURNS = [{ id: "self", label: "Your turn" }, { id: "enemy", label: "The enemy's turn" }];
+const TURNS = () => [{ id: "self", label: T("creator.yourTurn", "Your turn") }, { id: "enemy", label: T("creator.enemyTurn", "The enemy's turn") }];
 function drawWhen(w) {                    // whose turn + "only if" (a count, or a random roll): an ability's or the alternative action's condition
   const condKind = w.count ? "count" : w.chance ? "chance" : "";
   return el("div", {},
-    el("div", { class: "row" }, field("Whose turn", sel(TURNS, w.turn, v => { w.turn = v; }, false, "either"))),
+    el("div", { class: "row" }, field(T("creator.whoseTurn", "Whose turn"), sel(TURNS(), w.turn, v => { w.turn = v; }, false, T("creator.either", "either")))),
     el("div", { class: "row" },
-      field("Only if", sel([{ id: "count", label: "a count of cards or units compares to a number" }, { id: "chance", label: "a random roll succeeds" }], condKind,
+      field(T("creator.onlyIf", "Only if"), sel([{ id: "count", label: T("creator.condCount", "a count of cards or units compares to a number") }, { id: "chance", label: T("creator.condChance", "a random roll succeeds") }], condKind,
         v => { w.count = v === "count" ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; w.chance = v === "chance" ? 50 : 0; if (v === "count" && !w.is) w.is = "EqualOrHigher"; }, false, "always"), true),
-      w.count ? field("Comparison", sel(schema.comparisons, w.is, v => { w.is = v; }, true)) : null,
-      w.count ? field("Number", num(w.value, v => { w.value = v; }, 0, 30)) : null,
-      w.chance ? field("Chance %", num(w.chance, v => { w.chance = v; }, 1, 100)) : null),
-    w.count ? el("div", { class: "checks", style: "margin-bottom:8px" }, check("Count friendly units against it (count minus allies)", w, "minusAllies")) : null,
-    w.count ? drawTargets(w.count, "Count these") : null);
+      w.count ? field(T("creator.comparison", "Comparison"), sel(schema.comparisons, w.is, v => { w.is = v; }, true)) : null,
+      w.count ? field(T("creator.number", "Number"), num(w.value, v => { w.value = v; }, 0, 30)) : null,
+      w.chance ? field(T("creator.chancePercent", "Chance %"), num(w.chance, v => { w.chance = v; }, 1, 100)) : null),
+    w.count ? el("div", { class: "checks", style: "margin-bottom:8px" }, check(T("creator.minusAllies", "Count friendly units against it (count minus allies)"), w, "minusAllies")) : null,
+    w.count ? drawTargets(w.count, T("creator.countThese", "Count these")) : null);
 }
 function drawAbilityOptions(ab) {
   if (!ab.when) ab.when = newAbility().when;
@@ -1924,20 +1980,20 @@ function drawAbilityOptions(ab) {
   const iconSet = !!ab.playIcon && ab.playIcon !== (tdef.playIcon ? "yes" : "no");
   const open = ctxSet || prioSet || iconSet || ["triggerValue", "random", "countEach", "victim"].some(k => isSet(ab[k])) || isSet(w)
     || (!WATCHES.test(ab.trigger) && !!ab.subject);
-  return more(ab, "More options", open,
+  return more(ab, T("creator.moreOptions", "More options"), open,
     el("div", { class: "row" },
-      advOr(ctxSet) ? field("Works while the card is", sel(schema.contexts, ab.context, v => { ab.context = v; }, true, "in play (or as official cards do)")) : null,
-      advOr(prioSet) ? field("Timing", sel(schema.priorities, ab.priority, v => { ab.priority = v; }, true, "instant")) : null,
-      advOr(iconSet) ? field("Icon on the card", sel([{ id: "yes", label: "Yes" }, { id: "no", label: "No" }], ab.playIcon, v => { ab.playIcon = v; }, false, "as official cards do")) : null,
-      tdef.value || advOr(ab.triggerValue) ? field("Costs points (faith, spirit stones)", num(ab.triggerValue, v => { ab.triggerValue = v; }, 0, 20)) : null),
+      advOr(ctxSet) ? field(T("creator.context", "Works while the card is"), sel(schema.contexts, ab.context, v => { ab.context = v; }, true, T("creator.contextDefault", "in play (or as official cards do)"))) : null,
+      advOr(prioSet) ? field(T("creator.timing", "Timing"), sel(schema.priorities, ab.priority, v => { ab.priority = v; }, true, T("creator.timingDefault", "instant"))) : null,
+      advOr(iconSet) ? field(T("creator.playIcon", "Icon on the card"), sel([{ id: "yes", label: T("common.yes", "Yes") }, { id: "no", label: T("common.no", "No") }], ab.playIcon, v => { ab.playIcon = v; }, false, T("creator.asOfficial", "as official cards do"))) : null,
+      tdef.value || advOr(ab.triggerValue) ? field(T("creator.triggerValue", "Costs points (faith, spirit stones)"), num(ab.triggerValue, v => { ab.triggerValue = v; }, 0, 20)) : null),
     drawWhen(w),
     el("div", { class: "checks", style: "margin-bottom:8px" },
-      advOr(ab.random) ? check("Pick one of the effects at random", ab, "random") : null,
-      el("label", {}, el("input", { type: "checkbox", checked: !!ab.countEach, onchange: e => { ab.countEach = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Repeat the effects once for each …"),
-      WATCHES.test(ab.trigger) ? null : el("label", {}, el("input", { type: "checkbox", checked: !!ab.subject, onchange: e => { ab.subject = e.target.checked ? newSubject() : null; redraw(); } }), "Only when set off by certain cards (“Triggered by”) …"),
-      el("label", {}, el("input", { type: "checkbox", checked: !!ab.victim, onchange: e => { ab.victim = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), "Only when the event hit certain units …")),
-    ab.countEach ? drawTargets(ab.countEach, "Once for each of these") : null,
-    ab.victim ? drawTargets(ab.victim, "The unit the event hit must match") : null);
+      advOr(ab.random) ? check(T("creator.randomEffect", "Pick one of the effects at random"), ab, "random") : null,
+      el("label", {}, el("input", { type: "checkbox", checked: !!ab.countEach, onchange: e => { ab.countEach = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), T("creator.countEach", "Repeat the effects once for each …")),
+      WATCHES.test(ab.trigger) ? null : el("label", {}, el("input", { type: "checkbox", checked: !!ab.subject, onchange: e => { ab.subject = e.target.checked ? newSubject() : null; redraw(); } }), T("creator.subjectToggle", "Only when set off by certain cards (“Triggered by”) …")),
+      el("label", {}, el("input", { type: "checkbox", checked: !!ab.victim, onchange: e => { ab.victim = e.target.checked ? mergeTargets({ pool: "allFiltered", friendly: true, enemy: false }) : null; redraw(); } }), T("creator.victimToggle", "Only when the event hit certain units …"))),
+    ab.countEach ? drawTargets(ab.countEach, T("creator.onceForEach", "Once for each of these")) : null,
+    ab.victim ? drawTargets(ab.victim, T("creator.victimMustMatch", "The unit the event hit must match")) : null);
 }
 // What the player picks, stored in "choose": a filter = what may be picked; false = the player picks
 // nothing, and "the chosen target" means what the event hit (official cards such as Fall Back, Angel's
@@ -1945,17 +2001,17 @@ function drawAbilityOptions(ab) {
 // The pick always lives here, as on every official card: a "chosen target" effect's own ticks are not
 // used by the game, so they are folded away (see PICK_NOTE). Narrower conditions on the picked unit go
 // on an effect aimed at "the target, if it matches".
-const CHOICE_MODES = [{ id: "filter", label: "The player picks one of these" },
-                      { id: "none", label: "The player picks nothing: \"the chosen target\" is what the event hit" }];
+const CHOICE_MODES = () => [{ id: "filter", label: T("creator.pickOne", "The player picks one of these") },
+                      { id: "none", label: T("creator.pickNone", "The player picks nothing: \"the chosen target\" is what the event hit") }];
 function drawChoice(holder, title, effects) {
   const mode = holder.choose === false ? "none" : "filter";
   const usesTarget = effects.some(fx => fx.targets && /^(target|targetIfMeetsCriteria)$/.test(fx.targets.pool));
   const out = el("div", { style: "margin:8px 0" },
-    el("div", { class: "row" }, advOr(holder.choose === false) ? field(title, sel(CHOICE_MODES, mode, v => {
+    el("div", { class: "row" }, advOr(holder.choose === false) ? field(title, sel(CHOICE_MODES(), mode, v => {
       holder.choose = v === "none" ? false : mergeTargets({ pool: "allFiltered", friendly: false, enemy: true, troops: true }); }), true) : el("strong", { text: title }),
-      usesTarget ? null : el("button", { class: "small danger", text: "Remove", onclick: () => { holder.choose = null; redraw(); } })));
-  if (holder.choose) out.append(drawTargets(holder.choose, "Pick one of these", null, null, null, false, true));
-  if (holder.choose === false) out.append(el("p", { class: "hint", text: "Nothing is picked when the card is played; effects aimed at \"the chosen target\" act on the unit the trigger is about." }));
+      usesTarget ? null : el("button", { class: "small danger", text: T("common.remove", "Remove"), onclick: () => { holder.choose = null; redraw(); } })));
+  if (holder.choose) out.append(drawTargets(holder.choose, T("creator.pickOneOfThese", "Pick one of these"), null, null, null, false, true));
+  if (holder.choose === false) out.append(el("p", { class: "hint", text: T("creator.pickNoneHelp", "Nothing is picked when the card is played; effects aimed at \"the chosen target\" act on the unit the trigger is about.") }));
   return out;
 }
 // The pick for these effects: drawn first (the general part), before the effects that narrow it.
@@ -1988,9 +2044,9 @@ function abilityTitle(ab) { const k = keywordOf(ab); return k ? lab(schema.trait
 function drawAbilityPick(ab) {
   if (!choosesTrigger(ab.trigger)) return null;
   const owner = pickOwner();
-  if (owner === ab) return el("div", { class: "box" }, drawPick(state, cardPickEffects(), "What the player picks when playing the card", "+ Say what the player picks when playing the card"),
-    el("p", { class: "hint", text: "Effects aimed at \u201ca unit the player picks\u201d act on this unit; \u201cthe picked unit, only if it also matches\u201d narrows it further." }));
-  if (owner && usesPick(ab)) return el("p", { class: "hint", text: "Uses the same pick as " + abilityTitle(owner) + " (one pick per card)." });
+  if (owner === ab) return el("div", { class: "box" }, drawPick(state, cardPickEffects(), T("creator.pickCard", "What the player picks when playing the card"), T("creator.pickCardAdd", "+ Say what the player picks when playing the card")),
+    el("p", { class: "hint", text: T("creator.pickHelp", "Effects aimed at \u201ca unit the player picks\u201d act on this unit; \u201cthe picked unit, only if it also matches\u201d narrows it further.") }));
+  if (owner && usesPick(ab)) return el("p", { class: "hint", text: T("creator.samePick", "Uses the same pick as {ability} (one pick per card).", { ability: abilityTitle(owner) }) });
   return null;
 }
 // A pick with no ability to show it in (a few official cards): shown under Card settings.
@@ -2007,22 +2063,22 @@ function drawCustomEntry(ab, i) {
   if (ab.locked) return drawLockedEntry(ab, i);
   const b = el("div", { class: "box" },
     el("div", { class: "entryHead" },
-      el("span", { class: "kind custom", text: "Custom" }),
-      el("button", { class: "small pickBtn", text: "When: " + lab(schema.triggers, ab.trigger) + "  ▾", title: "Change when it happens",
-        onclick: () => openPicker({ title: "When does it happen?", items: triggerItems, onPick: v => { setTrigger(ab, v); redraw(); } }) }),
-      st === "untested" ? el("span", { class: "hint", style: "color:var(--warn)", text: "untested: no official card uses this trigger" }) : null,
-      st === "dead" ? el("span", { class: "hint", style: "color:var(--bad)", text: "this trigger never fires in the game" }) : null,
+      el("span", { class: "kind custom", text: kindLabel("custom") }),
+      el("button", { class: "small pickBtn", text: T("creator.when", "When: {trigger}", { trigger: trigName(ab.trigger) }) + "  ▾", title: T("creator.changeWhen", "Change when it happens"),
+        onclick: () => openPicker({ title: T("creator.whenTitle", "When does it happen?"), items: triggerItems, onPick: v => { setTrigger(ab, v); redraw(); } }) }),
+      st === "untested" ? el("span", { class: "hint", style: "color:var(--warn)", text: T("creator.untestedTrigger", "untested: no official card uses this trigger") }) : null,
+      st === "dead" ? el("span", { class: "hint", style: "color:var(--bad)", text: T("creator.deadTrigger", "this trigger never fires in the game") }) : null,
       el("span", { class: "spacer" }),
-      el("button", { class: "small danger", text: "Remove", onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
+      el("button", { class: "small danger", text: T("common.remove", "Remove"), onclick: () => { state.abilities.splice(i, 1); redraw(); } })),
     trigDesc(ab.trigger) ? el("p", { class: "hint pickDesc", text: trigDesc(ab.trigger) }) : null);
-  if (ab.condition) b.append(el("p", { class: "hint", text: `This ability still has an old free-text condition the game never read ("${ab.condition}"). It is dropped when the card is saved; use the ability's "when" settings for a real condition.` }));
-  if (ab.keyword) b.append(el("p", { class: "hint", text: `Also shown as ${lab(schema.traits, ab.keyword)} (a second ability under the same keyword).` }));
-  else if (troopPlay) b.append(el("p", { class: "hint", text: "On official troops a \"when played\" ability is always a Rally ability. To make this one Rally, add the Rally keyword instead." }));
+  if (ab.condition) b.append(el("p", { class: "hint", text: T("creator.oldCondition", "This ability still has an old free-text condition the game never read (\"{text}\"). It is dropped when the card is saved; use the ability's \"when\" settings for a real condition.", { text: ab.condition }) }));
+  if (ab.keyword) b.append(el("p", { class: "hint", text: T("creator.alsoShownAs", "Also shown as {keyword} (a second ability under the same keyword).", { keyword: kwName(ab.keyword) }) }));
+  else if (troopPlay) b.append(el("p", { class: "hint", text: T("creator.troopPlayIsRally", "On official troops a \"when played\" ability is always a Rally ability. To make this one Rally, add the Rally keyword instead.") }));
   const pk = drawAbilityPick(ab); if (pk) b.append(pk);
   const subj = drawSubject(ab); if (subj) b.append(subj);
   b.append(drawAbilityOptions(ab));
   ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
-  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
+  b.append(el("button", { class: "small", text: T("creator.addEffect", "+ Add effect"), onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
   return b;
 }
 
@@ -2031,17 +2087,17 @@ function drawLockedEntry(ab, i) {
   const t = tmpl();
   const b = el("div", { class: "box" },
     el("div", { class: "entryHead" },
-      el("span", { class: "kind ability", text: "Always" }),
-      el("strong", { text: t.hand ? "When this is played (it works from the enemy's hand)" : "When this is played" }),
+      el("span", { class: "kind ability", text: T("creator.always", "Always") }),
+      el("strong", { text: t.hand ? T("creator.lockedHand", "When this is played (it works from the enemy's hand)") : T("creator.locked", "When this is played") }),
       el("span", { class: "spacer" }),
-      ADV ? el("button", { class: "small danger", text: "Remove", title: "Only a few hidden official cards have no \u201cwhen played\u201d ability",
+      ADV ? el("button", { class: "small danger", text: T("common.remove", "Remove"), title: T("creator.lockedRemoveHelp", "Only a few hidden official cards have no \u201cwhen played\u201d ability"),
         onclick: () => { state.abilities.splice(i, 1); state.lockedRemoved = true; redraw(); } }) : null),
-    el("p", { class: "hint pickDesc", text: `Every ${t.label.toLowerCase()} has this ability. Leave it without effects if the card should do nothing when played; add more abilities below for follow-ups, Faith and the like.` }));
+    el("p", { class: "hint pickDesc", text: T("creator.lockedHelp", "Every {template} has this ability. Leave it without effects if the card should do nothing when played; add more abilities below for follow-ups, Faith and the like.", { template: tmplLabel(t).toLowerCase() }) }));
   const pk = drawAbilityPick(ab); if (pk) b.append(pk);
   const subj = drawSubject(ab); if (subj) b.append(subj);
   b.append(drawAbilityOptions(ab));
   ab.effects.forEach((fx, j) => b.append(drawEffect(ab, fx, j)));
-  b.append(el("button", { class: "small", text: "+ Add effect", onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
+  b.append(el("button", { class: "small", text: T("creator.addEffect", "+ Add effect"), onclick: () => { ab.effects.push(newEffect()); redraw(); } }));
   return b;
 }
 
@@ -2054,7 +2110,7 @@ function hintsEditor(list) {
   list.forEach((t, i) => box.append(el("div", { class: "row tight" },
     field(i ? "" : "Keyword", sel(schema.traits, t.name, v => { t.name = v; }, true)), field(i ? "" : "Number", num(t.value, v => { t.value = v; }, 0, 20)),
     el("button", { class: "small danger", text: "×", onclick: () => { list.splice(i, 1); redraw(); } }))));
-  box.append(el("button", { class: "small", text: "+ Keyword hint", onclick: () => { list.push({ name: schema.traits[0].id, value: 0 }); redraw(); } }));
+  box.append(el("button", { class: "small", text: T("creator.keywordHint", "+ Keyword hint"), onclick: () => { list.push({ name: schema.traits[0].id, value: 0 }); redraw(); } }));
   return box;
 }
 function drawCardMore() {
@@ -2063,27 +2119,27 @@ function drawCardMore() {
   const set = !!(m.inventory || m.randomCreation || m.attackDamageType || m.blockActions || m.hintsOn || m.related.length || m.counter || m.choices
     || m.startingCard || m.goSecondCard || m.unitStats);
   $("cardMoreSection").classList.toggle("hidden", !advOr(set || orphanPick()));
-  if (orphanPick()) box.append(el("div", { class: "box" }, drawPick(state, cardPickEffects(), "What the player picks when playing the card", ""),
-    el("p", { class: "hint", text: "This card names a pick, but none of its abilities aims at the picked unit (as a few official cards)." })));
-  box.append(more(m, "More card settings", set,
-    el("p", { class: "hint", text: "Rarely needed: settings a few official cards use. Left blank, the usual rule applies." }),
+  if (orphanPick()) box.append(el("div", { class: "box" }, drawPick(state, cardPickEffects(), T("creator.pickCard", "What the player picks when playing the card"), ""),
+    el("p", { class: "hint", text: T("creator.orphanPickHelp", "This card names a pick, but none of its abilities aims at the picked unit (as a few official cards).") })));
+  box.append(more(m, T("creator.moreCardSettings", "More card settings"), set,
+    el("p", { class: "hint", text: T("creator.settingsHelp", "Rarely needed: settings a few official cards use. Left blank, the usual rule applies.") }),
     el("div", { class: "row" },
-      field("Collection and decks", sel(schema.inventory || [], m.inventory, v => { m.inventory = v; }, false, "usual (from the tick above)")),
-      field("\u201cA random card\u201d effects", sel([{ id: "yes", label: "may create it" }, { id: "no", label: "never create it" }], m.randomCreation, v => { m.randomCreation = v; }, false, "usual rule")),
-      field("Attack damage type", sel(schema.damageTypes, m.attackDamageType, v => { m.attackDamageType = v; }, false, "usual (Attack; Normal for warlords)"))),
+      field(T("creator.collectionAndDecks", "Collection and decks"), sel(schema.inventory || [], m.inventory, v => { m.inventory = v; }, false, T("creator.usualFromTheTickAbove", "usual (from the tick above)"))),
+      field(T("creator.u201caRandomCardU201dEffects", "\u201cA random card\u201d effects"), sel([{ id: "yes", label: T("creator.mayCreateIt", "may create it") }, { id: "no", label: T("creator.neverCreateIt", "never create it") }], m.randomCreation, v => { m.randomCreation = v; }, false, T("creator.usualRule", "usual rule"))),
+      field(T("creator.attackDamageType", "Attack damage type"), sel(schema.damageTypes, m.attackDamageType, v => { m.attackDamageType = v; }, false, T("creator.usualAttackNormalForWarlords", "usual (Attack; Normal for warlords)")))),
     el("div", { class: "checks", style: "margin-bottom:8px" },
-      check("The player waits until it has resolved", m, "blockActions"),
-      kind === "tactic" ? el("label", {}, el("input", { type: "checkbox", checked: m.unitStats, onchange: e => { m.unitStats = e.target.checked; redraw(); } }), "This stratagem carries unit stats (as a few official ones)") : null),
-    kind === "hero" ? el("div", { class: "row" }, field("Card in the starting hand", cardPicker(m, "startingCard"), true),
-      field("Card given to this warlord when going second", cardPicker(m, "goSecondCard"), true)) : null,
-    el("div", { class: "row" }, field("Keyword hints on the card", sel([{ id: "list", label: "exactly these" }], m.hintsOn ? "list" : "", v => { m.hintsOn = v === "list"; }, false, "automatic (the keywords it hands out)"))),
+      check(T("creator.thePlayerWaitsUntilItHasResolved", "The player waits until it has resolved"), m, "blockActions"),
+      kind === "tactic" ? el("label", {}, el("input", { type: "checkbox", checked: m.unitStats, onchange: e => { m.unitStats = e.target.checked; redraw(); } }), T("creator.unitStats", "This stratagem carries unit stats (as a few official ones)")) : null),
+    kind === "hero" ? el("div", { class: "row" }, field(T("creator.cardInTheStartingHand", "Card in the starting hand"), cardPicker(m, "startingCard"), true),
+      field(T("creator.goSecondCard", "Card given to this warlord when going second"), cardPicker(m, "goSecondCard"), true)) : null,
+    el("div", { class: "row" }, field(T("creator.keywordHintsOnTheCard", "Keyword hints on the card"), sel([{ id: "list", label: T("creator.exactlyThese", "exactly these") }], m.hintsOn ? "list" : "", v => { m.hintsOn = v === "list"; }, false, T("creator.automaticTheKeywordsItHandsOut", "automatic (the keywords it hands out)")))),
     m.hintsOn ? hintsEditor(m.hints) : null,
-    cardListEditor(m.related, "Related card shown with it"),
-    el("div", { class: "checks", style: "margin-top:8px" }, toggle("Show a count of its targets on the card in hand", m, "counter", () => mergeTargets({ pool: "allFiltered", friendly: true, troops: true }))),
-    m.counter ? drawTargets(m.counter, "Count these") : null,
+    cardListEditor(m.related, T("creator.relatedCardShownWithIt", "Related card shown with it")),
+    el("div", { class: "checks", style: "margin-top:8px" }, toggle(T("creator.targetsCounter", "Show a count of its targets on the card in hand"), m, "counter", () => mergeTargets({ pool: "allFiltered", friendly: true, troops: true }))),
+    m.counter ? drawTargets(m.counter, T("creator.countThese", "Count these")) : null,
     el("div", { class: "checks", style: "margin-top:8px" }, toggle("\u201cChoose one of these\u201d window when it is played", m, "choices", () => mergeTargets({ pool: "choiceResolution" }, "choiceResolution"))),
-    m.choices ? el("div", { class: "box" }, drawTargets(m.choices, "Options come from", null, "How many are offered"),
-      el("p", { class: "hint", text: "The player picks one of the offered cards; effects aimed at \u201cchoice resolution\u201d act on it. To offer set cards, keep \u201cchoice resolution\u201d and list them under More filters \u2192 Only these cards." })) : null));
+    m.choices ? el("div", { class: "box" }, drawTargets(m.choices, T("creator.choicesFrom", "Options come from"), null, T("creator.howManyOffered", "How many are offered")),
+      el("p", { class: "hint", text: T("creator.choicesHelp", "The player picks one of the offered cards; effects aimed at \u201cchoice resolution\u201d act on it. To offer set cards, keep \u201cchoice resolution\u201d and list them under More filters \u2192 Only these cards.") })) : null));
 }
 
 /* ---------- card data, preview, text suggestion ---------- */
@@ -2196,6 +2252,8 @@ function collect() {
   if (editingId) c.id = editingId;
   return c;
 }
+// a card's review status in words
+function statusName(st) { return { draft: T("creator.status.draft", "draft"), pending: T("creator.status.pending", "waiting for review"), approved: T("creator.status.approved", "approved"), rejected: T("creator.status.rejected", "rejected") }[st] || st || ""; }
 function lab(list, id) { const o = list.find(x => x.id === id); return o ? o.label : id; }
 function describeTargets(t, ab) {
   if (!t) return "";
@@ -2266,19 +2324,19 @@ function suggestText() {
 }
 function preview() {
   const c = collect();
-  $("pvName").textContent = c.name || "New card"; $("pvCost").textContent = c.cost;
+  $("pvName").textContent = c.name || T("creator.newCardName", "New card"); $("pvCost").textContent = c.cost;
   $("pvCard").className = "card hidden rar-" + c.rarity;      // the old sketch; the card is drawn in pvFace now
-  $("pvType").textContent = [lab(schema.armies, c.army), lab(schema.kinds, c.kind), c.keyword, c.token && "created by a card"].filter(Boolean).join(" · ");
+  $("pvType").textContent = [lab(schema.armies, c.army), kindName(c.kind), c.keyword, c.token && T("creator.createdByCard", "created by a card")].filter(Boolean).join(" · ");
   $("pvText").textContent = c.text;
-  $("pvArt").textContent = c.art ? "art of: " + (cardNames[c.art] || c.art) : (editingCard && editingCard.artUpload ? "uploaded artwork" : "no artwork chosen");
+  $("pvArt").textContent = c.art ? T("creator.artOf", "art of: {card}", { card: cardNames[c.art] || c.art }) : (editingCard && editingCard.artUpload ? T("creator.uploadedArtwork", "uploaded artwork") : T("creator.noArtwork", "no artwork chosen"));
   const cl = $("pvCredit"); if (cl) { cl.textContent = ""; const line = !c.art && editingCard && editingCard.artUpload ? creditLine(editingCard.artCredit) : null; if (line) cl.append(line); }
   const st = $("pvStats"); st.textContent = "";
   if (c.kind !== "tactic") for (const [k, v] of [["⚔", c.melee], ["➶", c.ranged], ["🛡", c.armour], ["♥", c.health]]) st.append(el("span", { text: `${k} ${v}` }));
   $("json").textContent = JSON.stringify(c, null, 1);
   const cs = editingCard && editingCard.status;
-  $("editing").textContent = editingId ? `Editing ${editingId} (${cs}).` : "";
+  $("editing").textContent = editingId ? T("creator.editing", "Editing {id} ({status}).", { id: editingId, status: statusName(cs) }) : "";
   const n = $("reviewNote"), showNote = editingCard && editingCard.reviewNote && (cs === "rejected" || editingCard.returned);
-  n.classList.toggle("hidden", !showNote); n.textContent = showNote ? "Reviewer's note: " + editingCard.reviewNote : "";
+  n.classList.toggle("hidden", !showNote); n.textContent = showNote ? T("creator.reviewerNote", "Reviewer's note: {note}", { note: editingCard.reviewNote }) : "";
   const face = $("pvFace"); face.textContent = "";
   // the faction frame comes from the player's own export of the game's card art (none without it)
   laStart();
@@ -2286,7 +2344,7 @@ function preview() {
   const frameUrl = laCached("card-frames/" + frameName + ".png", preview);
   face.append(cardFace(Object.assign({}, c, { health: c.health, frame: "" }), "", 300, undefined, frameUrl || null));
   drawNative(); drawFaction(); drawArtPreview();
-  $("save").textContent = cs === "rejected" || (editingCard && editingCard.returned) ? "Resubmit for review" : "Submit for review";
+  $("save").textContent = cs === "rejected" || (editingCard && editingCard.returned) ? T("creator.resubmit", "Resubmit for review") : T("creator.submit", "Submit for review");
 }
 /* ---------- uploaded artwork ----------
    The game's card art is a 1024 x 1024 texture. Stratagems fill the whole square. Troops, vehicles
@@ -2322,19 +2380,19 @@ function artDraw(guides) {
 }
 function artOpen(file) {
   if (!file) return;
-  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return say("Choose a PNG, JPG or WebP picture.", "bad");
-  if (file.size > 20 * 1024 * 1024) return say("That picture is over 20 MB – use a smaller one.", "bad");
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return say(T("creator.artType", "Choose a PNG, JPG or WebP picture."), "bad");
+  if (file.size > 20 * 1024 * 1024) return say(T("creator.artTooBig", "That picture is over 20 MB – use a smaller one."), "bad");
   const url = URL.createObjectURL(file), i = new Image();
   i.onload = () => {
     URL.revokeObjectURL(url); art.img = i;
     const a = artArea(); art.base = Math.min(a.w / i.width, a.h / i.height);
     $("artHelp").textContent = unitArt()
-      ? "Troop, vehicle and warlord art is a full painting, background included, in the gold box. The card shows the top part clearly and darkens the rest behind its text, so keep the face or focal point in the clear zone. Red marks are covered by the card's icons."
-      : "Stratagem art fills the whole square, and nearly all of it is shown. Red marks are covered by the card's icons and text box.";
+      ? T("creator.artHelpUnit", "Troop, vehicle and warlord art is a full painting, background included, in the gold box. The card shows the top part clearly and darkens the rest behind its text, so keep the face or focal point in the clear zone. Red marks are covered by the card's icons.")
+      : T("creator.artHelpStratagem", "Stratagem art fills the whole square, and nearly all of it is shown. Red marks are covered by the card's icons and text box.");
     $("artEditor").classList.remove("hidden"); artPlace(true);
-    if (i.width < 512 || i.height < 512) say(`That picture is only ${i.width} × ${i.height}; it will look soft when enlarged to the game's size.`, "info");
+    if (i.width < 512 || i.height < 512) say(T("creator.artSmall", "That picture is only {w} × {h}; it will look soft when enlarged to the game's size.", { w: i.width, h: i.height }), "info");
   };
-  i.onerror = () => { URL.revokeObjectURL(url); say("That picture could not be opened.", "bad"); };
+  i.onerror = () => { URL.revokeObjectURL(url); say(T("creator.artUnreadable", "That picture could not be opened."), "bad"); };
   i.src = url;
 }
 function artClose() { $("artEditor").classList.add("hidden"); art.img = null; art.live = null; $("artFile").value = ""; drawArtPreview(); }
@@ -2355,8 +2413,8 @@ function artLive() {
   drawArtPreview();
 }
 async function artUse() {
-  if (!me) return say("Sign in before uploading artwork.", "bad");
-  if (!val("f_name").trim()) return say("Give the card a name first.", "bad");
+  if (!me) return say(T("creator.signInForArt", "Sign in before uploading artwork."), "bad");
+  if (!val("f_name").trim()) return say(T("creator.nameFirst", "Give the card a name first."), "bad");
   if (!editingId) { await save(false); if (!editingId) return; }        // the picture is stored with a saved card
   artDraw(false);
   const image = $("artCanvas").toDataURL("image/png");
@@ -2365,8 +2423,8 @@ async function artUse() {
     const d = await call("CreatorArtSave", { id: editingId, image });
     editingCard = d.card; art.cache[editingId + d.card.artUpload] = image; $("f_art").value = "";
     artClose(); preview(); loadList();
-    say("Artwork saved with the card.", "ok");
-  } catch (e) { say("Artwork not saved: " + e.message, "bad"); }
+    say(T("creator.artSaved", "Artwork saved with the card."), "ok");
+  } catch (e) { say(T("creator.artNotSaved", "Artwork not saved: {error}", { error: e.message }), "bad"); }
 }
 // The pop-out mask: a second 1024 x 1024 picture, white where the art is drawn over the card frame.
 function maskOpen(file) {
@@ -2375,27 +2433,27 @@ function maskOpen(file) {
   const url = URL.createObjectURL(file), i = new Image();
   i.onload = async () => {
     URL.revokeObjectURL(url);
-    if (i.width !== ART || i.height !== ART) return say(`A mask must be ${ART} × ${ART} pixels, the same as the artwork (this one is ${i.width} × ${i.height}). Start from the blank mask in the artwork guide.`, "bad");
+    if (i.width !== ART || i.height !== ART) return say(T("creator.maskSize", "A mask must be {size} × {size} pixels, the same as the artwork (this one is {w} × {h}). Start from the blank mask in the artwork guide.", { size: ART, w: i.width, h: i.height }), "bad");
     const c = document.createElement("canvas"); c.width = c.height = ART;
     const g = c.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, ART, ART); g.drawImage(i, 0, 0);
     const px = g.getImageData(0, 0, ART, ART), p = px.data;
     for (let k = 0; k < p.length; k += 4) { const v = Math.round(0.299 * p[k] + 0.587 * p[k + 1] + 0.114 * p[k + 2]); p[k] = p[k + 1] = p[k + 2] = v; p[k + 3] = 255; }
     g.putImageData(px, 0, 0);
-    try { const d = await call("CreatorArtMask", { id: editingId, image: c.toDataURL("image/png") }); editingCard = d.card; preview(); say("Pop-out mask saved with the card.", "ok"); }
-    catch (e) { say("Mask not saved: " + e.message, "bad"); }
+    try { const d = await call("CreatorArtMask", { id: editingId, image: c.toDataURL("image/png") }); editingCard = d.card; preview(); say(T("creator.maskSaved", "Pop-out mask saved with the card."), "ok"); }
+    catch (e) { say(T("creator.maskNotSaved", "Mask not saved: {error}", { error: e.message }), "bad"); }
   };
-  i.onerror = () => { URL.revokeObjectURL(url); say("That picture could not be opened.", "bad"); };
+  i.onerror = () => { URL.revokeObjectURL(url); say(T("creator.artUnreadable", "That picture could not be opened."), "bad"); };
   i.src = url;
 }
 async function maskRemove() {
-  if (!editingId || !confirm("Remove the pop-out mask from this card?")) return;
-  try { const d = await call("CreatorArtMask", { id: editingId, remove: true }); editingCard = d.card; preview(); say("Pop-out mask removed.", "ok"); }
-  catch (e) { say("Not removed: " + e.message, "bad"); }
+  if (!editingId || !confirm(T("creator.maskRemoveConfirm", "Remove the pop-out mask from this card?"))) return;
+  try { const d = await call("CreatorArtMask", { id: editingId, remove: true }); editingCard = d.card; preview(); say(T("creator.maskRemoved", "Pop-out mask removed."), "ok"); }
+  catch (e) { say(T("creator.notRemoved", "Not removed: {error}", { error: e.message }), "bad"); }
 }
 async function artRemove() {
-  if (!editingId || !confirm("Remove the uploaded artwork from this card?")) return;
-  try { const d = await call("CreatorArtRemove", { id: editingId }); editingCard = d.card; preview(); loadList(); say("Uploaded artwork removed.", "ok"); }
-  catch (e) { say("Not removed: " + e.message, "bad"); }
+  if (!editingId || !confirm(T("creator.artRemoveConfirm", "Remove the uploaded artwork from this card?"))) return;
+  try { const d = await call("CreatorArtRemove", { id: editingId }); editingCard = d.card; preview(); loadList(); say(T("creator.artRemoved", "Uploaded artwork removed."), "ok"); }
+  catch (e) { say(T("creator.notRemoved", "Not removed: {error}", { error: e.message }), "bad"); }
 }
 // The artwork credit box: shown once a picture is uploaded; filled from the card when it changes.
 let creditFor = null;
@@ -2404,31 +2462,31 @@ function drawCredit(up) {
   if (!up) return;
   const c = editingCard, cr = c.artCredit || {}, key = c.id + c.artUpload + (cr.at || "");
   if (creditFor !== key) { creditFor = key; $("f_creditArtist").value = cr.artist || ""; $("f_creditLink").value = cr.link || ""; }
-  $("creditState").textContent = cr.artist ? "credited" : "no credit yet";
+  $("creditState").textContent = cr.artist ? T("creator.credited", "credited") : T("creator.noCreditYet", "no credit yet");
 }
 async function saveCredit() {
   if (!editingId) return;
   const artist = $("f_creditArtist").value.trim(), link = $("f_creditLink").value.trim();
-  if (link && !/^https?:\/\//i.test(link)) return say("The link must start with http:// or https://", "bad");
+  if (link && !/^https?:\/\//i.test(link)) return say(T("creator.linkScheme", "The link must start with http:// or https://"), "bad");
   try { const d = await call("CreatorArtCredit", { id: editingId, artist, link }); editingCard = d.card; creditFor = null; preview();
-        say(artist ? "Artwork credit saved with the picture." : "Artwork credit removed.", "ok"); }
+        say(artist ? T("creator.creditSaved", "Artwork credit saved with the picture.") : T("creator.creditRemoved", "Artwork credit removed."), "ok"); }
   catch (e) { say(e.message, "bad"); }
 }
 // a credit link is only ever shown as a link when it is a web address
 function creditLine(cr) {
   if (!cr || !cr.artist) return null;
   const safe = /^https?:\/\//i.test(cr.link || "");
-  return el("span", {}, "Art by ", safe ? el("a", { href: cr.link, target: "_blank", rel: "noopener noreferrer nofollow", text: cr.artist }) : cr.artist);
+  return el("span", {}, T("creator.artBy", "Art by "), safe ? el("a", { href: cr.link, target: "_blank", rel: "noopener noreferrer nofollow", text: cr.artist }) : cr.artist);
 }
 function drawArtPreview() {
   const box = $("pvArt"), c = editingCard, up = c && c.artUpload && !val("f_art");
   $("artRemove").classList.toggle("hidden", !up);
-  $("artState").textContent = up ? "This card uses uploaded artwork." : (c && c.artUpload ? "Borrowed art is chosen – saving will drop the uploaded picture." : "");
+  $("artState").textContent = up ? T("creator.artStateUploaded", "This card uses uploaded artwork.") : (c && c.artUpload ? T("creator.artStateBorrowed", "Borrowed art is chosen – saving will drop the uploaded picture.") : "");
   $("maskRow").classList.toggle("hidden", !(up && unitArt()));
   drawCredit(up);
   $("maskRemove").classList.toggle("hidden", !(c && c.artMask));
-  $("maskPick").textContent = c && c.artMask ? "Replace the pop-out mask" : "Add a pop-out mask (optional)";
-  $("maskState").textContent = c && c.artMask ? "This card has a pop-out mask." : "Without a mask the whole picture stays inside the frame.";
+  $("maskPick").textContent = c && c.artMask ? T("creator.maskReplace", "Replace the pop-out mask") : T("creator.maskAdd", "Add a pop-out mask (optional)");
+  $("maskState").textContent = c && c.artMask ? T("creator.maskStateHas", "This card has a pop-out mask.") : T("creator.maskStateNone", "Without a mask the whole picture stays inside the frame.");
   box.classList.remove("has"); box.style.backgroundImage = "";
   const place = (url, unit, mask, luminance) => {
     const fa = document.querySelector("#pvFace .fArt"); if (fa) fa.style.backgroundImage = `url("${url}")`;   // the card drawn like the game
@@ -2443,7 +2501,7 @@ function drawArtPreview() {
     box.style.backgroundSize = unit ? `${ART / (COL_R - COL_L + 1) * 100}% auto` : "cover";
     box.style.backgroundPosition = unit ? "center top" : "center";
   };
-  if (art.img && art.live) { box.textContent = "new artwork (not saved yet)"; return place(art.live, unitArt()); }
+  if (art.img && art.live) { box.textContent = T("creator.artNotSavedYet", "new artwork (not saved yet)"); return place(art.live, unitArt()); }
   const borrowed = val("f_art") && collect().art;
   if (!up && borrowed && (cardInfo[borrowed] || /^[0-9a-f]{32}$/.test(borrowed))) {      // hidden official cards (tokens) have art too
     // an official card's picture, from the player's own export of the game's card art (if loaded)
@@ -2476,9 +2534,9 @@ function drawFaction() {
   const w = factionWarnings(), box = $("factionBox");
   box.classList.toggle("hidden", !w.length); box.textContent = "";
   if (!w.length) return;
-  box.append(`This is a ${lab(schema.armies, $("f_army").value)} card, but:`);
+  box.append(T("creator.factionBut", "This is a {faction} card, but:", { faction: lab(schema.armies, $("f_army").value) }));
   const ul = el("ul", { style: "margin:4px 0; padding-left:18px" }); w.forEach(x => ul.append(el("li", { text: x }))); box.append(ul);
-  box.append("The game does not forbid it, but faction mechanics often rely on that faction's own rules (its warlords, resources or other cards), so it may do nothing outside its faction.");
+  box.append(T("creator.factionHelp", "The game does not forbid it, but faction mechanics often rely on that faction's own rules (its warlords, resources or other cards), so it may do nothing outside its faction."));
 }
 // The server writes every saved design in the game's own card layout; show that and what it could not express.
 function compact(v) {                          // drop the empty fields so the meaningful ones are readable
@@ -2495,12 +2553,12 @@ function drawNative() {
   const c = editingCard, notes = c && c.buildNotes || [];
   $("buildBox").classList.toggle("hidden", !c || !c.native && !notes.length);
   const ul = $("buildNotes"); ul.textContent = "";
-  if (c && c.native && !notes.length) ul.append(el("li", { text: "Everything in this design was written into the game data." }));
+  if (c && c.native && !notes.length) ul.append(el("li", { text: T("creator.allWritten", "Everything in this design was written into the game data.") }));
   for (const n of notes) ul.append(el("li", { text: n }));
   const hint = $("nativeHint"); hint.textContent = "";
-  if (!c || !c.native) { hint.textContent = "Save the card to see it in the game's layout."; $("native").textContent = ""; return; }
-  hint.append("As of the last save. Fields the card leaves empty are hidden. ",
-    el("button", { class: "small", text: showAllFields ? "Hide empty fields" : "Show every field", onclick: () => { showAllFields = !showAllFields; drawNative(); } }));
+  if (!c || !c.native) { hint.textContent = T("creator.nativeSaveFirst", "Save the card to see it in the game's layout."); $("native").textContent = ""; return; }
+  hint.append(T("creator.nativeHint", "As of the last save. Fields the card leaves empty are hidden. "),
+    el("button", { class: "small", text: showAllFields ? T("creator.hideEmpty", "Hide empty fields") : T("creator.showAllFields", "Show every field"), onclick: () => { showAllFields = !showAllFields; drawNative(); } }));
   $("native").textContent = JSON.stringify(showAllFields ? c.native : compact(c.native), null, 1);
 }
 function redraw(light) {
@@ -2561,7 +2619,7 @@ function fillAction(c) { state.action = c && c.action ? fillActive(c.action) : n
 let rulesText = "", rulesVersion = "";
 function drawRules() {
   const box = $("rules"); box.textContent = "";
-  if (!rulesText.trim()) { box.append(el("p", { class: "hint", text: "No rules have been written yet." })); return; }
+  if (!rulesText.trim()) { box.append(el("p", { class: "hint", text: T("creator.noRulesYet", "No rules have been written yet.") })); return; }
   let list = null, para = [];
   const flush = () => { if (para.length) { box.append(el("p", { text: para.join(" ") })); para = []; } };
   for (const raw of rulesText.split(/\r?\n/)) {
@@ -2581,16 +2639,16 @@ async function loadRules() {
 }
 async function save(submit) {
   const card = collect();
-  if (!card.name) return say("Give the card a name first.", "bad");
-  if (!me) return say("Sign in first.", "bad");
-  if (submit && rulesVersion && !$("agree").checked) return say("Tick the box to confirm the card follows the rules before submitting. Saving a draft does not need it.", "bad");
+  if (!card.name) return say(T("creator.nameFirst", "Give the card a name first."), "bad");
+  if (!me) return say(T("creator.signInFirst", "Sign in first."), "bad");
+  if (submit && rulesVersion && !$("agree").checked) return say(T("creator.tickRules", "Tick the box to confirm the card follows the rules before submitting. Saving a draft does not need it."), "bad");
   try {
     const d = await call("CreatorSave", { card, submit, acceptRules: submit && $("agree").checked });
     if (submit) $("agree").checked = false;
-    const what = { draft: "saved as a draft – only you can see it", pending: "sent for review", approved: "saved (still approved)", rejected: "saved" }[d.card.status];
+    const what = { draft: T("creator.savedDraft", "saved as a draft – only you can see it"), pending: T("creator.savedPending", "sent for review"), approved: T("creator.savedApproved", "saved (still approved)"), rejected: T("creator.savedRejected", "saved") }[d.card.status];
     say(`${d.card.name} (${d.card.id}) ${what}.`, "ok");
     editingId = d.card.id; editingCard = d.card; preview(); loadList();
-  } catch (e) { say("Not saved: " + e.message, "bad"); }
+  } catch (e) { say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); }
 }
 // The sign-in page. Nothing else is shown until someone is signed in.
 let creating = false, termsAsked = false;          // termsAsked: an existing account must agree to new terms
@@ -2664,29 +2722,29 @@ let exCounts = null, exAsk = 0;
 async function showExamples(keyword) {
   const mine = ++exAsk;                          // a newer request replaces an older one still on its way
   if (!exCounts) {
-    try { exCounts = (await call("CreatorExamples")).keywords; } catch (e) { exCounts = null; return say("Could not load the examples: " + e.message, "bad"); }
+    try { exCounts = (await call("CreatorExamples")).keywords; } catch (e) { exCounts = null; return say(T("creator.examplesLoadFailed", "Could not load the examples: {error}", { error: e.message }), "bad"); }
     // One plain list, most used first: examples are looked up for any faction, not just the
     // faction of the card being edited, so the creator's faction grouping does not apply here.
     const list = schema.traits.filter(t => exCounts[t.id]).sort((a, b) => b.official - a.official || a.label.localeCompare(b.label));
     const pick = $("exKeyword"); pick.textContent = "";
-    for (const o of list) pick.append(el("option", { value: o.id, text: `${o.label} (${o.official})${o.faction ? " · " + lab(schema.armies, o.faction) : ""}` }));
+    for (const o of list) pick.append(el("option", { value: o.id, text: `${kwName(o.id)} (${o.official})${o.faction ? " · " + lab(schema.armies, o.faction) : ""}` }));
   }
   if (mine !== exAsk) return;
   if (keyword && exCounts[keyword]) $("exKeyword").value = keyword;
   const id = $("exKeyword").value, box = $("examples"); box.textContent = "";
   if (!id) return;
   let d;
-  try { d = (await call("CreatorExamples", { keyword: id })).examples; } catch (e) { return say("Could not load the examples: " + e.message, "bad"); }
+  try { d = (await call("CreatorExamples", { keyword: id })).examples; } catch (e) { return say(T("creator.examplesLoadFailed", "Could not load the examples: {error}", { error: e.message }), "bad"); }
   if (mine !== exAsk) return;
   box.textContent = "";
   const def = traitDef(id);
-  $("exCount").textContent = `${d.count} official card(s) use ${def.label || id}; showing ${d.cards.length}.` +
-    (def.action ? " It names an action (see activeAbility)." : def.trigger ? ` Its ability uses the trigger ${def.trigger}.` : def.needsAbility ? "" : " It works by itself (look at CardTraits).");
+  $("exCount").textContent = T("creator.exCount", "{count} official card(s) use {keyword}; showing {shown}.", { count: d.count, keyword: def.label || id, shown: d.cards.length }) +
+    (def.action ? " " + T("creator.exAction", "It names an action (see activeAbility).") : def.trigger ? " " + T("creator.exTrigger", "Its ability uses the trigger {trigger}.", { trigger: def.trigger }) : def.needsAbility ? "" : " " + T("creator.exStatic", "It works by itself (look at CardTraits)."));
   for (const c of d.cards) {
     const stats = c.stats ? ` · ${c.stats[0]}/${c.stats[1]}/${c.stats[2]}` : "";
     box.append(el("div", { class: "box" },
-      el("div", { class: "head" }, el("strong", { text: (c.id && ltTerm("Card_Name/" + c.id)) || (c.token ? "A card made by another card" : c.id || "") }), el("span", { class: "hint", text: `${c.id && !/^[0-9a-f]{32}$/.test(c.id) ? c.id + " · " : ""}${lab(schema.armies, c.army)} ${c.kind} · ${c.rarity} · cost ${c.cost}${stats}${c.token ? " · created by another card" : ""}` })),
-      el("div", { class: "hint", text: "Keywords: " + c.keywords.map(k => lab(schema.traits, k)).join(", ") }),
+      el("div", { class: "head" }, el("strong", { text: (c.id && ltTerm("Card_Name/" + c.id)) || (c.token ? T("creator.madeByCard", "A card made by another card") : c.id || "") }), el("span", { class: "hint", text: `${c.id && !/^[0-9a-f]{32}$/.test(c.id) ? c.id + " · " : ""}${lab(schema.armies, c.army)} ${kindName(c.kind)} · ${rarityName(c.rarity)} · ${T("creator.costN", "cost {n}", { n: c.cost })}${stats}${c.token ? " · " + T("creator.createdByAnotherCard", "created by another card") : ""}` })),
+      el("div", { class: "hint", text: T("creator.keywordsList", "Keywords: {list}", { list: c.keywords.map(k => kwName(k)).join(", ") }) }),
       el("pre", { style: "max-height:none", text: JSON.stringify(c.data, null, 1) })));
   }
 }
@@ -2729,7 +2787,7 @@ function cardFace(c, artUrl, width, maskUrl, frameUrl) {
   if (strat) block.style.top = "568px"; else block.style.bottom = "168px";
   if (!strat) { const nm = block.firstChild; if (len > 150) nm.style.fontSize = "36px"; }
   f.append(block);
-  if (!strat) f.append(el("div", { class: "fUnit", text: c.kind === "hero" ? "Warlord" : c.keyword && c.keyword !== "none" ? lab(schema.keywords, c.keyword) : "" }));
+  if (!strat) f.append(el("div", { class: "fUnit", text: c.kind === "hero" ? kindName("hero") : c.keyword && c.keyword !== "none" ? lab(schema.keywords, c.keyword) : "" }));
   if (c.kind !== "hero" && c.cost != null && c.cost >= 0)
     f.append(el("div", { class: "fCost", style: strat ? "left:559px;top:266px" : "left:572px;top:284px", text: String(c.cost) }));
   if (!strat) {
@@ -2938,10 +2996,15 @@ let cvCards = null, cvPick = "", cvAsk = 0;
 async function showViewer() {
   laStart();
   if (!cvCards) {
-    try { cvCards = (await call("CreatorOfficial")).cards; } catch (e) { return say("Could not load the card list: " + e.message, "bad"); }
+    try { cvCards = (await call("CreatorOfficial")).cards; } catch (e) { return say(T("creator.cardListLoadFailed", "Could not load the card list: {error}", { error: e.message }), "bad"); }
     const armies = [...new Set(cvCards.map(c => c.army))].sort((a, b) => lab(schema.armies, a).localeCompare(lab(schema.armies, b)));
-    options($("cvArmy"), armies.map(a => ({ id: a, label: lab(schema.armies, a) })), false, "All factions");
-    options($("cvKind"), [{ id: "troop", label: "Troops" }, { id: "hero", label: "Warlords" }, { id: "tactic", label: "Stratagems" }], false, "All kinds");
+    const fillPicks = () => {
+      const a = val("cvArmy"), k = val("cvKind");
+      options($("cvArmy"), armies.map(x => ({ id: x, label: lab(schema.armies, x) })), false, T("creator.allFactions", "All factions"));
+      options($("cvKind"), [{ id: "troop", label: T("creator.troops", "Troops") }, { id: "hero", label: T("creator.warlords", "Warlords") }, { id: "tactic", label: T("creator.stratagems", "Stratagems") }], false, T("creator.allKinds", "All kinds"));
+      $("cvArmy").value = a; $("cvKind").value = k;
+    };
+    fillPicks(); onSiteLang(() => { fillPicks(); drawViewerList(); if (cvPick) viewCard(cvPick); });
   }
   drawViewerList();
 }
@@ -2953,12 +3016,11 @@ function viewerMatches() {
 function drawViewerList() {
   if (!cvCards) return;
   const list = $("cvList"), hits = viewerMatches(); list.textContent = "";
-  $("cvCount").textContent = `${hits.length} of ${cvCards.length} cards`;
-  const kinds = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" };
+  $("cvCount").textContent = T("creator.cvCount", "{shown} of {total} cards", { shown: hits.length, total: cvCards.length });
   for (const c of hits) {
     const it = el("div", { class: "it" + (c.id === cvPick ? " on" : ""), role: "option", onclick: () => viewCard(c.id) },
       el("span", { class: "c", text: c.cost >= 0 ? String(c.cost) : "–" }), el("span", { class: "n", text: offName(c.id, c.name) }),
-      el("span", { class: "m", text: `${lab(schema.armies, c.army)} · ${kinds[c.kind]}${c.status === "created" ? " · created by a card" : c.status === "defence" ? " · defence" : ""}` }));
+      el("span", { class: "m", text: `${lab(schema.armies, c.army)} · ${kindName(c.kind)}${c.status === "created" ? " · " + T("creator.createdByCard", "created by a card") : c.status === "defence" ? " · " + T("creator.defenceShort", "defence") : ""}` }));
     it.dataset.id = c.id; list.append(it);
   }
 }
@@ -2978,9 +3040,9 @@ async function viewCard(id) {
   for (const it of $("cvList").children) it.classList.toggle("on", it.dataset.id === id);
   const found = cvCards.find(x => x.id === id), box = $("cvDetail");
   const c = Object.assign({}, found, { name: offName(found.id, found.name), text: offText(found.id, found.text) });
-  box.textContent = ""; box.append(el("p", { class: "hint", text: "Loading " + c.name + "…" }));
+  box.textContent = ""; box.append(el("p", { class: "hint", text: T("creator.loadingCard", "Loading {name}…", { name: c.name }) }));
   let d;
-  try { d = await call("CreatorOfficial", { id }); } catch (e) { return say("Could not load the card: " + e.message, "bad"); }
+  try { d = await call("CreatorOfficial", { id }); } catch (e) { return say(T("creator.cardLoadFailed", "Could not load the card: {error}", { error: e.message }), "bad"); }
   if (mine !== cvAsk) return;
   // pictures only from the player's own export (never the server's copy)
   const strat = c.kind === "tactic";
@@ -2989,22 +3051,21 @@ async function viewCard(id) {
     strat ? "" : laUrl("card-masks/" + c.id + ".png"), laUrl("card-frames/" + frameName + ".png")]);
   if (mine !== cvAsk) return;
   box.textContent = "";
-  const kinds = { troop: "Troop", hero: "Warlord", tactic: "Stratagem" };
-  const facts = [["Id", c.id], ["Faction", lab(schema.armies, c.army)], ["Kind", kinds[c.kind]], ["Rarity", c.rarity], ["Cost", c.cost],
-    c.kind !== "tactic" ? ["Melee / Ranged / Health", `${c.melee} / ${c.ranged} / ${c.health}`] : null, c.armour ? ["Armour", c.armour] : null,
-    d.design.stratagemType && d.design.stratagemType !== "Normal" ? ["Stratagem type", d.design.stratagemType] : null,
-    ["In the game", { collectible: "Collectible", created: "Created by other cards (not in the collection)", defence: "Defence card" }[c.status]],
-    d.design.traits && d.design.traits.length ? ["Keywords", d.design.traits.map(t => lab(schema.traits, t.name) + (t.value ? " " + t.value : "")).join(", ")] : null].filter(Boolean);
+  const facts = [[T("creator.id", "Id"), c.id], [T("creator.faction", "Faction"), lab(schema.armies, c.army)], [T("creator.kindLabel", "Kind"), kindName(c.kind)], [T("creator.rarity", "Rarity"), rarityName(c.rarity)], [T("creator.cost", "Cost"), c.cost],
+    c.kind !== "tactic" ? [T("creator.meleeRangedHealth", "Melee / Ranged / Health"), `${c.melee} / ${c.ranged} / ${c.health}`] : null, c.armour ? [T("creator.armour", "Armour"), c.armour] : null,
+    d.design.stratagemType && d.design.stratagemType !== "Normal" ? [T("creator.stratagemTypeShort", "Stratagem type"), d.design.stratagemType] : null,
+    [T("creator.inTheGame", "In the game"), { collectible: T("creator.collectible", "Collectible"), created: T("creator.createdNotCollection", "Created by other cards (not in the collection)"), defence: T("creator.defenceCard", "Defence card") }[c.status]],
+    d.design.traits && d.design.traits.length ? [T("creator.keywordsFact", "Keywords"), d.design.traits.map(t => kwName(t.name) + (t.value ? " " + t.value : "")).join(", ")] : null].filter(Boolean);
   const text = el("p", {}); richText(text, c.text);
   box.append(el("div", { class: "top" }, cardFace(c, artUrl, 320, maskUrl, frameUrl || null),
     el("div", { class: "facts" }, el("h2", { text: c.name, style: "margin-top:0" }), text,
       el("table", {}, ...facts.map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { text: String(v) })))),
       offLore(c.id, d.lore) ? el("p", { class: "hint", style: "font-style:italic", text: offLore(c.id, d.lore) }) : null,
       el("div", { class: "row", style: "margin-top:12px" },
-        el("button", { class: "primary", text: "Load in editor", onclick: () => loadOfficial(c, d.design) })))),
-    el("details", { open: true }, el("summary", { text: "The data the game uses (from the game's card file; empty fields left out, numbers with their names)" }),
+        el("button", { class: "primary", text: T("creator.loadInEditor", "Load in editor"), onclick: () => loadOfficial(c, d.design) })))),
+    el("details", { open: true }, el("summary", { text: T("creator.gameDataSummary", "The data the game uses (from the game's card file; empty fields left out, numbers with their names)") }),
       el("pre", { text: JSON.stringify(shownGameData(d.data), null, 1) })),
-    el("details", {}, el("summary", { text: "The card as a creator design (what Load in editor fills in)" }), el("pre", { text: JSON.stringify(d.design, null, 1) })));
+    el("details", {}, el("summary", { text: T("creator.designSummary", "The card as a creator design (what Load in editor fills in)") }), el("pre", { text: JSON.stringify(d.design, null, 1) })));
 }
 function loadOfficial(c, design) {
   const d = JSON.parse(JSON.stringify(design));
@@ -3187,7 +3248,7 @@ async function showBug(id) {
 }
 // Home: the welcome message and the project's links.
 function drawHome() {
-  if (me) $("homeHello").textContent = "Welcome, " + me;
+  $("homeHello").textContent = me ? T("home.welcomeName", "Welcome, {name}", { name: me }) : T("home.welcome", "Welcome");
 }
 const sentence = e => e.message.charAt(0).toUpperCase() + e.message.slice(1) + ".";
 async function rename() {
@@ -3743,21 +3804,29 @@ let kwList = null;
 async function showKeywords() {
   if (!kwList) {
     try { kwList = (await privData("keywords.json")).keywords; }
-    catch (e) { kwList = null; return say("Could not load the keyword list: " + e.message, "bad"); }
-    const pick = $("kwFaction"); pick.textContent = "";
-    pick.append(el("option", { value: "", text: "All" }), el("option", { value: "-", text: "General (no faction)" }));
-    for (const a of schema.armies) if (schema.traits.some(t => t.faction === a.id)) pick.append(el("option", { value: a.id, text: a.label }));
+    catch (e) { kwList = null; return say(T("creator.keywordListLoadFailed", "Could not load the keyword list: {error}", { error: e.message }), "bad"); }
+    let st = null;
+    try { st = await privData("stratagem-types.json"); } catch (e) { }
+    const pick = $("kwFaction");
+    const fillPage = () => {                       // everything but the rows, which drawKeywords() draws
+      const v = pick.value; pick.textContent = "";
+      pick.append(el("option", { value: "", text: T("common.all", "All") }), el("option", { value: "-", text: T("creator.noFaction", "General (no faction)") }));
+      for (const a of schema.armies) if (schema.traits.some(t => t.faction === a.id)) pick.append(el("option", { value: a.id, text: a.label }));
+      pick.value = v;
+      const known = new Set(kwList.map(k => k.id).filter(Boolean));
+      const missing = schema.traits.filter(t => t.official && !known.has(t.id)).map(t => kwName(t.id));
+      const body = $("stTable").querySelector("tbody"); body.textContent = "";
+      if (st) {
+        // the type names are the game's own labels; the descriptions, faction and deck words are the creator's
+        for (const t of st.types) body.append(el("tr", {}, el("td", {}, el("strong", { text: t.name })), el("td", { text: T("creatorHelp.stratagemType." + t.id, t.text) }),
+          el("td", { text: t.faction === "All" ? T("creator.factionAll", "All") : t.faction }), el("td", { text: { Yes: T("common.yes", "Yes"), No: T("common.no", "No") }[t.deck] || t.deck }), el("td", { text: String(t.cards) })));
+        $("stUnused").textContent = T("creator.stUnused", "In the game but used by no official card, so untested: {list}.", { list: st.unused.join(", ") });
+        $("stSource").textContent = T("creator.stSource", "Counts, factions and deck use are from the game's card data (1,351 cards). The descriptions are read from the cards and the fan rulebook and have not been traced through the game's code.");
+      } else $("stUnused").textContent = T("creator.stLoadFailed", "The stratagem type list could not be loaded.");
+      $("kwNote").textContent = missing.length ? T("creator.kwMissing", "Used by official cards but not described in the rulebook: {list}.", { list: missing.join(", ") }) : "";
+    };
+    fillPage(); onSiteLang(() => { fillPage(); drawKeywords(); });
     $("kwSearch").oninput = drawKeywords; pick.onchange = drawKeywords;
-    const known = new Set(kwList.map(k => k.id).filter(Boolean));
-    const missing = schema.traits.filter(t => t.official && !known.has(t.id)).map(t => t.label);
-    try {
-      const st = await privData("stratagem-types.json"), body = $("stTable").querySelector("tbody");
-      body.textContent = "";
-      for (const t of st.types) body.append(el("tr", {}, el("td", {}, el("strong", { text: t.name })), el("td", { text: t.text }), el("td", { text: t.faction }), el("td", { text: t.deck }), el("td", { text: String(t.cards) })));
-      $("stUnused").textContent = "In the game but used by no official card, so untested: " + st.unused.join(", ") + ".";
-      $("stSource").textContent = st.source;
-    } catch (e) { $("stUnused").textContent = "The stratagem type list could not be loaded."; }
-    $("kwNote").textContent = missing.length ? "Used by official cards but not described in the rulebook: " + missing.join(", ") + "." : "";
   }
   drawKeywords();
 }
@@ -3766,14 +3835,15 @@ function drawKeywords() {
   const q = val("kwSearch").trim().toLowerCase(), f = val("kwFaction");
   for (const k of kwList) {
     const t = schema.traits.find(x => x.id === k.id) || {};
-    if (q && !(k.name + " " + k.text).toLowerCase().includes(q)) continue;
+    const name = k.id ? kwName(k.id) : k.name, text = T("creatorHelp.rulebook." + (k.id || k.name), k.text);     // a row without an id is keyed by its name
+    if (q && !(name + " " + k.name + " " + text).toLowerCase().includes(q)) continue;
     if (f === "-" ? t.faction : f && t.faction !== f) continue;
-    body.append(el("tr", {}, el("td", {}, el("strong", { text: k.name })), el("td", { text: k.text }),
+    body.append(el("tr", {}, el("td", {}, el("strong", { text: name })), el("td", { text }),
       el("td", { text: t.faction ? lab(schema.armies, t.faction) : "" }),
-      el("td", {}, t.official ? el("a", { href: "/examples", text: String(t.official), title: "See official examples",
+      el("td", {}, t.official ? el("a", { href: "/examples", text: String(t.official), title: T("creator.seeExamples", "See official examples"),
         onclick: async e => { if (!plainClick(e)) return; e.preventDefault(); show("Examples"); await showExamples(k.id); window.scrollTo(0, 0); } }) : el("span", { class: "hint", text: k.id ? "0" : "–" }))));
   }
-  if (!body.children.length) body.append(el("tr", {}, el("td", { colSpan: 4, class: "hint", text: "No keyword matches." })));
+  if (!body.children.length) body.append(el("tr", {}, el("td", { colSpan: 4, class: "hint", text: T("creator.noKeywordMatches", "No keyword matches.") })));
 }
 // Admins: bans of game players.
 function banRow(p, inList) {
@@ -4128,13 +4198,13 @@ async function loadUploads() {
 }
 async function signOut() { try { await call("CreatorSignOut"); } catch (e) {} setSession(""); say(""); $("p_recShow").classList.add("hidden"); $("p_recCode").textContent = ""; limited = false; shownOnce = false; if (schema) fill(null); show("Create"); await loadList(); }
 async function discard(c) {
-  if (!confirm(`Discard ${c.name}? It disappears from your list.`)) return;
-  try { await call("CreatorDiscard", { id: c.id }); if (editingId === c.id) fill(null); say(`${c.name} discarded.`, "ok"); loadList(); }
-  catch (e) { say("Not discarded: " + e.message, "bad"); }
+  if (!confirm(T("creator.discardConfirm", "Discard {name}? It disappears from your list.", { name: c.name }))) return;
+  try { await call("CreatorDiscard", { id: c.id }); if (editingId === c.id) fill(null); say(T("creator.discarded", "{name} discarded.", { name: c.name }), "ok"); loadList(); }
+  catch (e) { say(T("creator.notDiscarded", "Not discarded: {error}", { error: e.message }), "bad"); }
 }
 function summary(c) {
   const stats = c.kind === "tactic" ? "" : ` · ${c.melee}/${c.ranged}/${c.health}`;
-  return `${lab(schema.armies, c.army)} ${lab(schema.kinds, c.kind)} · ${c.rarity} · cost ${c.cost}${stats}`;
+  return `${lab(schema.armies, c.army)} ${kindName(c.kind)} · ${rarityName(c.rarity)} · ${T("creator.costN", "cost {n}", { n: c.cost })}${stats}`;
 }
 async function review(id, status) {
   const note = status === "approved" ? "" : (prompt("Note for the author (optional):") ?? null);
@@ -4148,30 +4218,30 @@ function drawList() {
   const own = c => me && (c.author || "").toLowerCase() === me.toLowerCase();
   const pool = allCards.filter(c => listMode === "mine" ? own(c) : c.status !== "draft");
   const shown = pool.filter(c => !want || c.status === want);
-  $("listTitle").textContent = listMode === "mine" ? "My cards" : "Review queue";
-  $("listHint").textContent = listMode === "mine" ? "Your drafts and the cards you submitted. Only you can see your drafts."
-                                                  : "Every submitted card from every author. Visible to reviewers and admins only.";
+  $("listTitle").textContent = listMode === "mine" ? T("nav.myCards", "My cards") : T("nav.reviewQueue", "Review queue");
+  $("listHint").textContent = listMode === "mine" ? T("creator.myCardsHelp", "Your drafts and the cards you submitted. Only you can see your drafts.")
+                                                  : T("creator.reviewQueueHelp", "Every submitted card from every author. Visible to reviewers and admins only.");
   $("optDraft").hidden = listMode !== "mine";
-  $("count").textContent = `${shown.length} of ${pool.length} card(s)`;
-  if (!shown.length) box.append(el("p", { class: "hint", text: listMode === "mine" && !me ? "Sign in to see your cards." : "Nothing here yet." }));
+  $("count").textContent = T("creator.listCount", "{shown} of {total} card(s)", { shown: shown.length, total: pool.length });
+  if (!shown.length) box.append(el("p", { class: "hint", text: listMode === "mine" && !me ? T("creator.signInToSee", "Sign in to see your cards.") : T("creator.nothingYet", "Nothing here yet.") }));
   for (const c of shown) {
-    const actions = el("div", { class: "actions" }, el("button", { class: "small", text: "Open", onclick: () => { fill(c); $("agree").checked = false; show("Create"); window.scrollTo(0, 0); } }));
+    const actions = el("div", { class: "actions" }, el("button", { class: "small", text: T("common.open", "Open"), onclick: () => { fill(c); $("agree").checked = false; show("Create"); window.scrollTo(0, 0); } }));
     if (role && listMode === "all" && c.status !== "draft" && (role === 2 || c.status !== "approved")) {
       const own = role < 2 && (c.author || "").toLowerCase() === (me || "").toLowerCase();      // a reviewer's own card needs someone else
-      if (c.status !== "approved") actions.append(own ? el("span", { class: "hint", text: "your own card – someone else has to approve it" })
-                                                       : el("button", { class: "small", text: "Approve", onclick: () => review(c.id, "approved") }));
-      if (c.status !== "rejected") actions.append(el("button", { class: "small danger", text: c.status === "approved" ? "Un-approve and reject" : "Reject", onclick: () => review(c.id, "rejected") }));
-      if (c.status !== "pending") actions.append(el("button", { class: "small", text: c.status === "approved" ? "Un-approve (back to pending)" : "Back to pending", onclick: () => review(c.id, "pending") }));
+      if (c.status !== "approved") actions.append(own ? el("span", { class: "hint", text: T("creator.ownCardReview", "your own card – someone else has to approve it") })
+                                                       : el("button", { class: "small", text: T("creator.approve", "Approve"), onclick: () => review(c.id, "approved") }));
+      if (c.status !== "rejected") actions.append(el("button", { class: "small danger", text: c.status === "approved" ? T("creator.unapproveReject", "Un-approve and reject") : T("creator.reject", "Reject"), onclick: () => review(c.id, "rejected") }));
+      if (c.status !== "pending") actions.append(el("button", { class: "small", text: c.status === "approved" ? T("creator.unapprovePending", "Un-approve (back to pending)") : T("creator.backToPending", "Back to pending"), onclick: () => review(c.id, "pending") }));
     }
-    if (own(c) && (c.status === "draft" || c.status === "rejected")) actions.append(el("button", { class: "small danger", text: "Discard", onclick: () => discard(c) }));
+    if (own(c) && (c.status === "draft" || c.status === "rejected")) actions.append(el("button", { class: "small danger", text: T("creator.discard", "Discard"), onclick: () => discard(c) }));
     box.append(el("div", { class: "item" },
       el("div", {},
-        el("div", {}, el("span", { class: "title", text: c.name + " " }), el("span", { class: "badge " + c.status, text: c.returned ? "draft – sent back" : c.status })),
-        el("div", { class: "hint", text: `${c.id} · by ${c.author} · ${summary(c)}` }),
+        el("div", {}, el("span", { class: "title", text: c.name + " " }), el("span", { class: "badge " + c.status, text: c.returned ? T("creator.status.sentBack", "draft – sent back") : statusName(c.status) })),
+        el("div", { class: "hint", text: `${c.id} · ${T("creator.byAuthor", "by {author}", { author: c.author })} · ${summary(c)}` }),
         el("div", { text: c.text || "" }),
-        c.reviewNote && c.status !== "approved" ? el("div", { class: "hint", text: "Reviewer's note: " + c.reviewNote }) : null,
-        (c.buildNotes || []).length ? el("div", { class: "hint", text: `${c.buildNotes.length} build note(s) – open the card to read them` }) : null,
-        listMode === "all" && c.rulesAccepted ? el("div", { class: "hint", text: `Rules confirmed by ${c.rulesAccepted.by}${c.rulesAccepted.version !== rulesVersion ? " (an older version of the rules)" : ""}` }) : null),
+        c.reviewNote && c.status !== "approved" ? el("div", { class: "hint", text: T("creator.reviewerNote", "Reviewer's note: {note}", { note: c.reviewNote }) }) : null,
+        (c.buildNotes || []).length ? el("div", { class: "hint", text: T("creator.buildNoteCount", "{n} build note(s) – open the card to read them", { n: c.buildNotes.length }) }) : null,
+        listMode === "all" && c.rulesAccepted ? el("div", { class: "hint", text: T("creator.rulesConfirmedBy", "Rules confirmed by {who}", { who: c.rulesAccepted.by }) + (c.rulesAccepted.version !== rulesVersion ? " " + T("creator.olderRules", "(an older version of the rules)") : "") }) : null),
       actions));
   }
 }
@@ -4377,14 +4447,21 @@ function loadMenus() {
     }
     menuCards = cards.cards;
     cardLists();
-    options($("f_kind"), schema.kinds); options($("f_army"), schema.armies); options($("f_rarity"), schema.rarities);
+    const basics = () => {              // kind and rarity names follow the site language; factions keep the game's names
+      const k = val("f_kind"), r = val("f_rarity");
+      options($("f_kind"), schema.kinds.map(x => ({ id: x.id, label: kindName(x.id) }))); options($("f_rarity"), schema.rarities.map(x => ({ id: x, label: rarityName(x) })));
+      if (k) $("f_kind").value = k; if (r) $("f_rarity").value = r;
+    };
+    basics(); onSiteLang(basics); options($("f_army"), schema.armies);
     options($("f_keyword"), schema.keywords, false, "none"); options($("f_stratagemType"), schema.stratagemTypes);
     fill(null);
   })().catch(e => { menusReady = null; throw e; }));
 }
 
 async function start() {
-  options($("f_template"), TEMPLATES); $("f_template").addEventListener("change", e => setTemplate(e.target.value));
+  const fillTemplates = () => { const v = $("f_template").value; options($("f_template"), TEMPLATES.map(t => ({ id: t.id, label: tmplLabel(t) }))); if (v) $("f_template").value = v; };
+  fillTemplates(); onSiteLang(fillTemplates); $("f_template").addEventListener("change", e => setTemplate(e.target.value));
+  onSiteLang(() => { if (!schema) return; try { $("tmplHint").textContent = tmplText(tmpl()); redraw(true); drawEntries(); drawCardMore(); drawArtPreview(); preview(); } catch (e) { } });   // script-drawn texts follow the site language
   try { localStorage.removeItem("creator.key"); } catch (x) {}      // staff keys are gone; roles belong to accounts now
   $("signOut").onclick = signOut;
   $("meName").onclick = e => { if (plainClick(e)) { e.preventDefault(); show("Profile"); } };
@@ -4471,6 +4548,7 @@ function reqTab(n) {                     // Admin > Requests, with the number wa
   $("tabRequests").textContent = reqCount ? T("nav.requestsCount", "Requests ({count})", { count: reqCount }) : T("nav.requests", "Requests");
 }
 onSiteLang(() => reqTab(reqCount));
+onSiteLang(() => { try { if (schema) drawList(); if (!$("viewHome").classList.contains("hidden")) drawHome(); if (exCounts && !$("viewExamples").classList.contains("hidden")) { exCounts = null; showExamples($("exKeyword").value); } } catch (e) { } });   // My cards, Home and Examples follow the site language
 onSiteLang(() => { try { drawProfile(); laShow(); } catch (e) { } });
 onSiteLang(() => { try { if (decks.length) drawDecks(); if (matches.length) drawMatches(); } catch (e) { } });     // whatever arrived first, the texts or the account
 siteLangStart();
