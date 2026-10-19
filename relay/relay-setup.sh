@@ -96,6 +96,19 @@ ufw allow 8780/tcp >/dev/null
 ufw allow 443/tcp >/dev/null
 ufw --force enable >/dev/null
 
+# an extra website kept by relay-extra-site.sh (e.g. the translation site) stays: the firewall reset
+# above dropped its port 80, so it is set up again
+if [ -s /etc/haproxy/extra-site ]; then
+  if [ -f "$(dirname "$0")/relay-extra-site.sh" ]; then
+    read -r XD XP1 XP2 < /etc/haproxy/extra-site
+    echo "== keeping the extra site $XD"
+    bash "$(dirname "$0")/relay-extra-site.sh" "$XD" "$XP1" "$XP2"
+  else
+    echo "   (NOTE: an extra site is kept in /etc/haproxy/extra-site, but relay-extra-site.sh is not next to"
+    echo "    this script, so it is not passed on now; copy it here and run it to restore the extra site)"
+  fi
+fi
+
 echo "== SSH: keys only"
 if [ -s /root/.ssh/authorized_keys ]; then
   cat > /etc/ssh/sshd_config.d/10-relay.conf <<'CONF'

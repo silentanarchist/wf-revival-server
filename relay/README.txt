@@ -78,3 +78,17 @@ Good to know
   - The old home address was public in DNS until now; anyone who looked it up before still
     knows it. Most home connections get a new address now and then (or after the router has
     been off for a while), after which it is gone for good.
+
+
+Another website on this PC behind the relay (e.g. the Weblate translation site)
+  relay-extra-site.sh sorts port 443 by the name the visitor asks for: that name goes to the extra
+  site's port on this PC, everything else to the game website as before. Port 80 goes to the extra
+  site's http port (for its redirect to https). The game (8780) is not touched and HAProxy is only
+  reloaded, so nobody is disconnected. Example for Weblate (its Caddy on ports 8443 and 8081):
+     scp relay-extra-site.sh relay-setup.sh root@RELAY-ADDRESS:/root/
+     ssh root@RELAY-ADDRESS "bash /root/relay-extra-site.sh wf-translate.example.com 8443 8081"
+  Undo:  ssh root@RELAY-ADDRESS "bash /root/relay-extra-site.sh --remove"
+  On this PC: let the tunnel reach those ports (firewall rule like step 3, ports 8443,8081), and the
+  extra site's own Caddy must read the PROXY line (proxy_protocol listener wrapper, allowing the
+  address its connections arrive from). Then point the domain's A record at RELAY-ADDRESS and remove
+  the router's port forwards for that site. Running relay-setup.sh again keeps the extra site.
