@@ -611,32 +611,32 @@
   <div id="viewServer" class="hidden">
     <section>
       <div class="row" style="margin-bottom:0">
-        <div class="field"><label for="cfgPass">Your password (asked for every save)</label>
+        <div class="field"><label for="cfgPass" data-t="admin.server.password">Your password (asked for every save)</label>
           <input type="password" id="cfgPass" autocomplete="current-password" maxlength="200"></div>
-        <p class="hint" style="flex:1;min-width:240px">Changing the server needs your password as well as being signed in, so a sign-in left on another computer cannot change it.</p>
+        <p class="hint" style="flex:1;min-width:240px" data-t="admin.server.passwordHelp">Changing the server needs your password as well as being signed in, so a sign-in left on another computer cannot change it.</p>
       </div>
     </section>
     <section>
-      <h2>Game modes</h2>
-      <p class="hint">Match rules for each game mode (<code>content/liveops/GameModes.json</code>). Players get changes the next time they start the game. An empty box means the game's own default. If you change how matches play, also raise the <strong>Rules version</strong> below: players are only matched with the same rules, and saved replays from older rules stop loading.</p>
+      <h2 data-t="admin.server.modesTitle">Game modes</h2>
+      <p class="hint" data-t-rich="admin.server.modesHelp">Match rules for each game mode (<code>content/liveops/GameModes.json</code>). Players get changes the next time they start the game. An empty box means the game's own default. If you change how matches play, also raise the <strong>Rules version</strong> below: players are only matched with the same rules, and saved replays from older rules stop loading.</p>
       <div class="cfgwrap"><table class="cfg" id="modeTable"></table></div>
-      <div class="row"><button class="primary" id="modeSave" type="button">Save game modes</button><span class="hint" id="modeState"></span></div>
+      <div class="row"><button class="primary" id="modeSave" type="button" data-t="admin.server.modesSave">Save game modes</button><span class="hint" id="modeState"></span></div>
     </section>
     <section>
-      <h2>Server settings</h2>
-      <p class="hint">From <code>content/files/revival-settings.json</code>. Most take effect straight away; players' games pick up game rules the next time they start.</p>
+      <h2 data-t="admin.server.settingsTitle">Server settings</h2>
+      <p class="hint" data-t-rich="admin.server.settingsHelp">From <code>content/files/revival-settings.json</code>. Most take effect straight away; players' games pick up game rules the next time they start.</p>
       <div class="cfgwrap"><table class="cfg" id="setTable"></table></div>
-      <div class="row"><button class="primary" id="setSave" type="button">Save server settings</button><span class="hint" id="setState"></span></div>
+      <div class="row"><button class="primary" id="setSave" type="button" data-t="admin.server.settingsSave">Save server settings</button><span class="hint" id="setState"></span></div>
     </section>
     <section>
-      <h2>Edit as JSON</h2>
-      <p class="hint">Everything in both files, including what the forms above do not show. Each save keeps the previous file in <code>data/config-history/</code> on the server (the last 30 of each).</p>
-      <details><summary>Game modes (GameModes.json)</summary>
+      <h2 data-t="admin.server.jsonTitle">Edit as JSON</h2>
+      <p class="hint" data-t-rich="admin.server.jsonHelp">Everything in both files, including what the forms above do not show. Each save keeps the previous file in <code>data/config-history/</code> on the server (the last 30 of each).</p>
+      <details><summary data-t="admin.server.jsonModes">Game modes (GameModes.json)</summary>
         <textarea class="json" id="modeJson" spellcheck="false"></textarea>
-        <div class="row"><button id="modeJsonSave" type="button">Save GameModes.json</button></div></details>
-      <details><summary>Server settings (revival-settings.json)</summary>
+        <div class="row"><button id="modeJsonSave" type="button" data-t="admin.server.jsonModesSave">Save GameModes.json</button></div></details>
+      <details><summary data-t="admin.server.jsonSettings">Server settings (revival-settings.json)</summary>
         <textarea class="json" id="setJson" spellcheck="false"></textarea>
-        <div class="row"><button id="setJsonSave" type="button">Save revival-settings.json</button></div></details>
+        <div class="row"><button id="setJsonSave" type="button" data-t="admin.server.jsonSettingsSave">Save revival-settings.json</button></div></details>
     </section>
   </div>
 
@@ -646,19 +646,19 @@
 
   <div id="viewBugs" class="hidden">
     <section id="bugListBox">
-      <h2>Bug reports</h2>
-      <div class="box hint">
+      <h2 data-t="bugs.title">Bug reports</h2>
+      <div class="box hint" data-t-rich="bugs.howTo">
         <strong>How to report a bug</strong> (testers): in the game press <strong>F8</strong> (PC) or <strong>Report bug</strong> in the Testers window <em>right when it happens</em>: the screenshot and log are taken at that moment.
         One bug per report; the title says what went wrong ("Bolter Brother dealt 0 damage to a warlord"), not the cause.
         Check this list first: if it is already here, still send a short report and put the other report's number in the title ("same as B-0042") — your device and version are what we need.
         If the game crashes or freezes, just start it again: it offers to send a report with everything saved at the time.
       </div>
       <div class="row" style="margin-top:10px; align-items:end">
-        <div class="field"><label for="bugStatus">Status</label><select id="bugStatus"><option value="open">Open</option><option value="">All</option></select></div>
-        <div class="field"><label for="bugPlatform">Platform</label><select id="bugPlatform"><option value="">All</option><option>Windows</option><option>Android</option></select></div>
-        <div class="field"><label for="bugCategory">Type</label><select id="bugCategory"><option value="">All</option></select></div>
-        <div class="field grow"><label for="bugSearch">Search titles</label><input id="bugSearch" type="search" name="bugSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore></div>
-        <label style="margin-bottom:8px"><input type="checkbox" id="bugMine"> Mine only</label>
+        <div class="field"><label for="bugStatus" data-t="bugs.status">Status</label><select id="bugStatus"><option value="open" data-t="bugs.statusOpen">Open</option><option value="" data-t="common.all">All</option></select></div>
+        <div class="field"><label for="bugPlatform" data-t="bugs.platform">Platform</label><select id="bugPlatform"><option value="" data-t="common.all">All</option><option>Windows</option><option>Android</option></select></div>
+        <div class="field"><label for="bugCategory" data-t="bugs.type">Type</label><select id="bugCategory"><option value="" data-t="common.all">All</option></select></div>
+        <div class="field grow"><label for="bugSearch" data-t="bugs.searchTitles">Search titles</label><input id="bugSearch" type="search" name="bugSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore></div>
+        <label style="margin-bottom:8px"><input type="checkbox" id="bugMine"> <span data-t="bugs.mineOnly">Mine only</span></label>
       </div>
       <div class="list" id="bugList"></div>
     </section>
@@ -667,11 +667,11 @@
 
   <div id="viewPeople" class="hidden">
     <section>
-      <h2>People <span class="hint" id="peopleTotals" style="text-transform:none; letter-spacing:0; font-family:inherit; font-weight:normal"></span></h2>
-      <p class="hint">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
+      <h2><span data-t="nav.people">People</span> <span class="hint" id="peopleTotals" style="text-transform:none; letter-spacing:0; font-family:inherit; font-weight:normal"></span></h2>
+      <p class="hint" data-t-rich="admin.people.help">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
       <p class="hint" id="peopleHint"></p>
-      <div class="row"><div class="field grow"><label>Find an account</label><input id="peopleSearch" type="search" name="peopleSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="account or game player name"></div>
-        <div class="field"><label>Show</label><select id="peopleShow"><option value="">Everyone</option><option value="online">Online now</option><option value="staff">Staff (reviewers, admins, owners)</option><option value="tester">Testers</option><option value="banned">Banned</option></select></div></div>
+      <div class="row"><div class="field grow"><label data-t="admin.people.find">Find an account</label><input id="peopleSearch" type="search" name="peopleSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="account or game player name" data-t-placeholder="admin.people.findPlaceholder"></div>
+        <div class="field"><label data-t="creator.show">Show</label><select id="peopleShow"><option value="" data-t="admin.people.showEveryone">Everyone</option><option value="online" data-t="admin.people.showOnline">Online now</option><option value="staff" data-t="admin.people.showStaff">Staff (reviewers, admins, owners)</option><option value="tester" data-t="admin.people.showTesters">Testers</option><option value="banned" data-t="admin.people.showBanned">Banned</option></select></div></div>
       <p class="hint" id="peopleCount"></p>
       <div class="list" id="people"></div>
     </section>
@@ -679,10 +679,10 @@
 
   <div id="viewUnreleased" class="hidden">
     <section>
-      <h2>Unreleased cards</h2>
-      <p class="hint">Cards that only exist as text in the game: names and rules text Everguild wrote but never turned into card data, so they were never playable. <strong>Unreleased</strong> ones were still being made (mostly Emperor's Children and Goff Orks); <strong>old versions</strong> are earlier wordings of cards that changed. Taken from the game's own English text. Ideas for custom cards.</p>
-      <div class="row"><div class="field grow"><label>Search</label><input id="unrelQuery" type="search" name="unrelQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="name, rules text or army"></div>
-        <div class="field"><label>Show</label><select id="unrelShow"><option value="">All</option><option value="Unreleased (text only)">Unreleased</option><option value="Old version (text only)">Old versions</option></select></div></div>
+      <h2 data-t="nav.unreleased">Unreleased cards</h2>
+      <p class="hint" data-t-rich="admin.unreleased.help">Cards that only exist as text in the game: names and rules text Everguild wrote but never turned into card data, so they were never playable. <strong>Unreleased</strong> ones were still being made (mostly Emperor's Children and Goff Orks); <strong>old versions</strong> are earlier wordings of cards that changed. Taken from the game's own English text. Ideas for custom cards.</p>
+      <div class="row"><div class="field grow"><label data-t="common.search">Search</label><input id="unrelQuery" type="search" name="unrelQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="name, rules text or army" data-t-placeholder="admin.unreleased.searchPlaceholder"></div>
+        <div class="field"><label data-t="creator.show">Show</label><select id="unrelShow"><option value="" data-t="common.all">All</option><option value="Unreleased (text only)" data-t="admin.unreleased.showUnreleased">Unreleased</option><option value="Old version (text only)" data-t="admin.unreleased.showOld">Old versions</option></select></div></div>
       <p class="hint" id="unrelCount"></p>
       <div class="unrel" id="unrelList"></div>
     </section>
@@ -690,53 +690,53 @@
 
   <div id="viewRequests" class="hidden">
     <section>
-      <h2>Requests</h2>
-      <p class="hint">Accounts waiting for access, oldest first. <strong>Approve</strong> lets the account use this site and play on the game server. <strong>Decline</strong> signs it out and deletes it after 7 days, as Delete does on the People page (signing in again within those days cancels that, and the account waits here again).</p>
+      <h2 data-t="nav.requests">Requests</h2>
+      <p class="hint" data-t-rich="admin.requests.help">Accounts waiting for access, oldest first. <strong>Approve</strong> lets the account use this site and play on the game server. <strong>Decline</strong> signs it out and deletes it after 7 days, as Delete does on the People page (signing in again within those days cancels that, and the account waits here again).</p>
       <p class="hint" id="reqHint"></p>
       <div class="row">
-        <div class="field grow"><label>Find a name</label><input id="reqQuery" type="search" name="reqQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="part of a name"></div>
-        <button class="small" id="reqApproveAll" type="button">Approve everyone shown</button>
+        <div class="field grow"><label data-t="admin.requests.find">Find a name</label><input id="reqQuery" type="search" name="reqQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="part of a name" data-t-placeholder="admin.requests.findPlaceholder"></div>
+        <button class="small" id="reqApproveAll" type="button" data-t="admin.requests.approveAll">Approve everyone shown</button>
       </div>
       <div class="list slim" id="requests"></div>
-      <div class="row"><button class="small" id="reqPrev" type="button">Previous</button><span class="hint" id="reqPage"></span><button class="small" id="reqNext" type="button">Next</button></div>
+      <div class="row"><button class="small" id="reqPrev" type="button" data-t="admin.requests.previous">Previous</button><span class="hint" id="reqPage"></span><button class="small" id="reqNext" type="button" data-t="admin.requests.next">Next</button></div>
     </section>
   </div>
 
   <div id="viewModeration" class="hidden">
     <section>
-      <h2>Reported players</h2>
-      <p class="hint">Players reported with <strong>REPORT</strong> in a game's battle log, and automatic reports from the game's anti-cheat (it notices a game's memory being edited or the game being sped up; it only reports, it never blocks anyone). <strong>Review</strong> shows the match: the moves both players' games recorded, the server's own record of the match, and the reporter's game log if they sent it. Evidence is kept while the report is open and 30 days after it is done. <strong>Ban player</strong> bans the game player; with site accounts, ban the account on the <strong>People</strong> page instead.</p>
-      <div class="row"><label class="hint"><input type="checkbox" id="preportsClosed"> Show done reports too</label></div>
+      <h2 data-t="admin.moderation.playersTitle">Reported players</h2>
+      <p class="hint" data-t-rich="admin.moderation.playersHelp">Players reported with <strong>REPORT</strong> in a game's battle log, and automatic reports from the game's anti-cheat (it notices a game's memory being edited or the game being sped up; it only reports, it never blocks anyone). <strong>Review</strong> shows the match: the moves both players' games recorded, the server's own record of the match, and the reporter's game log if they sent it. Evidence is kept while the report is open and 30 days after it is done. <strong>Ban player</strong> bans the game player; with site accounts, ban the account on the <strong>People</strong> page instead.</p>
+      <div class="row"><label class="hint"><input type="checkbox" id="preportsClosed"> <span data-t="admin.moderation.showDone">Show done reports too</span></label></div>
       <div class="list" id="preports"></div>
       <div id="preportView" class="box hidden" style="margin-top:12px"></div>
     </section>
     <section>
-      <h2>Reported chat messages</h2>
-      <p class="hint">Messages players reported with <strong>Report message</strong> in the game's global chat. <strong>Checked</strong> means the server still had the message and it matches; otherwise the text is what the reporter's game showed. To act on a report, ban the account on the <strong>People</strong> page (or its game player below). <strong>Done</strong> takes a report off this list.</p>
-      <div class="row"><label class="hint"><input type="checkbox" id="reportsClosed"> Show done reports too</label></div>
+      <h2 data-t="admin.moderation.chatTitle">Reported chat messages</h2>
+      <p class="hint" data-t-rich="admin.moderation.chatHelp">Messages players reported with <strong>Report message</strong> in the game's global chat. <strong>Checked</strong> means the server still had the message and it matches; otherwise the text is what the reporter's game showed. To act on a report, ban the account on the <strong>People</strong> page (or its game player below). <strong>Done</strong> takes a report off this list.</p>
+      <div class="row"><label class="hint"><input type="checkbox" id="reportsClosed"> <span data-t="admin.moderation.showDone">Show done reports too</span></label></div>
       <div class="list" id="reports"></div>
     </section>
     <section>
       <h2 id="banTitle">Banned game players</h2>
       <p class="hint" id="banHint">For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (on the People page) are listed here too; unban those there.</p>
-      <div class="row" id="banFindRow"><div class="field grow"><label>Find a player (name, friend code or id)</label><input id="banQuery" type="search" name="banQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="e.g. Commander-1A2B or 1A2B-3C4D"></div><button id="banFind" type="button">Find</button></div>
+      <div class="row" id="banFindRow"><div class="field grow"><label data-t="admin.moderation.findPlayer">Find a player (name, friend code or id)</label><input id="banQuery" type="search" name="banQuery-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="e.g. Commander-1A2B or 1A2B-3C4D" data-t-placeholder="admin.moderation.findPlayerPlaceholder"></div><button id="banFind" type="button" data-t="admin.moderation.find">Find</button></div>
       <div class="list" id="banFound"></div>
-      <h3>Banned now</h3>
+      <h3 data-t="admin.moderation.bannedNow">Banned now</h3>
       <div class="list" id="banList"></div>
     </section>
     <section>
-      <h2>Word filter</h2>
-      <p class="hint">Words blocked in chat (starred out) and in player and account names (refused). One per line; capitals do not matter, and look-alike spellings (sh1t, f.u.c.k, fuuuck) are caught. <code>word</code> blocks the whole word only, <code>word*</code> any word starting with it, <code>*word*</code> it anywhere, even inside other words (careful: that catches innocent words too). Names chosen before a word was added are not changed.</p>
+      <h2 data-t="admin.moderation.wordsTitle">Word filter</h2>
+      <p class="hint" data-t-rich="admin.moderation.wordsHelp">Words blocked in chat (starred out) and in player and account names (refused). One per line; capitals do not matter, and look-alike spellings (sh1t, f.u.c.k, fuuuck) are caught. <code>word</code> blocks the whole word only, <code>word*</code> any word starting with it, <code>*word*</code> it anywhere, even inside other words (careful: that catches innocent words too). Names chosen before a word was added are not changed.</p>
       <p class="hint" id="wordState"></p>
       <textarea id="wordList" rows="12" spellcheck="false" style="width:100%; font-family:monospace"></textarea>
-      <div class="row"><button id="wordSave" type="button">Save list</button><div class="field grow"><label>Try a sentence</label><input id="wordTry" placeholder="type something to see what the filter does"></div><span class="hint" id="wordResult"></span></div>
+      <div class="row"><button id="wordSave" type="button" data-t="admin.moderation.wordsSave">Save list</button><div class="field grow"><label data-t="admin.moderation.wordsTry">Try a sentence</label><input id="wordTry" placeholder="type something to see what the filter does" data-t-placeholder="admin.moderation.wordsTryPlaceholder"></div><span class="hint" id="wordResult"></span></div>
     </section>
   </div>
 
   <div id="viewUploads" class="hidden">
     <section>
-      <h2>Uploaded artwork</h2>
-      <p class="hint">Every picture stored on the server, drafts included, newest first. <strong>Delete</strong> removes the picture and its mask from the server for good; a card that was waiting for review or approved goes back to its author as rejected.</p>
+      <h2 data-t="nav.uploads">Uploaded artwork</h2>
+      <p class="hint" data-t-rich="admin.uploads.help">Every picture stored on the server, drafts included, newest first. <strong>Delete</strong> removes the picture and its mask from the server for good; a card that was waiting for review or approved goes back to its author as rejected.</p>
       <div class="uploads" id="uploads"></div>
     </section>
   </div>
@@ -1076,9 +1076,11 @@ function say(text, kind) {                       // the banner; its x hides it u
 }
 async function call(name, body) {
   body = Object.assign({ session: session() }, body || {});
-  const r = await fetch(API + name, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const headers = { "Content-Type": "application/json" };
+  if (siteLang() && siteLang() !== "en") headers["X-Revival-Lang"] = siteLang();     // the server answers its messages in this language
+  const r = await fetch(API + name, { method: "POST", headers, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok || j.code !== 200) { const e = new Error(j.errorMessage || ("the server answered " + r.status)); e.code = j.error || ""; throw e; }
+  if (!r.ok || j.code !== 200) { const e = new Error(j.errorMessage || T("common.serverAnswered", "The server answered {status}.", { status: r.status })); e.code = j.error || ""; throw e; }
   return j.data;
 }
 /* ---------- menus built from the server's schema ---------- */
@@ -3163,19 +3165,37 @@ function drawRecovery() {
 }
 
 // Bug reports from the game (testers and above). The list, then one report at /bugs?id=B-0042.
-const BUG_CATEGORIES = { crash: "Crash / freeze", picture: "Black or wrong picture", card: "Card does the wrong thing", rules: "Rules / mode",
-  ui: "Menus & UI", connection: "Connection / sign-in", replay: "Replay", text: "Text / translation", other: "Other" };
-const BUG_SEVERITIES = { blocker: "Can't play", match: "Breaks a match", annoying: "Annoying", cosmetic: "Cosmetic" };
-const BUG_STATUSES = { new: "New", confirmed: "Confirmed", progress: "In progress", fixed: "Fixed (awaiting check)", verified: "Verified",
-  cantrepro: "Can't reproduce", wontfix: "Won't fix", duplicate: "Duplicate" };
+// The names below are the page's own words, in the site's language (functions: the language file arrives after the page loads).
+function bugCategories() {
+  return { crash: T("bugs.category.crash", "Crash / freeze"), picture: T("bugs.category.picture", "Black or wrong picture"), card: T("bugs.category.card", "Card does the wrong thing"),
+    rules: T("bugs.category.rules", "Rules / mode"), ui: T("bugs.category.ui", "Menus & UI"), connection: T("bugs.category.connection", "Connection / sign-in"),
+    replay: T("bugs.category.replay", "Replay"), text: T("bugs.category.text", "Text / translation"), other: T("bugs.category.other", "Other") };
+}
+function bugSeverities() {
+  return { blocker: T("bugs.severity.blocker", "Can't play"), match: T("bugs.severity.match", "Breaks a match"), annoying: T("bugs.severity.annoying", "Annoying"), cosmetic: T("bugs.severity.cosmetic", "Cosmetic") };
+}
+function bugStatuses() {
+  return { new: T("bugs.state.new", "New"), confirmed: T("bugs.state.confirmed", "Confirmed"), progress: T("bugs.state.progress", "In progress"), fixed: T("bugs.state.fixed", "Fixed (awaiting check)"),
+    verified: T("bugs.state.verified", "Verified"), cantrepro: T("bugs.state.cantrepro", "Can't reproduce"), wontfix: T("bugs.state.wontfix", "Won't fix"), duplicate: T("bugs.state.duplicate", "Duplicate") };
+}
+function bugKind(kind) {                         // how the game sent it: by hand ("manual"), or after a crash or a freeze
+  return ({ crash: T("bugs.kind.crash", "crash"), freeze: T("bugs.kind.freeze", "freeze") })[kind] || kind;
+}
+function bugCategoryOptions() {                  // the Type filter: All, then the categories
+  const sel = $("bugCategory"), keep = sel.value;
+  for (const o of Array.from(sel.options)) if (o.value) o.remove();
+  for (const [v, t] of Object.entries(bugCategories())) sel.append(el("option", { value: v, text: t }));
+  sel.value = keep;
+}
 const BUG_OPEN = ["new", "confirmed", "progress", "fixed"];
-let bugs = [], bugAdmin = false, bugMe = "";
-const bugBadge = st => el("span", { class: "badge " + ({ new: "pending", confirmed: "pending", progress: "pending", fixed: "approved", verified: "approved" }[st] || "draft"), text: BUG_STATUSES[st] || st });
+let bugs = [], bugAdmin = false, bugMe = "", bugShown = "";
+const bugBadge = st => el("span", { class: "badge " + ({ new: "pending", confirmed: "pending", progress: "pending", fixed: "approved", verified: "approved" }[st] || "draft"), text: bugStatuses()[st] || st });
 async function loadBugs() {
   const id = new URLSearchParams(location.search).get("id");
   if (id) return showBug(id);
+  bugShown = "";
   $("bugOne").classList.add("hidden"); $("bugListBox").classList.remove("hidden");
-  try { const d = await call("BugList"); bugs = d.bugs; bugAdmin = d.admin; bugMe = d.me; } catch (e) { return say("Could not load the bug reports: " + e.message, "bad"); }
+  try { const d = await call("BugList"); bugs = d.bugs; bugAdmin = d.admin; bugMe = d.me; } catch (e) { return say(T("bugs.loadFailed", "Could not load the bug reports: {error}", { error: e.message }), "bad"); }
   drawBugs();
 }
 function drawBugs() {
@@ -3183,69 +3203,81 @@ function drawBugs() {
   const st = val("bugStatus"), pf = val("bugPlatform"), cat = val("bugCategory"), q = val("bugSearch").trim().toLowerCase(), mine = $("bugMine").checked;
   const shown = bugs.filter(b => (!st || (st === "open" ? BUG_OPEN.includes(b.status) : b.status === st)) && (!pf || b.platform === pf)
     && (!cat || b.category === cat) && (!q || b.title.toLowerCase().includes(q) || b.id.toLowerCase() === q) && (!mine || b.author === bugMe));
-  if (!shown.length) box.append(el("p", { class: "hint", text: bugs.length ? "No reports match." : "No bug reports yet." }));
+  if (!shown.length) box.append(el("p", { class: "hint", text: bugs.length ? T("bugs.noMatch", "No reports match.") : T("bugs.none", "No bug reports yet.") }));
+  const cats = bugCategories(), sevs = bugSeverities();
   for (const b of shown) box.append(el("div", { class: "item" },
     el("div", {}, el("a", { class: "title", href: "/bugs?id=" + b.id, text: b.id + "  " + b.title, onclick: e => { if (plainClick(e)) { e.preventDefault(); history.pushState(null, "", "/bugs?id=" + b.id); showBug(b.id); } } }),
-      el("div", { class: "bugMeta", text: [BUG_CATEGORIES[b.category], BUG_SEVERITIES[b.severity], b.kind !== "manual" ? b.kind : "", b.platform, b.mod, "by " + b.author, "updated " + (b.updated || "").slice(0, 10)].filter(Boolean).join(" · ") })),
-    el("div", { class: "actions" }, bugBadge(b.status), b.fixedIn ? el("span", { class: "badge draft", text: "fixed in " + b.fixedIn }) : null)));
+      el("div", { class: "bugMeta", text: [cats[b.category], sevs[b.severity], b.kind !== "manual" ? bugKind(b.kind) : "", b.platform, b.mod, T("bugs.by", "by {name}", { name: b.author }), T("bugs.updated", "updated {date}", { date: (b.updated || "").slice(0, 10) })].filter(Boolean).join(" · ") })),
+    el("div", { class: "actions" }, bugBadge(b.status), b.fixedIn ? el("span", { class: "badge draft", text: T("bugs.fixedIn", "fixed in {version}", { version: b.fixedIn }) }) : null)));
 }
 async function bugFile(id, file) { return call("BugFile", { id, file }); }
 async function showBug(id) {
-  $("bugListBox").classList.add("hidden"); const box = $("bugOne"); box.classList.remove("hidden"); box.textContent = "Loading…";
+  bugShown = id;
+  $("bugListBox").classList.add("hidden"); const box = $("bugOne"); box.classList.remove("hidden"); box.textContent = T("common.loading", "Loading…");
   let r;
-  try { r = await call("BugGet", { id }); } catch (e) { box.textContent = ""; return say("Could not load " + id + ": " + e.message, "bad"); }
+  try { r = await call("BugGet", { id }); } catch (e) { box.textContent = ""; return say(T("bugs.loadOneFailed", "Could not load {id}: {error}", { id, error: e.message }), "bad"); }
   box.textContent = "";
   document.title = r.id + " – Bug reports – WF-Revival";
-  const back = el("a", { href: "/bugs", text: "← All reports", onclick: e => { if (plainClick(e)) { e.preventDefault(); history.pushState(null, "", "/bugs"); loadBugs(); } } });
+  const cats = bugCategories(), sevs = bugSeverities(), sents = { crash: T("bugs.sentAfterCrash", "sent after a crash"), freeze: T("bugs.sentAfterFreeze", "sent after a freeze") };
+  const back = el("a", { href: "/bugs", text: T("bugs.allReports", "← All reports"), onclick: e => { if (plainClick(e)) { e.preventDefault(); history.pushState(null, "", "/bugs"); loadBugs(); } } });
   box.append(back, el("h2", { text: r.id + "  " + r.title }),
-    el("div", { class: "bugMeta" }, bugBadge(r.status), " ", [BUG_CATEGORIES[r.category], BUG_SEVERITIES[r.severity], r.kind !== "manual" ? "sent after a " + r.kind : "",
-      "by " + r.author, "sent " + r.created.slice(0, 16).replace("T", " "), r.fixedIn ? "fixed in " + r.fixedIn : "", r.duplicateOf ? "duplicate of " + r.duplicateOf : ""].filter(Boolean).join(" · ")));
-  if (r.description) box.append(el("h3", { text: "What happened" }), el("p", { style: "white-space:pre-wrap", text: r.description }));
+    el("div", { class: "bugMeta" }, bugBadge(r.status), " ", [cats[r.category], sevs[r.severity], r.kind !== "manual" ? sents[r.kind] || T("bugs.sentAfter", "sent after a {kind}", { kind: r.kind }) : "",
+      T("bugs.by", "by {name}", { name: r.author }), T("bugs.sent", "sent {date}", { date: r.created.slice(0, 16).replace("T", " ") }), r.fixedIn ? T("bugs.fixedIn", "fixed in {version}", { version: r.fixedIn }) : "",
+      r.duplicateOf ? T("bugs.duplicateOfId", "duplicate of {id}", { id: r.duplicateOf }) : ""].filter(Boolean).join(" · ")));
+  if (r.description) box.append(el("h3", { text: T("bugs.whatHappened", "What happened") }), el("p", { style: "white-space:pre-wrap", text: r.description }));
   const ctx = el("dl", { class: "bugCtx" });
   for (const [k, v] of Object.entries(r.context || {})) if (v) ctx.append(el("dt", { text: k }), el("dd", { text: v }));
-  if (r.signedInMod) ctx.append(el("dt", { text: "signed in with" }), el("dd", { text: r.signedInMod }));
-  box.append(el("h3", { text: "Sent automatically" }), ctx);
-  if (r.adminNote) box.append(el("h3", { text: "Note from the admins" }), el("p", { style: "white-space:pre-wrap", text: r.adminNote }));
+  if (r.signedInMod) ctx.append(el("dt", { text: T("bugs.signedInWith", "signed in with") }), el("dd", { text: r.signedInMod }));
+  box.append(el("h3", { text: T("bugs.sentAutomatically", "Sent automatically") }), ctx);
+  if (r.adminNote) box.append(el("h3", { text: T("bugs.adminNoteTitle", "Note from the admins") }), el("p", { style: "white-space:pre-wrap", text: r.adminNote }));
   const files = r.files || {};
   if (files.screen) {
-    const img = el("img", { class: "bugShot", alt: "Screenshot" });
-    box.append(el("h3", { text: "Screenshot" }), img);
-    bugFile(r.id, "screen").then(f => { img.src = "data:" + f.type + ";base64," + f.data; }).catch(e => img.replaceWith(el("p", { class: "hint", text: "Could not load: " + e.message })));
+    const img = el("img", { class: "bugShot", alt: T("bugs.screenshot", "Screenshot") });
+    box.append(el("h3", { text: T("bugs.screenshot", "Screenshot") }), img);
+    bugFile(r.id, "screen").then(f => { img.src = "data:" + f.type + ";base64," + f.data; }).catch(e => img.replaceWith(el("p", { class: "hint", text: T("bugs.couldNotLoad", "Could not load: {error}", { error: e.message }) })));
   }
   if (files.log) {
-    const pre = el("div", { class: "bugLog", text: "Loading…" });
-    const dl = el("button", { class: "small", type: "button", text: "Download log" });
-    box.append(el("h3", { text: "Log (last lines from the game)" }), pre, dl);
+    const pre = el("div", { class: "bugLog", text: T("common.loading", "Loading…") });
+    const dl = el("button", { class: "small", type: "button", text: T("bugs.downloadLog", "Download log") });
+    box.append(el("h3", { text: T("bugs.logTitle", "Log (last lines from the game)") }), pre, dl);
     bugFile(r.id, "log").then(f => {
       pre.textContent = f.log; pre.scrollTop = pre.scrollHeight;
       dl.onclick = () => { const a = el("a", { href: URL.createObjectURL(new Blob([f.log], { type: "text/plain" })), download: r.id + "-log.txt" }); a.click(); };
-    }).catch(e => { pre.textContent = "Could not load: " + e.message; });
+    }).catch(e => { pre.textContent = T("bugs.couldNotLoad", "Could not load: {error}", { error: e.message }); });
   }
-  if (files.dump) box.append(el("p", {}, el("button", { class: "small", type: "button", text: "Download crash dump (admins)", onclick: async () => {
+  if (files.dump) box.append(el("p", {}, el("button", { class: "small", type: "button", text: T("bugs.downloadDump", "Download crash dump (admins)"), onclick: async () => {
     try { const f = await bugFile(r.id, "dump"); const bin = Uint8Array.from(atob(f.data), c => c.charCodeAt(0));
       el("a", { href: URL.createObjectURL(new Blob([bin], { type: f.type })), download: f.name }).click(); } catch (e) { say(sentence(e), "bad"); } } })));
-  if (r.attachmentsRemoved) box.append(el("p", { class: "hint", text: "The log, screenshot and crash dump were removed " + r.attachmentsRemoved.slice(0, 10) + ", 30 days after this report was closed." }));
-  else if (!files.log && !files.screen && (r.mine || r.admin)) box.append(el("p", { class: "hint", text: "No screenshot or log was sent with this report." }));
+  if (r.attachmentsRemoved) box.append(el("p", { class: "hint", text: T("bugs.attachmentsRemoved", "The log, screenshot and crash dump were removed {date}, 30 days after this report was closed.", { date: r.attachmentsRemoved.slice(0, 10) }) }));
+  else if (!files.log && !files.screen && (r.mine || r.admin)) box.append(el("p", { class: "hint", text: T("bugs.noAttachments", "No screenshot or log was sent with this report.") }));
   if (r.admin) {
-    const status = el("select", {}); for (const [v, t] of Object.entries(BUG_STATUSES)) status.append(el("option", { value: v, text: t })); status.value = r.status;
-    const sev = el("select", {}); for (const [v, t] of Object.entries(BUG_SEVERITIES)) sev.append(el("option", { value: v, text: t })); sev.value = r.severity;
-    const cat = el("select", {}); for (const [v, t] of Object.entries(BUG_CATEGORIES)) cat.append(el("option", { value: v, text: t })); cat.value = r.category;
+    const status = el("select", {}); for (const [v, t] of Object.entries(bugStatuses())) status.append(el("option", { value: v, text: t })); status.value = r.status;
+    const sev = el("select", {}); for (const [v, t] of Object.entries(sevs)) sev.append(el("option", { value: v, text: t })); sev.value = r.severity;
+    const cat = el("select", {}); for (const [v, t] of Object.entries(cats)) cat.append(el("option", { value: v, text: t })); cat.value = r.category;
     const fixed = el("input", { value: r.fixedIn || "", placeholder: "0.13.3", size: 10 });
     const dup = el("input", { value: r.duplicateOf || "", placeholder: "B-0042", size: 10 });
     const note = el("textarea", { value: r.adminNote || "", rows: 2 });
-    const save = el("button", { class: "primary", type: "button", text: "Save", onclick: async () => {
+    const save = el("button", { class: "primary", type: "button", text: T("bugs.save", "Save"), onclick: async () => {
       try { await call("BugUpdate", { id: r.id, status: status.value, severity: sev.value, category: cat.value, fixedIn: fixed.value.trim(), duplicateOf: dup.value.trim(), note: note.value });
-        say(r.id + " saved.", "ok"); showBug(r.id); } catch (e) { say("Not saved: " + e.message, "bad"); } } });
-    box.append(el("h3", { text: "Admin" }), el("div", { class: "row" }, field("Status", status), field("Severity", sev), field("Type", cat), field("Fixed in", fixed), field("Duplicate of", dup)),
-      field("Note (shown on the report)", note, true), save);
+        say(T("bugs.saved", "{id} saved.", { id: r.id }), "ok"); showBug(r.id); } catch (e) { say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); } } });
+    box.append(el("h3", { text: T("bugs.adminTitle", "Admin") }), el("div", { class: "row" }, field(T("bugs.status", "Status"), status), field(T("bugs.severity", "Severity"), sev), field(T("bugs.type", "Type"), cat),
+      field(T("bugs.fixedInLabel", "Fixed in"), fixed), field(T("bugs.duplicateOf", "Duplicate of"), dup)),
+      field(T("bugs.noteLabel", "Note (shown on the report)"), note, true), save);
   }
   if (r.status === "new" && (r.mine || r.admin)) {
     const t = el("input", { value: r.title, maxLength: 120 }), dsc = el("textarea", { value: r.description || "", rows: 4 });
-    box.append(el("h3", { text: "Edit (while the report is new)" }), field("Title", t, true), field("What happened, steps to make it happen again", dsc, true),
-      el("button", { type: "button", text: "Save changes", onclick: async () => {
-        try { await call("BugUpdate", { id: r.id, title: t.value, description: dsc.value }); say("Saved.", "ok"); showBug(r.id); } catch (e) { say("Not saved: " + e.message, "bad"); } } }));
+    box.append(el("h3", { text: T("bugs.editTitle", "Edit (while the report is new)") }), field(T("bugs.titleLabel", "Title"), t, true), field(T("bugs.descriptionLabel", "What happened, steps to make it happen again"), dsc, true),
+      el("button", { type: "button", text: T("bugs.saveChanges", "Save changes"), onclick: async () => {
+        try { await call("BugUpdate", { id: r.id, title: t.value, description: dsc.value }); say(T("bugs.savedPlain", "Saved."), "ok"); showBug(r.id); } catch (e) { say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); } } }));
   }
 }
+onSiteLang(() => {                               // the Bugs page follows the site language: the Type list, then the list or the open report
+  try {
+    bugCategoryOptions();
+    if ($("viewBugs").classList.contains("hidden")) return;
+    if (bugShown && !$("bugOne").classList.contains("hidden")) showBug(bugShown); else drawBugs();
+  } catch (e) { }
+});
 // Home: the welcome message and the project's links.
 function drawHome() {
   $("homeHello").textContent = me ? T("home.welcomeName", "Welcome, {name}", { name: me }) : T("home.welcome", "Welcome");
@@ -3582,18 +3614,18 @@ async function importDeck() {
 // Admins: every account with its switches. Reviewer and tester are independent; admin turns everything on.
 // Ranks: founding owner > owner > admin > everyone else. An account can only be changed by someone ranked
 // above it; owners give and take admin, only the founding owner gives and takes owner.
-async function deleteAccount(name) {
-  const d = await confirmWithPassword(`Delete ${name}?`,
-    "The account is signed out everywhere now and deleted in 7 days unless someone signs in to it (or you press Keep account).",
-    "Delete account", passphrase => call("CreatorSetAccount", { name, delete: true, passphrase }));
+async function adminDeleteAccount(name) {     // Admin > People (not the Profile page's own deleteAccount(), which this name once replaced)
+  const d = await confirmWithPassword(T("admin.people.deleteAsk", "Delete {name}?", { name }),
+    T("admin.people.deleteText", "The account is signed out everywhere now and deleted in 7 days unless someone signs in to it (or you press Keep account)."),
+    T("admin.people.deleteGo", "Delete account"), passphrase => call("CreatorSetAccount", { name, delete: true, passphrase }));
   if (!d) return;
-  if (d instanceof Error) say("Not changed: " + d.message, "bad");
-  else say(`${name}: will be deleted in 7 days.`, "ok");
+  if (d instanceof Error) say(T("admin.notChanged", "Not changed: {error}", { error: d.message }), "bad");
+  else say(T("admin.people.willBeDeleted", "{name}: will be deleted in 7 days.", { name }), "ok");
   loadPeople(); loadList();
 }
 async function setAccount(name, change, done) {
-  try { await call("CreatorSetAccount", Object.assign({ name }, change)); say(`${name}: ${done}.`, "ok"); }
-  catch (x) { say("Not changed: " + x.message, "bad"); }
+  try { await call("CreatorSetAccount", Object.assign({ name }, change)); say(T("admin.people.changed", "{name}: {change}.", { name, change: done }), "ok"); }
+  catch (x) { say(T("admin.notChanged", "Not changed: {error}", { error: x.message }), "bad"); }
   loadPeople(); loadList();
 }
 // Unreleased cards (admins): text-only cards from the game's own English text, read-only.
@@ -3601,7 +3633,7 @@ let unrel = null, unrelGloss = {};
 async function loadUnreleased() {
   if (!unrel) {
     try { const d = await call("CreatorUnreleased"); unrel = d.cards; unrelGloss = d.keywords || {}; }
-    catch (e) { return say("Could not load the unreleased cards: " + e.message, "bad"); }
+    catch (e) { return say(T("admin.unreleased.loadFailed", "Could not load the unreleased cards: {error}", { error: e.message }), "bad"); }
   }
   drawUnreleased();
 }
@@ -3619,16 +3651,17 @@ function drawUnreleased() {
   const list = unrel.filter(c => (!show || c.status === show) &&
     (!q || [c.name, c.text, c.army, c.lore].some(x => String(x || "").toLowerCase().includes(q))));
   list.sort((a, b) => a.status.startsWith("Old") - b.status.startsWith("Old"));   // unreleased first, old versions after
-  $("unrelCount").textContent = `${list.length} of ${unrel.length} cards`;
+  $("unrelCount").textContent = T("admin.unreleased.count", "{shown} of {total} cards", { shown: list.length, total: unrel.length });
   const box = $("unrelList"); box.textContent = "";
   for (const c of list) {
-    const stats = [c.type, c.cost != null ? c.cost + " energy" : "", c.melee != null ? `${c.melee} melee / ${c.ranged} ranged / ${c.hp} health` : "", c.rarity].filter(Boolean).join(" · ");
+    const stats = [c.type, c.cost != null ? T("admin.unreleased.energy", "{n} energy", { n: c.cost }) : "",
+      c.melee != null ? T("admin.unreleased.stats", "{melee} melee / {ranged} ranged / {health} health", { melee: c.melee, ranged: c.ranged, health: c.hp }) : "", c.rarity].filter(Boolean).join(" · ");
     box.append(el("div", { class: "box unrelCard" + (c.status.startsWith("Old") ? " old" : "") },
       el("div", { class: "head" }, el("strong", { text: c.name }), el("span", { class: "spacer" }),
-        el("span", { class: "badge " + (c.status.startsWith("Old") ? "draft" : "pending"), text: c.status.startsWith("Old") ? "Old version" : "Unreleased" })),
-      el("div", { class: "hint", text: (c.army && c.army !== "?" ? c.army : "Army unknown") + (stats ? " · " + stats : "") }),
-      c.text ? unrelText(c.text) : el("p", { class: "hint", text: "No rules text in the game, only the name." }),
-      c.lore ? el("details", {}, el("summary", { text: "Lore" }), el("p", { text: c.lore })) : null));
+        el("span", { class: "badge " + (c.status.startsWith("Old") ? "draft" : "pending"), text: c.status.startsWith("Old") ? T("admin.unreleased.oldVersion", "Old version") : T("admin.unreleased.unreleased", "Unreleased") })),
+      el("div", { class: "hint", text: (c.army && c.army !== "?" ? c.army : T("admin.unreleased.armyUnknown", "Army unknown")) + (stats ? " · " + stats : "") }),
+      c.text ? unrelText(c.text) : el("p", { class: "hint", text: T("admin.unreleased.noText", "No rules text in the game, only the name.") }),
+      c.lore ? el("details", {}, el("summary", { text: T("admin.unreleased.lore", "Lore") }), el("p", { text: c.lore })) : null));
   }
 }
 // Requests: accounts waiting for access, a page at a time (the server sends only names and dates).
@@ -3640,88 +3673,107 @@ async function loadRequestCount() {
 async function loadRequests() {
   let d;
   try { d = await call("CreatorRequests", { offset: reqOffset, limit: REQ_PAGE, query: val("reqQuery").trim() }); }
-  catch (e) { return say("Could not load the requests: " + e.message, "bad"); }
+  catch (e) { return say(T("admin.requests.loadFailed", "Could not load the requests: {error}", { error: e.message }), "bad"); }
   if (d.offset && d.offset >= d.matching) { reqOffset = Math.max(0, d.matching - REQ_PAGE); return loadRequests(); }   // the last page emptied
   reqTab(d.total);
-  $("reqHint").textContent = (d.autoApprove ? "New accounts are approved automatically for now, so new ones do not wait here. " : "") +
-    (d.total ? `${d.total} waiting.` : "Nobody is waiting.");
+  $("reqHint").textContent = (d.autoApprove ? T("admin.requests.autoApprove", "New accounts are approved automatically for now, so new ones do not wait here.") + " " : "") +
+    (d.total ? T("admin.requests.waiting", "{count} waiting.", { count: d.total }) : T("admin.requests.nobody", "Nobody is waiting."));
   reqShown = d.requests;
   const box = $("requests"); box.textContent = "";
   for (const r of d.requests) {
     box.append(el("div", { class: "item" },
       el("div", {}, el("span", { class: "title", text: r.name + " " }),
-        r.deleteAt ? el("span", { class: "badge rejected", text: "deleted on " + new Date(r.deleteAt).toLocaleDateString() }) : null,
-        el("span", { class: "hint", text: r.created ? " asked " + r.created.slice(0, 10) : "" })),
+        r.deleteAt ? el("span", { class: "badge rejected", text: T("admin.deletedOn", "deleted on {date}", { date: new Date(r.deleteAt).toLocaleDateString() }) }) : null,
+        el("span", { class: "hint", text: r.created ? " " + T("admin.requests.asked", "asked {date}", { date: r.created.slice(0, 10) }) : "" })),
       el("div", { class: "actions" },
-        el("button", { class: "small primary", text: "Approve", onclick: () => answerRequest(r.name, { access: "approved" }, "approved") }),
-        r.deleteAt ? null : el("button", { class: "small danger", text: "Decline", title: "Signs the account out and deletes it after 7 days",
-          onclick: () => { if (confirm(`Decline ${r.name}? The account is deleted in 7 days unless someone signs in to it.`)) answerRequest(r.name, { delete: true }, "declined: deleted in 7 days"); } }))));
+        el("button", { class: "small primary", text: T("creator.approve", "Approve"), onclick: () => answerRequest(r.name, { access: "approved" }, T("admin.requests.approved", "approved")) }),
+        r.deleteAt ? null : el("button", { class: "small danger", text: T("admin.requests.decline", "Decline"), title: T("admin.requests.declineTip", "Signs the account out and deletes it after 7 days"),
+          onclick: () => { if (confirm(T("admin.requests.declineAsk", "Decline {name}? The account is deleted in 7 days unless someone signs in to it.", { name: r.name }))) answerRequest(r.name, { delete: true }, T("admin.requests.declined", "declined: deleted in 7 days")); } }))));
   }
   const last = Math.min(d.offset + d.requests.length, d.matching);
-  $("reqPage").textContent = d.matching ? `${d.offset + 1}-${last} of ${d.matching}` : (val("reqQuery").trim() ? "No name matches." : "");
+  $("reqPage").textContent = d.matching ? T("admin.requests.page", "{first}-{last} of {total}", { first: d.offset + 1, last, total: d.matching }) : (val("reqQuery").trim() ? T("admin.requests.noMatch", "No name matches.") : "");
   $("reqPrev").disabled = d.offset === 0; $("reqNext").disabled = last >= d.matching;
   $("reqApproveAll").disabled = !d.requests.length;
 }
 async function answerRequest(name, change, done) {
-  try { await call("CreatorSetAccount", Object.assign({ name }, change)); say(`${name}: ${done}.`, "ok"); }
-  catch (x) { say("Not changed: " + x.message, "bad"); }
+  try { await call("CreatorSetAccount", Object.assign({ name }, change)); say(T("admin.people.changed", "{name}: {change}.", { name, change: done }), "ok"); }
+  catch (x) { say(T("admin.notChanged", "Not changed: {error}", { error: x.message }), "bad"); }
   loadRequests();
 }
 async function approveShown() {
   const names = reqShown.map(r => r.name);
-  if (!names.length || !confirm(`Approve all ${names.length} account(s) shown on this page?`)) return;
+  if (!names.length || !confirm(T("admin.requests.approveAllAsk", "Approve all {count} account(s) shown on this page?", { count: names.length }))) return;
   let done = 0, failed = 0;
   for (const name of names) {
     try { await call("CreatorSetAccount", { name, access: "approved" }); done++; } catch (x) { failed++; }
   }
-  say(`${done} approved${failed ? `, ${failed} not changed` : ""}.`, failed ? "bad" : "ok");
+  say(failed ? T("admin.requests.approvedSome", "{done} approved, {failed} not changed.", { done, failed }) : T("admin.requests.approvedAll", "{done} approved.", { done }), failed ? "bad" : "ok");
   loadRequests();
+}
+// The People page's words for an account's settings (functions: the language file arrives after the page loads).
+function accessNames() { return { requested: T("admin.people.accessRequested", "Requested"), approved: T("admin.people.accessApproved", "Approved"), banned: T("admin.people.accessBanned", "Banned") }; }
+function accessBadge(access) { return ({ requested: T("admin.people.badgeRequested", "requested"), banned: T("admin.people.badgeBanned", "banned") })[access] || access; }
+function accessDone(access) {
+  return ({ requested: T("admin.people.accessSetRequested", "access set to requested"), approved: T("admin.people.accessSetApproved", "access set to approved"),
+    banned: T("admin.people.accessSetBanned", "access set to banned") })[access] || access;
+}
+function roleNames() { return { reviewer: T("admin.people.roleReviewer", "Reviewer"), tester: T("admin.people.roleTester", "In-game tester"), admin: T("admin.people.roleAdmin", "Admin"), owner: T("admin.people.roleOwner", "Owner") }; }
+function roleDone(key, on) {                     // what a role checkbox did, said after the account's name
+  const words = {
+    reviewer: [T("admin.people.reviewerOff", "reviewer off"), T("admin.people.reviewerOn", "reviewer on")],
+    tester: [T("admin.people.testerOff", "in-game tester off"), T("admin.people.testerOn", "in-game tester on")],
+    admin: [T("admin.people.adminOff", "admin off"), T("admin.people.adminOn", "admin on")],
+    owner: [T("admin.people.ownerOff", "owner off"), T("admin.people.ownerOn", "owner on")] };
+  return words[key][on ? 1 : 0];
 }
 async function loadPeople() {
   const box = $("people"); box.textContent = "";
   let d;
-  try { d = await call("CreatorPeople", { skipRequested: true }); } catch (e) { return say("Could not load the accounts: " + e.message, "bad"); }
+  try { d = await call("CreatorPeople", { skipRequested: true }); } catch (e) { return say(T("admin.people.loadFailed", "Could not load the accounts: {error}", { error: e.message }), "bad"); }
   const oneAccount = !!d.requireAccount;          // account and game player are one: "unlink" only signs the game out
   const tt = d.totals || {};
-  $("peopleTotals").textContent = tt.accounts != null ? `· ${tt.accounts} account${tt.accounts === 1 ? "" : "s"}${tt.waiting ? ` (${tt.waiting} waiting)` : ""} · ${tt.online} online now${tt.playing ? ` (${tt.playing} in a match)` : ""}` : "";
-  $("peopleHint").textContent = d.autoApprove ? "New accounts are approved automatically for now." : "New accounts wait as “requested” until an admin approves them.";
+  $("peopleTotals").textContent = tt.accounts != null ? "· " + (tt.accounts === 1 ? T("admin.people.oneAccount", "1 account") : T("admin.people.accounts", "{count} accounts", { count: tt.accounts })) +
+    (tt.waiting ? " " + T("admin.people.waiting", "({count} waiting)", { count: tt.waiting }) : "") + " · " + T("admin.people.online", "{count} online now", { count: tt.online }) +
+    (tt.playing ? " " + T("admin.people.playing", "({count} in a match)", { count: tt.playing }) : "") : "";
+  $("peopleHint").textContent = d.autoApprove ? T("admin.people.autoApprove", "New accounts are approved automatically for now.") : T("admin.people.waitApproval", "New accounts wait as “requested” until an admin approves them.");
   const rank = q => q.fixed ? 3 : q.owner ? 2 : q.admin ? 1 : 0;
   const myRank = d.founder ? 3 : d.owner ? 2 : 1;
+  const roles = roleNames();
   for (const p of d.people) {
     const locked = p.fixed || rank(p) >= myRank;          // only someone ranked above may change it
-    const access = el("select", { disabled: locked, onchange: e => setAccount(p.name, { access: e.target.value }, "access set to " + e.target.value) });
-    for (const [v, t] of [["requested", "Requested"], ["approved", "Approved"], ["banned", "Banned"]]) access.append(el("option", { value: v, text: t }));
+    const access = el("select", { disabled: locked, onchange: e => setAccount(p.name, { access: e.target.value }, accessDone(e.target.value)) });
+    for (const [v, t] of Object.entries(accessNames())) access.append(el("option", { value: v, text: t }));
     access.value = p.access;
-    const toggle = (key, label) => el("label", { title: myRank < ({ admin: 2, owner: 3 }[key] || 1) ? (key === "owner" ? "Only the founding owner can give or take owner" : "Only an owner can give or take admin") : "" },
+    const toggle = key => el("label", { title: myRank < ({ admin: 2, owner: 3 }[key] || 1) ? (key === "owner" ? T("admin.people.onlyFounder", "Only the founding owner can give or take owner") : T("admin.people.onlyOwner", "Only an owner can give or take admin")) : "" },
       el("input", { type: "checkbox", checked: p[key],
       disabled: locked || myRank < ({ admin: 2, owner: 3 }[key] || 1) || (p.owner && key !== "owner") || (p.admin && !p.owner && key !== "admin" && key !== "owner"),
-      onchange: e => setAccount(p.name, { [key]: e.target.checked }, `${label.toLowerCase()} ${e.target.checked ? "on" : "off"}`) }), label);
+      onchange: e => setAccount(p.name, { [key]: e.target.checked }, roleDone(key, e.target.checked)) }), roles[key]);
     box.append(el("div", { class: "item" },
       el("div", {}, el("span", { class: "title", text: p.name + " " }),
-        p.online ? el("span", { class: "badge approved", text: p.online === "playing" ? "in a match" : "online" }) : null,
-        p.fixed ? el("span", { class: "badge approved", text: "Founding Owner" }) : p.owner ? el("span", { class: "badge approved", text: "Owner" }) : p.admin ? el("span", { class: "badge draft", text: "Admin" }) : null,
-        p.access !== "approved" ? el("span", { class: "badge " + (p.access === "banned" ? "rejected" : "pending"), text: p.access }) : null,
-        p.deleteAt ? el("span", { class: "badge rejected", text: "deleted on " + new Date(p.deleteAt).toLocaleDateString() }) : null,
-        el("div", { class: "hint", text: `${p.cards} card(s)${p.created ? " · joined " + p.created.slice(0, 10) : ""}` }),
+        p.online ? el("span", { class: "badge approved", text: p.online === "playing" ? T("admin.people.inMatch", "in a match") : T("admin.people.isOnline", "online") }) : null,
+        p.fixed ? el("span", { class: "badge approved", text: T("admin.people.roleFounder", "Founding Owner") }) : p.owner ? el("span", { class: "badge approved", text: roles.owner }) : p.admin ? el("span", { class: "badge draft", text: roles.admin }) : null,
+        p.access !== "approved" ? el("span", { class: "badge " + (p.access === "banned" ? "rejected" : "pending"), text: accessBadge(p.access) }) : null,
+        p.deleteAt ? el("span", { class: "badge rejected", text: T("admin.deletedOn", "deleted on {date}", { date: new Date(p.deleteAt).toLocaleDateString() }) }) : null,
+        el("div", { class: "hint", text: T("admin.people.cards", "{count} card(s)", { count: p.cards }) + (p.created ? " · " + T("admin.people.joined", "joined {date}", { date: p.created.slice(0, 10) }) : "") }),
         locked || p.name.toLowerCase() === (me || "").toLowerCase() || p.access === "banned" ? null : el("div", { class: "hint" },
-          p.resetUntil ? `Reset code waiting (made by ${p.resetBy}, works until ${new Date(p.resetUntil).toLocaleString()}) ` : "",
-          el("button", { class: "small", text: p.resetUntil ? "New reset code" : "Password reset code",
-            title: "Makes a one-time code this person can use to set a new password (sign-in page > Forgot your password?)",
+          p.resetUntil ? T("admin.people.resetWaiting", "Reset code waiting (made by {name}, works until {time})", { name: p.resetBy, time: new Date(p.resetUntil).toLocaleString() }) + " " : "",
+          el("button", { class: "small", text: p.resetUntil ? T("admin.people.newResetCode", "New reset code") : T("admin.people.resetCode", "Password reset code"),
+            title: T("admin.people.resetCodeTip", "Makes a one-time code this person can use to set a new password (sign-in page > Forgot your password?)"),
             onclick: () => makeResetCode(p.name, !!p.resetUntil) }), " ",
-          p.resetUntil ? el("button", { class: "small", text: "Cancel code", onclick: () => cancelResetCode(p.name) }) : null),
-        el("div", { class: "hint" }, p.player ? `Linked to game player ${p.playerName} ` : "Not linked to a game player",
-          p.discord ? ` · Discord: ${p.discord} ` : "",
+          p.resetUntil ? el("button", { class: "small", text: T("admin.people.cancelCode", "Cancel code"), onclick: () => cancelResetCode(p.name) }) : null),
+        el("div", { class: "hint" }, p.player ? T("admin.people.linkedTo", "Linked to game player {name}", { name: p.playerName }) + " " : T("admin.people.notLinked", "Not linked to a game player"),
+          p.discord ? " · " + T("admin.people.discord", "Discord: {name}", { name: p.discord }) + " " : "",
           p.player && !locked ? (oneAccount
-            ? el("button", { class: "small", text: "Sign out of game", title: "Signs this account out of the game on every computer and Android device. It keeps its game player.", onclick: () => setAccount(p.name, { unlink: true }, "signed out of the game everywhere") })
-            : el("button", { class: "small", text: "Unlink", onclick: () => setAccount(p.name, { unlink: true }, "game account unlinked") })) : null)),
-      el("div", { class: "actions", style: "align-items:center; gap:14px" }, field("Site access", access),
-        el("div", { class: "checks" }, toggle("reviewer", "Reviewer"), toggle("tester", "In-game tester"), toggle("admin", "Admin"), toggle("owner", "Owner")),
+            ? el("button", { class: "small", text: T("admin.people.signOutGame", "Sign out of game"), title: T("admin.people.signOutGameTip", "Signs this account out of the game on every computer and Android device. It keeps its game player."), onclick: () => setAccount(p.name, { unlink: true }, T("admin.people.signedOutGame", "signed out of the game everywhere")) })
+            : el("button", { class: "small", text: T("profile.unlink", "Unlink"), onclick: () => setAccount(p.name, { unlink: true }, T("admin.people.unlinked", "game account unlinked")) })) : null)),
+      el("div", { class: "actions", style: "align-items:center; gap:14px" }, field(T("admin.people.siteAccess", "Site access"), access),
+        el("div", { class: "checks" }, toggle("reviewer"), toggle("tester"), toggle("admin"), toggle("owner")),
         // the button sits in a slot of fixed width, kept even when there is no button, so every row's boxes line up
         el("div", { class: "rowButton", style: "width:104px; display:flex; justify-content:flex-end" },
         locked || p.name.toLowerCase() === (me || "").toLowerCase() ? null : p.deleteAt
-          ? el("button", { class: "small", text: "Keep account", title: "Cancels the deletion", onclick: () => setAccount(p.name, { delete: false }, "deletion cancelled") })
-          : el("button", { class: "small danger", text: "Delete", title: "Signs the account out everywhere and deletes it after 7 days (signing in again cancels it)",
-              onclick: () => deleteAccount(p.name) })))));
+          ? el("button", { class: "small", text: T("admin.people.keep", "Keep account"), title: T("admin.people.keepTip", "Cancels the deletion"), onclick: () => setAccount(p.name, { delete: false }, T("admin.people.deletionCancelled", "deletion cancelled")) })
+          : el("button", { class: "small danger", text: T("admin.people.delete", "Delete"), title: T("admin.people.deleteTip", "Signs the account out everywhere and deletes it after 7 days (signing in again cancels it)"),
+              onclick: () => adminDeleteAccount(p.name) })))));
     const row = box.lastElementChild;            // what the search box and the Show list match on
     row.dataset.search = (p.name + " " + (p.playerName || "") + " " + (p.discord || "")).toLowerCase();
     row.dataset.tags = [p.online ? "online" : "", p.reviewer || p.admin || p.owner || p.fixed ? "staff" : "", p.tester ? "tester" : "", p.access === "banned" ? "banned" : ""].join(" ");
@@ -3759,33 +3811,31 @@ function confirmWithPassword(title, text, button, send) {
 // Admins: a one-time password reset code for someone who forgot their password and has no recovery code.
 // Shown once here, to be passed on privately; the server keeps only a fingerprint.
 async function makeResetCode(name, replacing) {
-  const d = await confirmWithPassword(`Password reset code for ${name}`,
-    `${replacing ? "The code made earlier stops working. " : ""}Anyone with the code and the username can take over the account, ` +
-    "so only give it to the account's owner, privately (a direct message, never a public channel). Check first that it is really them.",
-    "Make code", passphrase => call("CreatorResetCode", { name, passphrase }));
+  const d = await confirmWithPassword(T("admin.people.resetTitle", "Password reset code for {name}", { name }),
+    (replacing ? T("admin.people.resetReplaces", "The code made earlier stops working.") + " " : "") +
+    T("admin.people.resetWarning", "Anyone with the code and the username can take over the account, so only give it to the account's owner, privately (a direct message, never a public channel). Check first that it is really them."),
+    T("admin.people.resetGo", "Make code"), passphrase => call("CreatorResetCode", { name, passphrase }));
   if (!d) return;
-  if (d instanceof Error) return say("No code made: " + d.message, "bad");
+  if (d instanceof Error) return say(T("admin.people.noCode", "No code made: {error}", { error: d.message }), "bad");
   const until = new Date(d.until).toLocaleString();
-  const msg = `Your Warpforge Revival password reset code: ${d.recoveryCode}\n` +
-    `On the website's sign-in page choose "Forgot your password?", enter your username (${d.name}), this code and a new password. ` +
-    `It works once, until ${until}. Afterwards, make your own recovery code on your Profile page.`;
+  const msg = T("admin.people.resetMessage1", "Your Warpforge Revival password reset code: {code}", { code: d.recoveryCode }) + "\n" +
+    T("admin.people.resetMessage2", "On the website's sign-in page choose \"Forgot your password?\", enter your username ({name}), this code and a new password. It works once, until {time}. Afterwards, make your own recovery code on your Profile page.", { name: d.name, time: until });
   const box = el("div", { class: "box resetCode" },
-    el("strong", { text: `Reset code for ${d.name}` }),
+    el("strong", { text: T("admin.people.resetFor", "Reset code for {name}", { name: d.name }) }),
     el("p", { style: "font-family:ui-monospace,Consolas,monospace; font-size:1.3em; letter-spacing:.06em; margin:.4em 0; user-select:all", text: d.recoveryCode }),
-    el("p", { class: "hint", text: `Works once, for ${d.hours} hours (until ${until}). It is shown only now: copy it before closing this box. ` +
-      "Using it signs the account out everywhere; its own recovery code, if it has one, keeps working." }),
+    el("p", { class: "hint", text: T("admin.people.resetWorks", "Works once, for {hours} hours (until {time}). It is shown only now: copy it before closing this box. Using it signs the account out everywhere; its own recovery code, if it has one, keeps working.", { hours: d.hours, time: until }) }),
     el("div", { class: "actions", style: "gap:8px; flex-wrap:wrap" },
-      el("button", { class: "small primary", text: "Copy message for them", onclick: async e => { try { await navigator.clipboard.writeText(msg); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work: select the code and copy it by hand.", "bad"); } } }),
-      el("button", { class: "small", text: "Copy code only", onclick: async e => { try { await navigator.clipboard.writeText(d.recoveryCode); e.target.textContent = "Copied"; } catch (x) { say("Copy did not work: select the code and copy it by hand.", "bad"); } } }),
-      el("button", { class: "small", text: "Close", onclick: () => { box.remove(); loadPeople(); } })));
+      el("button", { class: "small primary", text: T("admin.people.copyMessage", "Copy message for them"), onclick: async e => { try { await navigator.clipboard.writeText(msg); e.target.textContent = T("common.copied", "Copied"); } catch (x) { say(T("replays.copyByHand", "Copy did not work: select the code and copy it by hand."), "bad"); } } }),
+      el("button", { class: "small", text: T("admin.people.copyCode", "Copy code only"), onclick: async e => { try { await navigator.clipboard.writeText(d.recoveryCode); e.target.textContent = T("common.copied", "Copied"); } catch (x) { say(T("replays.copyByHand", "Copy did not work: select the code and copy it by hand."), "bad"); } } }),
+      el("button", { class: "small", text: T("common.close", "Close"), onclick: () => { box.remove(); loadPeople(); } })));
   const old = document.querySelector(".resetCode"); if (old) old.remove();
   $("people").before(box);
   box.scrollIntoView({ block: "nearest" });
-  say(`${d.name}: reset code made. Pass it on privately.`, "ok");
+  say(T("admin.people.resetMade", "{name}: reset code made. Pass it on privately.", { name: d.name }), "ok");
 }
 async function cancelResetCode(name) {
-  try { await call("CreatorResetCode", { name, remove: true }); say(`${name}: reset code cancelled.`, "ok"); }
-  catch (e) { say("Not cancelled: " + e.message, "bad"); }
+  try { await call("CreatorResetCode", { name, remove: true }); say(T("admin.people.resetCancelled", "{name}: reset code cancelled.", { name }), "ok"); }
+  catch (e) { say(T("admin.people.notCancelled", "Not cancelled: {error}", { error: e.message }), "bad"); }
   loadPeople();
 }
 function filterPeople() {
@@ -3797,7 +3847,7 @@ function filterPeople() {
     row.classList.toggle("hidden", !hit);
     if (hit) n++;
   }
-  $("peopleCount").textContent = q || show ? `${n} of ${all} shown` : "";
+  $("peopleCount").textContent = q || show ? T("admin.people.shownCount", "{shown} of {total} shown", { shown: n, total: all }) : "";
 }
 // Keyword cheat sheet: short descriptions from the fan rulebook, joined with how the official cards use each keyword.
 let kwList = null;
@@ -3847,18 +3897,21 @@ function drawKeywords() {
 }
 // Admins: bans of game players.
 function banRow(p, inList) {
-  const who = `${p.name || "(no name)"} · ${p.code}${p.account ? " · site account " + p.account : ""}${p.lastLogin ? " · last played " + p.lastLogin.slice(0, 10) : ""}`;
-  const why = p.bannedHere ? `Banned by ${p.by || "?"}${p.at ? " on " + p.at.slice(0, 10) : ""}${p.reason ? ": " + p.reason : ""}` : (p.banned ? "Banned through the site account " + p.account + " - unban it in the list above" : "");
+  const who = `${p.name || T("admin.moderation.noName", "(no name)")} · ${p.code}${p.account ? " · " + T("admin.moderation.siteAccount", "site account {name}", { name: p.account }) : ""}${p.lastLogin ? " · " + T("admin.moderation.lastPlayed", "last played {date}", { date: p.lastLogin.slice(0, 10) }) : ""}`;
+  const why = p.bannedHere ? (p.at ? T("admin.moderation.bannedByOn", "Banned by {name} on {date}", { name: p.by || "?", date: p.at.slice(0, 10) }) : T("admin.moderation.bannedBy", "Banned by {name}", { name: p.by || "?" })) + (p.reason ? ": " + p.reason : "")
+    : (p.banned ? T("admin.moderation.bannedThroughAccount", "Banned through the site account {name} - unban it in the list above", { name: p.account }) : "");
   const button = p.bannedHere
-    ? el("button", { class: "small", text: "Unban", onclick: () => setBan(p, false) })
-    : p.banned ? null : el("button", { class: "small danger", text: "Ban", onclick: () => setBan(p, true) });
+    ? el("button", { class: "small", text: T("admin.moderation.unban", "Unban"), onclick: () => setBan(p, false) })
+    : p.banned ? null : el("button", { class: "small danger", text: T("admin.moderation.ban", "Ban"), onclick: () => setBan(p, true) });
   return el("div", { class: "item" }, el("div", {}, el("span", { class: "title", text: who }), why ? el("div", { class: "hint", text: why }) : null), el("div", { class: "actions" }, button));
 }
 async function setBan(p, ban) {
   let reason = "";
-  if (ban) { reason = prompt(`Ban ${p.name || p.code} from the game server?\n\nReason (only admins see it):`, ""); if (reason === null) return; }
-  try { const r = await call("CreatorGameBan", { player: p.player, ban, reason }); say(`${p.name || p.code}: ${ban ? "banned" : "unbanned"}.${r.note ? " Note: " + r.note + "." : ""}`, "ok"); }
-  catch (e) { say("Not changed: " + e.message, "bad"); }
+  if (ban) { reason = prompt(T("admin.moderation.banAsk", "Ban {name} from the game server?", { name: p.name || p.code }) + "\n\n" + T("admin.moderation.banReason", "Reason (only admins see it):"), ""); if (reason === null) return; }
+  try { const r = await call("CreatorGameBan", { player: p.player, ban, reason });
+    say((ban ? T("admin.moderation.banned", "{name}: banned.", { name: p.name || p.code }) : T("admin.moderation.unbanned", "{name}: unbanned.", { name: p.name || p.code })) +
+      (r.note ? " " + T("admin.moderation.banNote", "Note: {note}.", { note: r.note }) : ""), "ok"); }
+  catch (e) { say(T("admin.notChanged", "Not changed: {error}", { error: e.message }), "bad"); }
   loadBans(val("banQuery").trim());
 }
 async function loadBans(query) {
@@ -3868,47 +3921,49 @@ async function loadBans(query) {
   // With accounts required every player has a site account, and banning the account (above) is
   // the way to ban someone; this section then only lists who is banned.
   const accounts = !!d.requireAccount;
-  $("banTitle").textContent = accounts ? "Banned players" : "Banned game players";
+  $("banTitle").textContent = accounts ? T("admin.moderation.bansTitleAccounts", "Banned players") : T("admin.moderation.bansTitle", "Banned game players");
   $("banHint").textContent = accounts
-    ? "Every player signs in with a site account, so to ban someone, set their account to Banned in the list above: they cannot sign in, and a game already running stops working at its next request. Everyone who is banned is listed here. A game player banned on its own (from before accounts were required) can be unbanned here; the others are unbanned above."
-    : "For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (above) are listed here too; unban those above.";
+    ? T("admin.moderation.bansHelpAccounts", "Every player signs in with a site account, so to ban someone, set their account to Banned in the list above: they cannot sign in, and a game already running stops working at its next request. Everyone who is banned is listed here. A game player banned on its own (from before accounts were required) can be unbanned here; the others are unbanned above.")
+    : T("admin.moderation.bansHelp", "For players without a site account, or to ban a game player on its own. A banned player cannot sign in, and a game already running stops working at its next request. Players whose site account is banned (above) are listed here too; unban those above.");
   $("banFindRow").classList.toggle("hidden", accounts); found.classList.toggle("hidden", accounts);
   for (const p of d.bans) list.append(banRow(p, true));
-  if (!d.bans.length) list.append(el("p", { class: "hint", text: "Nobody is banned." }));
+  if (!d.bans.length) list.append(el("p", { class: "hint", text: T("admin.moderation.nobodyBanned", "Nobody is banned.") }));
   for (const p of d.found) found.append(banRow(p, false));
-  if (query && !d.found.length) found.append(el("p", { class: "hint", text: "No player matches." }));
+  if (query && !d.found.length) found.append(el("p", { class: "hint", text: T("admin.moderation.noPlayerMatch", "No player matches.") }));
 }
 $("banFind").onclick = () => loadBans(val("banQuery").trim());
 $("banQuery").onkeydown = e => { if (e.key === "Enter") loadBans(val("banQuery").trim()); };
 // Admins: reported chat messages.
-function reportWho(p) { return `${p.name || "(no name)"} · ${p.code}${p.account ? " · site account " + p.account : ""}${p.banned ? " · banned" : ""}`; }
+function reportWho(p) { return `${p.name || T("admin.moderation.noName", "(no name)")} · ${p.code}${p.account ? " · " + T("admin.moderation.siteAccount", "site account {name}", { name: p.account }) : ""}${p.banned ? " · " + T("admin.moderation.isBanned", "banned") : ""}`; }
+function reportDone(r) { return r.closed ? " · " + (r.closedBy ? T("admin.moderation.doneBy", "done by {name}", { name: r.closedBy }) : T("admin.moderation.done", "done")) : ""; }
 async function loadReports() {
   let d;
   try { d = await call("CreatorReports", { closed: $("reportsClosed").checked }); } catch (e) { return; }
   const list = $("reports"); list.textContent = "";
   for (const r of d.reports) {
     const when = (r.sent || r.at || "").replace("T", " ").slice(0, 16);
-    const note = `Reported by ${reportWho(r.reporter)} on ${(r.at || "").slice(0, 10)}` + (r.verified ? " · checked" : " · not checked") +
-      (r.closed ? ` · done${r.closedBy ? " by " + r.closedBy : ""}` : "");
-    const button = el("button", { class: "small", text: r.closed ? "Reopen" : "Done", onclick: async () => {
-      try { await call("CreatorReportClose", { id: r.id, closed: !r.closed }); } catch (e) { say("Not changed: " + e.message, "bad"); }
+    const note = T("admin.moderation.reportedByOn", "Reported by {who} on {date}", { who: reportWho(r.reporter), date: (r.at || "").slice(0, 10) }) +
+      " · " + (r.verified ? T("admin.moderation.checked", "checked") : T("admin.moderation.notChecked", "not checked")) + reportDone(r);
+    const button = el("button", { class: "small", text: r.closed ? T("admin.moderation.reopen", "Reopen") : T("admin.moderation.doneButton", "Done"), onclick: async () => {
+      try { await call("CreatorReportClose", { id: r.id, closed: !r.closed }); } catch (e) { say(T("admin.notChanged", "Not changed: {error}", { error: e.message }), "bad"); }
       loadReports();
     } });
     list.append(el("div", { class: "item" }, el("div", {},
       el("span", { class: "title", text: reportWho(r.player) }),
-      el("div", { text: (when ? when + " UTC  " : "") + "\u201c" + r.msg + "\u201d" }),
+      el("div", { text: (when ? when + " UTC  " : "") + "“" + r.msg + "”" }),
       el("div", { class: "hint", text: note })), el("div", { class: "actions" }, button)));
   }
-  if (!d.reports.length) list.append(el("p", { class: "hint", text: "No reports." }));
+  if (!d.reports.length) list.append(el("p", { class: "hint", text: T("admin.moderation.noReports", "No reports.") }));
 }
 $("reportsClosed").onchange = loadReports;
 // Admins: reported players and anti-cheat alarms, with a review of the match.
-const PREPORT_REASONS = { cheating: "Cheating", unsportsmanlike: "Unsportsmanlike", stalling: "Stalling / AFK", other: "Other" };
-const ALARM_KINDS = { tamper: "game memory edited (tampering detector)", speed: "game sped up (speed-hack detector)" };
+// The page's words for the reasons and alarms (functions: the language file arrives after the page loads).
+function preportReasons() { return { cheating: T("admin.moderation.reason.cheating", "Cheating"), unsportsmanlike: T("admin.moderation.reason.unsportsmanlike", "Unsportsmanlike"), stalling: T("admin.moderation.reason.stalling", "Stalling / AFK"), other: T("admin.moderation.reason.other", "Other") }; }
+function alarmKinds() { return { tamper: T("admin.moderation.alarm.tamper", "game memory edited (tampering detector)"), speed: T("admin.moderation.alarm.speed", "game sped up (speed-hack detector)") }; }
 function preportTitle(r) {
   return r.kind === "auto"
-    ? `Anti-cheat: ${ALARM_KINDS[(r.auto || {}).kind] || "alarm"}${(r.auto || {}).count > 1 ? ` (${r.auto.count} times)` : ""}`
-    : `${PREPORT_REASONS[r.reason] || r.reason}${r.note ? ": \u201c" + r.note + "\u201d" : ""}`;
+    ? T("admin.moderation.antiCheat", "Anti-cheat: {alarm}", { alarm: alarmKinds()[(r.auto || {}).kind] || T("admin.moderation.alarm", "alarm") }) + ((r.auto || {}).count > 1 ? " " + T("admin.moderation.times", "({count} times)", { count: r.auto.count }) : "")
+    : `${preportReasons()[r.reason] || r.reason}${r.note ? ": “" + r.note + "”" : ""}`;
 }
 async function loadPlayerReports() {
   let d;
@@ -3916,107 +3971,113 @@ async function loadPlayerReports() {
   const list = $("preports"); list.textContent = "";
   for (const r of d.reports) {
     const info = `${r.id} · ${(r.at || "").replace("T", " ").slice(0, 16)} UTC · ` +
-      (r.kind === "auto" ? "automatic" : "reported by " + reportWho(r.reporter)) +
-      (r.reportsAgainst > 1 ? ` · ${r.reportsAgainst} reports against this player` : "") +
-      ((r.match || {}).matchId ? "" : " · no server record of the match") +
-      (r.closed ? ` · done${r.closedBy ? " by " + r.closedBy : ""}` : "");
-    const review = el("button", { class: "small primary", type: "button", text: "Review", onclick: () => showPlayerReport(r.id) });
-    const done = el("button", { class: "small", type: "button", text: r.closed ? "Reopen" : "Done", onclick: async () => {
+      (r.kind === "auto" ? T("admin.moderation.automatic", "automatic") : T("admin.moderation.reportedBy", "reported by {who}", { who: reportWho(r.reporter) })) +
+      (r.reportsAgainst > 1 ? " · " + T("admin.moderation.reportsAgainst", "{count} reports against this player", { count: r.reportsAgainst }) : "") +
+      ((r.match || {}).matchId ? "" : " · " + T("admin.moderation.noMatchRecord", "no server record of the match")) + reportDone(r);
+    const review = el("button", { class: "small primary", type: "button", text: T("admin.moderation.review", "Review"), onclick: () => showPlayerReport(r.id) });
+    const done = el("button", { class: "small", type: "button", text: r.closed ? T("admin.moderation.reopen", "Reopen") : T("admin.moderation.doneButton", "Done"), onclick: async () => {
       let outcome = "";
-      if (!r.closed) { outcome = prompt(`Close ${r.id}? What was done (optional, only admins see it):`, ""); if (outcome === null) return; }
-      try { await call("CreatorPlayerReportClose", { id: r.id, closed: !r.closed, outcome }); } catch (e) { say("Not changed: " + e.message, "bad"); }
+      if (!r.closed) { outcome = prompt(T("admin.moderation.closeAsk", "Close {id}? What was done (optional, only admins see it):", { id: r.id }), ""); if (outcome === null) return; }
+      try { await call("CreatorPlayerReportClose", { id: r.id, closed: !r.closed, outcome }); } catch (e) { say(T("admin.notChanged", "Not changed: {error}", { error: e.message }), "bad"); }
       loadPlayerReports();
     } });
-    const ban = r.reported.banned || !r.reported.player ? null : el("button", { class: "small danger", type: "button", text: "Ban player",
+    const ban = r.reported.banned || !r.reported.player ? null : el("button", { class: "small danger", type: "button", text: T("admin.moderation.banPlayer", "Ban player"),
       onclick: async () => { await setBan(r.reported, true); loadPlayerReports(); } });
     list.append(el("div", { class: "item" }, el("div", {},
       el("span", { class: "title", text: reportWho(r.reported) }),
       el("div", { text: preportTitle(r) }),
       el("div", { class: "hint", text: info })), el("div", { class: "actions" }, review, ban, done)));
   }
-  if (!d.reports.length) list.append(el("p", { class: "hint", text: "No player reports." }));
+  if (!d.reports.length) list.append(el("p", { class: "hint", text: T("admin.moderation.noPlayerReports", "No player reports.") }));
 }
 $("preportsClosed").onchange = loadPlayerReports;
-async function showPlayerReport(id) {
-  const box = $("preportView"); box.textContent = "Loading the review…"; box.classList.remove("hidden");
+let preportShown = "";
+async function showPlayerReport(id, keepPlace) {
+  preportShown = id;
+  const box = $("preportView"); box.textContent = T("admin.moderation.loadingReview", "Loading the review…"); box.classList.remove("hidden");
   let d;
   try { d = await call("CreatorPlayerReportGet", { id }); } catch (e) { box.textContent = sentence(e); return; }
   box.textContent = "";
-  const close = el("button", { class: "small", type: "button", text: "Close review", onclick: () => box.classList.add("hidden") });
-  box.append(el("div", { class: "row", style: "justify-content:space-between; align-items:center" }, el("h3", { text: `Review of ${d.id}` }), close));
+  const close = el("button", { class: "small", type: "button", text: T("admin.moderation.closeReview", "Close review"), onclick: () => box.classList.add("hidden") });
+  box.append(el("div", { class: "row", style: "justify-content:space-between; align-items:center" }, el("h3", { text: T("admin.moderation.reviewOf", "Review of {id}", { id: d.id }) }), close));
   const m = d.match || {};
-  const sideName = { reporter: d.reporter.name || "reporter", reported: d.reported.name || "reported player" };
+  const sideName = { reporter: d.reporter.name || T("admin.moderation.reporter", "reporter"), reported: d.reported.name || T("admin.moderation.reportedPlayer", "reported player") };
   const add = (...parts) => box.append(...parts.filter(x => x));
-  add(el("p", { text: `Reported: ${reportWho(d.reported)}` }),
-    el("p", { text: d.kind === "auto" ? `Raised by the reported player's own game: ${ALARM_KINDS[(d.auto || {}).kind] || ""}${(d.auto || {}).detail ? " (" + d.auto.detail + ")" : ""}; first ${((d.auto || {}).firstAt || "").replace("T", " ").slice(0, 16)}, last ${((d.auto || {}).lastAt || "").replace("T", " ").slice(0, 16)} UTC.`
-                                       : `Reporter: ${reportWho(d.reporter)}. Reason: ${preportTitle(d)}` }),
-    m.reporterHero ? el("p", { class: "hint", text: `Match: ${cardName(m.reporterHero)} (${sideName.reporter}, ${m.reporterResult}) against ${cardName(m.reportedHero)} (${sideName.reported})${MATCH_KINDS[m.matchType] ? " · " + MATCH_KINDS[m.matchType] : ""}.` }) : null,
-    d.outcome ? el("p", { class: "hint", text: `Outcome: ${d.outcome} (${d.closedBy || ""})` }) : null);
-  if ((d.otherReports || []).length) box.append(el("p", { class: "hint", text: "Other reports against this player: " + d.otherReports.map(o => `${o.id} (${o.kind === "auto" ? "automatic" : PREPORT_REASONS[o.reason] || o.reason}${o.closed ? ", done" : ""})`).join(", ") }));
+  const au = d.auto || {}, reasons = preportReasons(), at = x => (x || "").replace("T", " ").slice(0, 16);
+  add(el("p", { text: T("admin.moderation.reported", "Reported: {who}", { who: reportWho(d.reported) }) }),
+    el("p", { text: d.kind === "auto" ? T("admin.moderation.raisedBy", "Raised by the reported player's own game: {alarm}", { alarm: alarmKinds()[au.kind] || "" }) + (au.detail ? " (" + au.detail + ")" : "") + "; " +
+                                         T("admin.moderation.firstLast", "first {first}, last {last} UTC.", { first: at(au.firstAt), last: at(au.lastAt) })
+                                       : T("admin.moderation.reporterReason", "Reporter: {who}. Reason: {reason}", { who: reportWho(d.reporter), reason: preportTitle(d) }) }),
+    m.reporterHero ? el("p", { class: "hint", text: T("admin.moderation.matchLine", "Match: {reporterWarlord} ({reporter}, {result}) against {reportedWarlord} ({reported})", { reporterWarlord: cardName(m.reporterHero), reporter: sideName.reporter, result: m.reporterResult, reportedWarlord: cardName(m.reportedHero), reported: sideName.reported }) +
+      (MATCH_KINDS[m.matchType] ? " · " + MATCH_KINDS[m.matchType] : "") + "." }) : null,
+    d.outcome ? el("p", { class: "hint", text: T("admin.moderation.outcome", "Outcome: {outcome} ({name})", { outcome: d.outcome, name: d.closedBy || "" }) }) : null);
+  if ((d.otherReports || []).length) box.append(el("p", { class: "hint", text: T("admin.moderation.otherReports", "Other reports against this player: {list}", { list: d.otherReports.map(o => `${o.id} (${o.kind === "auto" ? T("admin.moderation.automatic", "automatic") : reasons[o.reason] || o.reason}${o.closed ? ", " + T("admin.moderation.done", "done") : ""})`).join(", ") }) }));
   // the server's own record
-  box.append(el("h3", { text: "Server's record of the match" }));
+  box.append(el("h3", { text: T("admin.moderation.serverRecord", "Server's record of the match") }));
   const relay = d.relay;
-  if (!relay) box.append(el("p", { class: "hint", text: "The server has no record of this match (matches against the AI, matches before the records started, or one that has expired)." }));
+  if (!relay) box.append(el("p", { class: "hint", text: T("admin.moderation.noServerRecord", "The server has no record of this match (matches against the AI, matches before the records started, or one that has expired).") }));
   else {
-    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...["Player", "Messages sent", "Data", "First / last (s)", "Fastest gap (ms)"].map(h => el("th", { text: h }))));
+    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...[T("admin.moderation.colPlayer", "Player"), T("admin.moderation.colMessages", "Messages sent"), T("admin.moderation.colData", "Data"), T("admin.moderation.colFirstLast", "First / last (s)"), T("admin.moderation.colFastest", "Fastest gap (ms)")].map(h => el("th", { text: h }))));
     for (const p of relay.players) {
-      const name = p.player === d.reported.player ? sideName.reported : p.player === d.reporter.player ? sideName.reporter : (p.name || p.player || "actor " + p.actor);
+      const name = p.player === d.reported.player ? sideName.reported : p.player === d.reporter.player ? sideName.reporter : (p.name || p.player || T("admin.moderation.actor", "actor {n}", { n: p.actor }));
       t.append(el("tr", {}, el("td", { text: name }), el("td", { text: String(p.messages) }), el("td", { text: Math.round(p.bytes / 1024 * 10) / 10 + " KB" }),
         el("td", { text: `${Math.round((p.firstMs || 0) / 1000)} / ${Math.round((p.lastMs || 0) / 1000)}` }), el("td", { text: p.fastest == null ? "–" : String(p.fastest) })));
     }
-    box.append(el("p", { class: "hint", text: `Record ${relay.id}, opened ${(relay.opened || "").replace("T", " ").slice(0, 16)} UTC. Joins and drops: ` +
+    box.append(el("p", { class: "hint", text: T("admin.moderation.recordOpened", "Record {id}, opened {time} UTC. Joins and drops:", { id: relay.id, time: at(relay.opened) }) + " " +
       relay.events.map(e => `${Math.round((e.t || 0) / 1000)}s ${e.k}${e.p ? " " + (e.p === d.reported.player ? sideName.reported : e.p === d.reporter.player ? sideName.reporter : (e.name || e.p)) : ""}`).join(", ") }), t);
   }
   // each player's own recording against what the server relayed (decks, shuffle, first player, mulligans, moves)
   const cmp = d.compare, cmpIds = d.compareIds || {};
   const nameOf = who => ((d.timeline || {}).names || {})[who] || sideName[who];
   const byPlayer = pid => pid === cmpIds.reported ? nameOf("reported") : pid === cmpIds.reporter ? nameOf("reporter") : pid;
-  box.append(el("h3", { text: "Recordings checked against the server's record" }));
-  if (!cmp) box.append(el("p", { class: "hint", text: "Nothing to check: the server has no record of this match, or no recording was kept." }));
+  box.append(el("h3", { text: T("admin.moderation.recordingsChecked", "Recordings checked against the server's record") }));
+  if (!cmp) box.append(el("p", { class: "hint", text: T("admin.moderation.nothingToCheck", "Nothing to check: the server has no record of this match, or no recording was kept.") }));
   else {
     const recs = ["reported", "reporter"].filter(w => cmp.checks.some(c => c.results[w]));
-    box.append(el("p", { class: "hint", text: "What each player's own game recorded, against what that game actually sent through the server. A difference means a recording was changed, or a game recorded something it never sent." }));
-    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, el("th", { text: "" }), ...recs.map(w => el("th", { text: `${nameOf(w)}'s recording` }))));
+    box.append(el("p", { class: "hint", text: T("admin.moderation.checkHelp", "What each player's own game recorded, against what that game actually sent through the server. A difference means a recording was changed, or a game recorded something it never sent.") }));
+    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, el("th", { text: "" }), ...recs.map(w => el("th", { text: T("admin.moderation.recordingOf", "{name}'s recording", { name: nameOf(w) }) }))));
     for (const c of cmp.checks) t.append(el("tr", {}, el("td", { text: c.what }), ...recs.map(w => {
       const r = c.results[w];
-      return el("td", { text: !r ? "–" : r.ok ? "same" + (r.note ? " (" + r.note + ")" : "") : "DIFFERENT" + (r.note ? " (" + r.note + ")" : ""), style: r && !r.ok ? "color:var(--bad, #e66); font-weight:bold" : "" });
+      return el("td", { text: !r ? "–" : (r.ok ? T("admin.moderation.same", "same") : T("admin.moderation.different", "DIFFERENT")) + (r.note ? " (" + r.note + ")" : ""), style: r && !r.ok ? "color:var(--bad, #e66); font-weight:bold" : "" });
     })));
     box.append(t);
-    const evs = (cmp.events || []).map(e => `${Math.round((e.t || 0) / 1000)}s ${({ EnemyForfeit: "resigned", MatchFinished: "match over", EnemyDesync: "OUT OF SYNC", ResendLostActions: "asked for lost moves again", WrongRoom: "wrong room", WrongPlayMode: "wrong mode" })[e.what] || e.what} (${byPlayer(e.player)})`);
-    if (evs.length) box.append(el("p", { class: "hint", text: "Other messages: " + evs.join(", ") }));
-    for (const n of cmp.notes || []) box.append(el("p", { style: "color:var(--bad, #e66)", text: `${byPlayer(n.player)} ${n.what}: move ${n.moves.join(", ")}.` }));
-    if (cmp.unread) box.append(el("p", { class: "hint", text: `${cmp.unread} message(s) in the server's record could not be read.` }));
+    const evWords = { EnemyForfeit: T("admin.moderation.ev.resigned", "resigned"), MatchFinished: T("admin.moderation.ev.matchOver", "match over"), EnemyDesync: T("admin.moderation.ev.desync", "OUT OF SYNC"),
+      ResendLostActions: T("admin.moderation.ev.resend", "asked for lost moves again"), WrongRoom: T("admin.moderation.ev.wrongRoom", "wrong room"), WrongPlayMode: T("admin.moderation.ev.wrongMode", "wrong mode") };
+    const evs = (cmp.events || []).map(e => `${Math.round((e.t || 0) / 1000)}s ${evWords[e.what] || e.what} (${byPlayer(e.player)})`);
+    if (evs.length) box.append(el("p", { class: "hint", text: T("admin.moderation.otherMessages", "Other messages: {list}", { list: evs.join(", ") }) }));
+    for (const n of cmp.notes || []) box.append(el("p", { style: "color:var(--bad, #e66)", text: T("admin.moderation.noteMoves", "{name} {what}: move {moves}.", { name: byPlayer(n.player), what: n.what, moves: n.moves.join(", ") }) }));
+    if (cmp.unread) box.append(el("p", { class: "hint", text: T("admin.moderation.unread", "{count} message(s) in the server's record could not be read.", { count: cmp.unread }) }));
     if ((cmp.diffs || []).length) {
       const card = id => !id ? "" : cmp.cards[String(id)] ? cardName(cmp.cards[String(id)]) : "#" + id;
-      const mv = m => !m ? "(nothing)" : `${m.action} ${card(m.act)}${m.tgtd ? " → " + (card(m.tget) || "no target") : ""}${m.pos ? " slot " + m.pos : ""}${m.at ? " attack " + m.at : ""}`;
-      const dt = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...["Recording", "Move by", "Move #", "The server saw", "The recording says"].map(h => el("th", { text: h }))));
+      const mv = m => !m ? T("admin.moderation.nothing", "(nothing)") : `${m.action} ${card(m.act)}${m.tgtd ? " → " + (card(m.tget) || T("admin.moderation.noTarget", "no target")) : ""}${m.pos ? " " + T("admin.moderation.slot", "slot {n}", { n: m.pos }) : ""}${m.at ? " " + T("admin.moderation.attack", "attack {n}", { n: m.at }) : ""}`;
+      const dt = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...[T("admin.moderation.colRecording", "Recording"), T("admin.moderation.colMoveBy", "Move by"), T("admin.moderation.colMoveNumber", "Move #"), T("admin.moderation.colServerSaw", "The server saw"), T("admin.moderation.colRecordingSays", "The recording says")].map(h => el("th", { text: h }))));
       for (const x of cmp.diffs) dt.append(el("tr", {}, el("td", { text: nameOf(x.recording) }), el("td", { text: nameOf(x.mover) }), el("td", { text: String(x.num) }), el("td", { text: mv(x.server) }), el("td", { text: mv(x.recorded) })));
       box.append(el("div", { style: "max-height:320px; overflow:auto" }, dt));
     }
   }
   // replay codes for the recordings kept with the report: watch the match in the game
   const codes = d.replayCodes || {};
-  box.append(el("h3", { text: "Watch it in the game" }));
-  if (!Object.keys(codes).length) box.append(el("p", { class: "hint", text: "No recording of this match to watch." }));
+  box.append(el("h3", { text: T("admin.moderation.watchTitle", "Watch it in the game") }));
+  if (!Object.keys(codes).length) box.append(el("p", { class: "hint", text: T("admin.moderation.nothingToWatch", "No recording of this match to watch.") }));
   else {
-    box.append(el("p", { class: "hint", text: "Copy a code, then in the game press Watch a replay code under Settings > Mod. Each recording shows the match from that player's side. These codes belong to the report: they are not on the players' Profile pages." }));
+    box.append(el("p", { class: "hint", text: T("admin.moderation.watchHelp", "Copy a code, then in the game press Watch a replay code under Settings > Mod. Each recording shows the match from that player's side. These codes belong to the report: they are not on the players' Profile pages.") }));
     for (const who of ["reported", "reporter"]) if (codes[who]) {
-      const label = el("span", { text: `${((d.timeline || {}).names || {})[who] || sideName[who]}'s side: ` });
+      const label = el("span", { text: T("admin.moderation.side", "{name}'s side:", { name: ((d.timeline || {}).names || {})[who] || sideName[who] }) + " " });
       const code = el("code", { text: codes[who], style: "font-size:1.15em; user-select:all" });
-      const copy = el("button", { class: "small", type: "button", text: "Copy", style: "margin-left:10px", onclick: async () => {
-        try { await navigator.clipboard.writeText(codes[who]); copy.textContent = "Copied"; setTimeout(() => { copy.textContent = "Copy"; }, 2000); }
-        catch (e) { copy.textContent = "Select it and copy"; } } });
+      const copy = el("button", { class: "small", type: "button", text: T("admin.moderation.copy", "Copy"), style: "margin-left:10px", onclick: async () => {
+        try { await navigator.clipboard.writeText(codes[who]); copy.textContent = T("common.copied", "Copied"); setTimeout(() => { copy.textContent = T("admin.moderation.copy", "Copy"); }, 2000); }
+        catch (e) { copy.textContent = T("admin.moderation.selectAndCopy", "Select it and copy"); } } });
       box.append(el("p", {}, label, code, copy));
     }
   }
   // the moves, from the recordings
-  box.append(el("h3", { text: "Moves" }));
+  box.append(el("h3", { text: T("admin.moderation.movesTitle", "Moves") }));
   const tl = d.timeline;
-  if (!tl) box.append(el("p", { class: "hint", text: "No recording of this match was found (a recording goes when its match leaves the player's battle log, unless it was reported first)." }));
+  if (!tl) box.append(el("p", { class: "hint", text: T("admin.moderation.noRecording", "No recording of this match was found (a recording goes when its match leaves the player's battle log, unless it was reported first).") }));
   else {
-    box.append(el("p", { class: "hint", text: (tl.both ? "Both players' recordings were kept. " + (tl.disagree ? "They DISAGREE on how many moves each player made: one game recorded something the other did not see." : "They agree on how many moves each player made.") : "Only one player's recording was kept.") +
-      (tl.cardNames ? "" : " Card names are missing: the recording was made by a mod older than 0.13.39, so cards show as numbers.") }));
-    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...["Time (s)", "Player", "Move", "Card", "Target", "Slot"].map(h => el("th", { text: h }))));
+    box.append(el("p", { class: "hint", text: (tl.both ? T("admin.moderation.bothKept", "Both players' recordings were kept.") + " " + (tl.disagree ? T("admin.moderation.disagree", "They DISAGREE on how many moves each player made: one game recorded something the other did not see.") : T("admin.moderation.agree", "They agree on how many moves each player made.")) : T("admin.moderation.oneKept", "Only one player's recording was kept.")) +
+      (tl.cardNames ? "" : " " + T("admin.moderation.noCardNames", "Card names are missing: the recording was made by a mod older than 0.13.39, so cards show as numbers.")) }));
+    const t = el("table", { class: "slim", style: "border-spacing:14px 3px; margin-left:-14px" }, el("tr", {}, ...[T("admin.moderation.colTime", "Time (s)"), T("admin.moderation.colPlayer", "Player"), T("admin.moderation.colMove", "Move"), T("admin.moderation.colCard", "Card"), T("admin.moderation.colTarget", "Target"), T("admin.moderation.colSlot", "Slot")].map(h => el("th", { text: h }))));
     for (const r of tl.rows) {
       const nm = id => !id ? "" : id.startsWith("#") ? id : cardName(id);
       t.append(el("tr", {}, el("td", { text: String(r.t ?? "") }), el("td", { text: (tl.names || {})[r.side] || sideName[r.side] || r.side }), el("td", { text: r.action }),
@@ -4026,45 +4087,52 @@ async function showPlayerReport(id) {
   }
   if (d.log) {
     const pre = el("pre", { text: d.log, style: "max-height:320px; overflow:auto; white-space:pre-wrap" });
-    box.append(el("h3", { text: "Reporter's game log" }), pre,
-      el("button", { class: "small", type: "button", text: "Download log", onclick: () => { const a = el("a", { href: URL.createObjectURL(new Blob([d.log], { type: "text/plain" })), download: d.id + "-log.txt" }); a.click(); } }));
+    box.append(el("h3", { text: T("admin.moderation.reporterLog", "Reporter's game log") }), pre,
+      el("button", { class: "small", type: "button", text: T("bugs.downloadLog", "Download log"), onclick: () => { const a = el("a", { href: URL.createObjectURL(new Blob([d.log], { type: "text/plain" })), download: d.id + "-log.txt" }); a.click(); } }));
   }
-  box.scrollIntoView({ block: "start" });
+  if (!keepPlace) box.scrollIntoView({ block: "start" });
 }
 // Admins: the word filter.
 // ---------------------------------------------------------------- server settings (founding owner only)
 let cfg = null;
-const MODE_NAMES = { RevivalClassic: "Classic", RevivalSkirmish: "Skirmish", RevivalDraft: "Draft", RevivalLongGame: "Long Game",
-                     PracticeEvent: "Practice", PracticeEventClassic: "Practice Classic" };
+// The page's words for the settings (functions: the language file arrives after the page loads); the keys are what the files hold.
+function modeNames() {
+  return { RevivalClassic: T("mode.classic", "Classic"), RevivalSkirmish: T("mode.skirmish", "Skirmish"), RevivalDraft: T("mode.draft", "Draft"), RevivalLongGame: T("admin.server.modeLongGame", "Long Game"),
+    PracticeEvent: T("mode.practice", "Practice"), PracticeEventClassic: T("admin.server.modePracticeClassic", "Practice Classic") };
+}
 // [key, label, kind]; "top" keys live on the mode itself, the rest in its gameplayVariables
-const MODE_ROWS = [
-  ["enabled", "Mode is on", "top"], ["showInMainMenu", "Shown on the main menu", "top"],
-  ["startingHand", "Starting hand", "num"], ["secondPlayerExtraCards", "Extra starting cards for the second player", "num"],
-  ["handLimit", "Hand limit", "num"], ["drawCardsPerTurn", "Cards drawn per turn", "num"],
-  ["startingMana", "Starting mana, first player", "num"], ["startingManaSecond", "Starting mana, second player", "num"],
-  ["manaPerTurn", "Mana gained per turn", "num"], ["addedManaSecond", "Extra mana per turn, second player", "num"],
-  ["manaAccumulation", "Mana accumulation", "num"], ["overtimeTurn", "Overtime starts on turn", "num"],
-  ["warlordLifeChange", "Warlord life change", "num"], ["slotsPerSide", "Unit slots per side", "num"],
-  ["deckSize", "Deck size", "num"], ["numberOfCopiesOtherRarities", "Copies of each card", "num"],
-  ["numberOfCopiesLegendary", "Copies of each legendary", "num"], ["maxLegendaries", "Legendaries per deck", "num"],
-  ["showMulligan", "Mulligan", "bool"], ["shouldReshuffle", "Reshuffle", "bool"], ["alternativeTraitLogic", "Alternative trait logic", "bool"],
-  ["offenseCards", "Offence cards (the battlefield card pick before a match)", "bool"]
-];
+function modeRows() {
+  return [
+    ["enabled", T("admin.server.mode.enabled", "Mode is on"), "top"], ["showInMainMenu", T("admin.server.mode.showInMainMenu", "Shown on the main menu"), "top"],
+    ["startingHand", T("admin.server.mode.startingHand", "Starting hand"), "num"], ["secondPlayerExtraCards", T("admin.server.mode.secondPlayerExtraCards", "Extra starting cards for the second player"), "num"],
+    ["handLimit", T("admin.server.mode.handLimit", "Hand limit"), "num"], ["drawCardsPerTurn", T("admin.server.mode.drawCardsPerTurn", "Cards drawn per turn"), "num"],
+    ["startingMana", T("admin.server.mode.startingMana", "Starting mana, first player"), "num"], ["startingManaSecond", T("admin.server.mode.startingManaSecond", "Starting mana, second player"), "num"],
+    ["manaPerTurn", T("admin.server.mode.manaPerTurn", "Mana gained per turn"), "num"], ["addedManaSecond", T("admin.server.mode.addedManaSecond", "Extra mana per turn, second player"), "num"],
+    ["manaAccumulation", T("admin.server.mode.manaAccumulation", "Mana accumulation"), "num"], ["overtimeTurn", T("admin.server.mode.overtimeTurn", "Overtime starts on turn"), "num"],
+    ["warlordLifeChange", T("admin.server.mode.warlordLifeChange", "Warlord life change"), "num"], ["slotsPerSide", T("admin.server.mode.slotsPerSide", "Unit slots per side"), "num"],
+    ["deckSize", T("admin.server.mode.deckSize", "Deck size"), "num"], ["numberOfCopiesOtherRarities", T("admin.server.mode.numberOfCopiesOtherRarities", "Copies of each card"), "num"],
+    ["numberOfCopiesLegendary", T("admin.server.mode.numberOfCopiesLegendary", "Copies of each legendary"), "num"], ["maxLegendaries", T("admin.server.mode.maxLegendaries", "Legendaries per deck"), "num"],
+    ["showMulligan", T("admin.server.mode.showMulligan", "Mulligan"), "bool"], ["shouldReshuffle", T("admin.server.mode.shouldReshuffle", "Reshuffle"), "bool"], ["alternativeTraitLogic", T("admin.server.mode.alternativeTraitLogic", "Alternative trait logic"), "bool"],
+    ["offenseCards", T("admin.server.mode.offenseCards", "Offence cards (the battlefield card pick before a match)"), "bool"]
+  ];
+}
 // [path, label, kind, hint]
-const SET_ROWS = [
-  [["rulesVersion"], "Rules version", "text", "Raise it whenever match rules or cards change."],
-  [["turnSeconds"], "Turn timer (seconds)", "num", ""],
-  [["offenseCards"], "Offence cards, mods before 0.13.24", "bool", "Newer mods use each game mode's own Offence cards switch (Game modes, above)."],
-  [["practiceClassicWarlordLife"], "Practice Classic warlord life", "num", ""],
-  [["longGame", "warlordHealth"], "Long Game warlord health (times normal)", "dec", ""],
-  [["longGame", "classicDeckSize"], "Long Game: size of a Classic deck it is built from", "num", ""],
-  [["minModVersion"], "Oldest mod allowed", "text", "\"latest\" means the build this server hands out."],
-  [["onlyRevivalMod"], "Refuse games with other mods", "bool", ""],
-  [["accounts", "autoApprove"], "Approve new accounts automatically", "bool", "Off: you approve each one on the People page."],
-  [["requireAccount"], "Require a site account to play", "bool", "Keep on for any server strangers can reach.", true],
-  [["requireHttps"], "Refuse plain http from outside", "bool", "", true],
-  [["requireEncryptedMatches"], "Refuse unencrypted matches from outside", "bool", "", true]
-];
+function setRows() {
+  return [
+    [["rulesVersion"], T("admin.server.set.rulesVersion", "Rules version"), "text", T("admin.server.set.rulesVersionHint", "Raise it whenever match rules or cards change.")],
+    [["turnSeconds"], T("admin.server.set.turnSeconds", "Turn timer (seconds)"), "num", ""],
+    [["offenseCards"], T("admin.server.set.offenseCards", "Offence cards, mods before 0.13.24"), "bool", T("admin.server.set.offenseCardsHint", "Newer mods use each game mode's own Offence cards switch (Game modes, above).")],
+    [["practiceClassicWarlordLife"], T("admin.server.set.practiceClassicWarlordLife", "Practice Classic warlord life"), "num", ""],
+    [["longGame", "warlordHealth"], T("admin.server.set.longGameWarlordHealth", "Long Game warlord health (times normal)"), "dec", ""],
+    [["longGame", "classicDeckSize"], T("admin.server.set.longGameClassicDeckSize", "Long Game: size of a Classic deck it is built from"), "num", ""],
+    [["minModVersion"], T("admin.server.set.minModVersion", "Oldest mod allowed"), "text", T("admin.server.set.minModVersionHint", "\"latest\" means the build this server hands out.")],
+    [["onlyRevivalMod"], T("admin.server.set.onlyRevivalMod", "Refuse games with other mods"), "bool", ""],
+    [["accounts", "autoApprove"], T("admin.server.set.autoApprove", "Approve new accounts automatically"), "bool", T("admin.server.set.autoApproveHint", "Off: you approve each one on the People page.")],
+    [["requireAccount"], T("admin.server.set.requireAccount", "Require a site account to play"), "bool", T("admin.server.set.requireAccountHint", "Keep on for any server strangers can reach."), true],
+    [["requireHttps"], T("admin.server.set.requireHttps", "Refuse plain http from outside"), "bool", "", true],
+    [["requireEncryptedMatches"], T("admin.server.set.requireEncryptedMatches", "Refuse unencrypted matches from outside"), "bool", "", true]
+  ];
+}
 function getPath(o, path) { for (const k of path) { if (!o || typeof o !== "object") return undefined; o = o[k]; } return o; }
 function setPath(o, path, v) {
   for (const k of path.slice(0, -1)) { if (!o[k] || typeof o[k] !== "object") o[k] = {}; o = o[k]; }
@@ -4073,28 +4141,28 @@ function setPath(o, path, v) {
 function cfgInput(kind, value) {
   if (kind === "bool" || kind === "top") return el("input", { type: "checkbox", checked: value === true });
   if (kind === "text") return el("input", { type: "text", value: value == null ? "" : String(value), maxLength: 200 });
-  return el("input", { type: "number", step: kind === "dec" ? "0.1" : "1", value: value == null ? "" : String(value), placeholder: "–", title: "Empty: the game's own default" });
+  return el("input", { type: "number", step: kind === "dec" ? "0.1" : "1", value: value == null ? "" : String(value), placeholder: "–", title: T("admin.server.emptyDefault", "Empty: the game's own default") });
 }
 function cfgValue(input, kind) {
   if (kind === "bool" || kind === "top") return input.checked;
   if (kind === "text") return input.value.trim();
   if (input.value.trim() === "") return undefined;
   const n = Number(input.value);
-  if (!isFinite(n) || (kind !== "dec" && !Number.isInteger(n))) throw new Error("not a whole number: " + input.value);
+  if (!isFinite(n) || (kind !== "dec" && !Number.isInteger(n))) throw new Error(T("admin.server.notWhole", "not a whole number: {value}", { value: input.value }));
   return n;
 }
 async function loadServer() {
-  try { cfg = (await call("CreatorServerConfig")).files; } catch (e) { return say("Could not load the server settings: " + e.message, "bad"); }
+  try { cfg = (await call("CreatorServerConfig")).files; } catch (e) { return say(T("admin.server.loadFailed", "Could not load the server settings: {error}", { error: e.message }), "bad"); }
   drawServer();
 }
 function drawServer() {
-  const modes = cfg.modes, sets = cfg.settings;
+  const modes = cfg.modes, sets = cfg.settings, names = modeNames();
   for (const [which, id] of [["modes", "modeState"], ["settings", "setState"]]) $(id).textContent = cfg[which].problem || "";
   const t = $("modeTable"); t.textContent = "";
   const events = (modes.data && modes.data.RawEvents || []).filter(e => e && e.Data);
-  t.append(el("thead", {}, el("tr", {}, el("th", { text: "Setting" }), ...events.map(e => el("th", { text: MODE_NAMES[e.Data.eventId] || e.Data.eventId, title: e.Data.eventId })))));
+  t.append(el("thead", {}, el("tr", {}, el("th", { text: T("admin.server.setting", "Setting") }), ...events.map(e => el("th", { text: names[e.Data.eventId] || e.Data.eventId, title: e.Data.eventId })))));
   const tb = el("tbody"); t.append(tb);
-  for (const [key, label, kind] of MODE_ROWS) {
+  for (const [key, label, kind] of modeRows()) {
     const tr = el("tr", {}, el("td", { text: label }));
     for (const e of events) {
       const value = kind === "top" ? e.Data[key] : (e.Data.gameplayVariables || {})[key];
@@ -4106,7 +4174,7 @@ function drawServer() {
   }
   const st = $("setTable"); st.textContent = "";
   const sb = el("tbody"); st.append(sb);
-  for (const [path, label, kind, hint, guard] of SET_ROWS) {
+  for (const [path, label, kind, hint, guard] of setRows()) {
     const input = cfgInput(kind, getPath(sets.data || {}, path)); input.dataset.path = JSON.stringify(path); input.dataset.kind = kind;
     if (guard) input.dataset.guard = "1";
     const tr = el("tr", {}, el("td", { text: label }), el("td", {}, input), el("td", { class: "hint", text: hint || "" }));
@@ -4116,15 +4184,26 @@ function drawServer() {
   $("modeJson").value = modes.data ? JSON.stringify(modes.data, null, 2) : "";
   $("setJson").value = sets.data ? JSON.stringify(sets.data, null, 2) : "";
 }
+function serverRelabel() {                       // a language change: the tables' words only, so nothing typed is lost
+  if (!cfg) return;
+  const names = modeNames(), head = $("modeTable").querySelector("thead tr");
+  if (head) for (const th of Array.from(head.children).slice(1)) th.textContent = names[th.title] || th.title;
+  if (head) head.firstChild.textContent = T("admin.server.setting", "Setting");
+  const rows = modeRows(), trs = $("modeTable").querySelectorAll("tbody tr");
+  trs.forEach((tr, i) => { if (rows[i]) tr.firstChild.textContent = rows[i][1]; });
+  const sets = setRows(), str = $("setTable").querySelectorAll("tbody tr");
+  str.forEach((tr, i) => { if (sets[i]) { tr.children[0].textContent = sets[i][1]; tr.children[2].textContent = sets[i][3] || ""; } });
+  for (const input of document.querySelectorAll("#modeTable input[type=number], #setTable input[type=number]")) input.title = T("admin.server.emptyDefault", "Empty: the game's own default");
+}
 async function saveConfig(which, data, button) {
   button.disabled = true;
   try {
-    if (!val("cfgPass")) { $("cfgPass").focus(); throw new Error("enter your password at the top of the page"); }
+    if (!val("cfgPass")) { $("cfgPass").focus(); throw new Error(T("admin.server.needPassword", "enter your password at the top of the page")); }
     const d = await call("CreatorServerConfigSave", { file: which, data, stamp: cfg[which].stamp, passphrase: val("cfgPass") });
-    say((which === "modes" ? "Game modes" : "Server settings") + " saved." +
-        (d.unknown && d.unknown.length ? ` Nothing reads ${d.unknown.join(", ")} – check the spelling.` : ""), d.unknown && d.unknown.length ? "info" : "ok");
+    say((which === "modes" ? T("admin.server.modesSaved", "Game modes saved.") : T("admin.server.settingsSaved", "Server settings saved.")) +
+        (d.unknown && d.unknown.length ? " " + T("admin.server.unknownKeys", "Nothing reads {keys} – check the spelling.", { keys: d.unknown.join(", ") }) : ""), d.unknown && d.unknown.length ? "info" : "ok");
     await loadServer();
-  } catch (e) { say("Not saved: " + e.message, "bad"); }
+  } catch (e) { say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); }
   finally { button.disabled = false; }
 }
 $("modeSave").onclick = () => {
@@ -4136,7 +4215,7 @@ $("modeSave").onclick = () => {
       if (input.dataset.kind === "top") ev.Data[input.dataset.key] = v;
       else { ev.Data.gameplayVariables = ev.Data.gameplayVariables || {}; if (v === undefined) delete ev.Data.gameplayVariables[input.dataset.key]; else ev.Data.gameplayVariables[input.dataset.key] = v; }
     }
-  } catch (e) { return say("Not saved: " + e.message, "bad"); }
+  } catch (e) { return say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); }
   saveConfig("modes", data, $("modeSave"));
 };
 $("setSave").onclick = () => {
@@ -4148,27 +4227,33 @@ $("setSave").onclick = () => {
       if (input.dataset.guard && getPath(data, path) === true && v === false) off.push(input.closest("tr").firstChild.textContent);
       setPath(data, path, input.dataset.kind === "text" && v === "" ? undefined : v);
     }
-  } catch (e) { return say("Not saved: " + e.message, "bad"); }
-  if (off.length && !confirm("You are turning off protection: " + off.join(", ") + ". Anyone who can reach the server is then trusted more. Save anyway?")) return;
+  } catch (e) { return say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); }
+  if (off.length && !confirm(T("admin.server.protectionOff", "You are turning off protection: {list}. Anyone who can reach the server is then trusted more. Save anyway?", { list: off.join(", ") }))) return;
   saveConfig("settings", data, $("setSave"));
 };
 for (const [which, area, button] of [["modes", "modeJson", "modeJsonSave"], ["settings", "setJson", "setJsonSave"]])
   $(button).onclick = () => {
     let data;
-    try { data = JSON.parse($(area).value); } catch (e) { return say("That is not valid JSON: " + e.message, "bad"); }
+    try { data = JSON.parse($(area).value); } catch (e) { return say(T("admin.server.badJson", "That is not valid JSON: {error}", { error: e.message }), "bad"); }
     saveConfig(which, data, $(button));
   };
 
+let wordInfo = null;                             // the last list's size and whether it is this server's own
+function wordState() {
+  if (!wordInfo) return;
+  $("wordState").textContent = wordInfo.saved ? T("admin.moderation.wordsCount", "{count} entries.", { count: wordInfo.count })
+    : T("admin.moderation.wordsStarting", "{count} entries: the server's starting list. Saving makes it this server's own list.", { count: wordInfo.count });
+}
 async function loadWords() {
   let d;
   try { d = await call("CreatorWordFilter"); } catch (e) { return; }
   $("wordList").value = d.words.join("\n");
-  $("wordState").textContent = d.saved ? `${d.words.length} entries.` : `${d.words.length} entries: the server's starting list. Saving makes it this server's own list.`;
+  wordInfo = { saved: d.saved, count: d.words.length }; wordState();
 }
 $("wordSave").onclick = async () => {
   const words = $("wordList").value.split("\n").map(w => w.trim()).filter(Boolean);
-  try { const d = await call("CreatorWordFilterSave", { words }); say(`Word filter saved (${d.words.length} entries).`, "ok"); loadWords(); }
-  catch (e) { say("Not saved: " + e.message, "bad"); }
+  try { const d = await call("CreatorWordFilterSave", { words }); say(T("admin.moderation.wordsSaved", "Word filter saved ({count} entries).", { count: d.words.length }), "ok"); loadWords(); }
+  catch (e) { say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); }
 };
 let wordTimer = 0;
 $("wordTry").oninput = () => { clearTimeout(wordTimer); wordTimer = setTimeout(async () => {
@@ -4176,26 +4261,45 @@ $("wordTry").oninput = () => { clearTimeout(wordTimer); wordTimer = setTimeout(a
   if (!test) { $("wordResult").textContent = ""; return; }
   try { const d = await call("CreatorWordFilter", { test }); $("wordResult").textContent = "→ " + d.test; } catch (e) {}
 }, 300); };
+const upImages = new Map();                      // artwork already fetched, so a redraw (a language change) does not fetch it again
 async function loadUploads() {
-  const box = $("uploads"); box.textContent = "";
+  $("uploads").textContent = ""; upImages.clear();
   let d;
   try { d = await call("CreatorArtList"); } catch (e) { return; }
-  if (!d.uploads.length) return box.append(el("p", { class: "hint", text: "No uploaded artwork." }));
-  for (const u of d.uploads) {
-    const img = el("img", { alt: "artwork of " + u.name, loading: "lazy" });
-    call("CreatorArtGet", { id: u.id }).then(r => { img.src = r.image; }).catch(() => {});
+  drawUploads(d.uploads);
+}
+let upList = null;
+function drawUploads(list) {
+  upList = list;
+  const box = $("uploads"); box.textContent = "";
+  if (!list.length) return box.append(el("p", { class: "hint", text: T("admin.uploads.none", "No uploaded artwork.") }));
+  for (const u of list) {
+    const img = el("img", { alt: T("admin.uploads.artworkOf", "artwork of {name}", { name: u.name }), loading: "lazy" });
+    if (upImages.has(u.id)) img.src = upImages.get(u.id);
+    else call("CreatorArtGet", { id: u.id }).then(r => { upImages.set(u.id, r.image); img.src = r.image; }).catch(() => {});
     box.append(el("div", { class: "up" }, img,
       el("div", { class: "title", text: u.name || u.id }),
-      el("div", { class: "hint", text: `${u.id} · by ${u.author} · ${u.status}${u.artMask ? " · has a mask" : ""} · ${u.artUpload.slice(0, 10)}` }),
-      el("div", { class: "hint" }, creditLine(u.artCredit) || "no artwork credit"),
-      el("button", { class: "small danger", text: "Delete", onclick: async () => {
-        const reason = prompt(`Delete the artwork of “${u.name || u.id}” by ${u.author} for good?\n\nReason (shown to the author if the card was submitted):`, "");
+      el("div", { class: "hint", text: `${u.id} · ${T("bugs.by", "by {name}", { name: u.author })} · ${u.status}${u.artMask ? " · " + T("admin.uploads.hasMask", "has a mask") : ""} · ${u.artUpload.slice(0, 10)}` }),
+      el("div", { class: "hint" }, creditLine(u.artCredit) || T("admin.uploads.noCredit", "no artwork credit")),
+      el("button", { class: "small danger", text: T("admin.people.delete", "Delete"), onclick: async () => {
+        const reason = prompt(T("admin.uploads.deleteAsk", "Delete the artwork of “{name}” by {author} for good?", { name: u.name || u.id, author: u.author }) + "\n\n" + T("admin.uploads.deleteReason", "Reason (shown to the author if the card was submitted):"), "");
         if (reason === null) return;
-        try { await call("CreatorArtDelete", { id: u.id, reason }); say("Artwork deleted.", "ok"); loadUploads(); loadList(); }
-        catch (e) { say("Not deleted: " + e.message, "bad"); }
+        try { await call("CreatorArtDelete", { id: u.id, reason }); say(T("admin.uploads.deleted", "Artwork deleted."), "ok"); loadUploads(); loadList(); }
+        catch (e) { say(T("admin.uploads.notDeleted", "Not deleted: {error}", { error: e.message }), "bad"); }
       } })));
   }
 }
+onSiteLang(() => {                               // the Admin pages follow the site language (the lists are fetched again; nothing typed is lost)
+  try {
+    const on = v => !$("view" + v).classList.contains("hidden");
+    if (on("People")) loadPeople();
+    if (on("Requests")) loadRequests();
+    if (on("Moderation")) { loadPlayerReports(); loadReports(); loadBans(val("banQuery").trim()); wordState(); if (preportShown && !$("preportView").classList.contains("hidden")) showPlayerReport(preportShown, true); }
+    if (on("Uploads") && upList) drawUploads(upList);
+    if (on("Unreleased")) drawUnreleased();
+    serverRelabel();
+  } catch (e) { }
+});
 async function signOut() { try { await call("CreatorSignOut"); } catch (e) {} setSession(""); say(""); $("p_recShow").classList.add("hidden"); $("p_recCode").textContent = ""; limited = false; shownOnce = false; if (schema) fill(null); show("Create"); await loadList(); }
 async function discard(c) {
   if (!confirm(T("creator.discardConfirm", "Discard {name}? It disappears from your list.", { name: c.name }))) return;
@@ -4207,10 +4311,11 @@ function summary(c) {
   return `${lab(schema.armies, c.army)} ${kindName(c.kind)} · ${rarityName(c.rarity)} · ${T("creator.costN", "cost {n}", { n: c.cost })}${stats}`;
 }
 async function review(id, status) {
-  const note = status === "approved" ? "" : (prompt("Note for the author (optional):") ?? null);
+  const note = status === "approved" ? "" : (prompt(T("admin.review.noteAsk", "Note for the author (optional):")) ?? null);
   if (note === null) return;
-  try { await call("CreatorReview", { id, status, note }); say(`${id} is now ${status}.`, "ok"); loadList(); }
-  catch (e) { say("Not changed: " + e.message, "bad"); }
+  try { await call("CreatorReview", { id, status, note }); say(({ approved: T("admin.review.nowApproved", "{id} is now approved.", { id }), rejected: T("admin.review.nowRejected", "{id} is now rejected.", { id }),
+    pending: T("admin.review.nowPending", "{id} is now pending.", { id }) })[status] || `${id} is now ${status}.`, "ok"); loadList(); }
+  catch (e) { say(T("admin.notChanged", "Not changed: {error}", { error: e.message }), "bad"); }
 }
 let allCards = [], listMode = "mine";         // "mine": the signed-in author's cards; "all": the review queue (staff)
 function drawList() {
@@ -4526,7 +4631,7 @@ async function start() {
     if (t) t.onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(name); } };
   }
   $("exKeyword").onchange = () => showExamples();
-  for (const [v, t] of Object.entries(BUG_CATEGORIES)) $("bugCategory").append(el("option", { value: v, text: t }));
+  bugCategoryOptions();
   for (const id of ["bugStatus", "bugPlatform", "bugCategory", "bugMine"]) $(id).onchange = drawBugs;
   $("bugSearch").addEventListener("input", drawBugs);
   $("cvSearch").addEventListener("input", drawViewerList);
