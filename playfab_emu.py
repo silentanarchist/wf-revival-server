@@ -1637,9 +1637,10 @@ class PlayFabEmulator:
         if not self._private_rules_ok(data):
             log.info("private message from %s dropped: its challenge rules are not in the expected form", me)
             return err("InvalidParams", "that challenge's rules are not in the expected form")
-        if me not in self._friend_ids(to):
+        if me not in self._friend_ids(to) and not self._challenge_pass(me, to):
             # only players who have the sender on their friend list hear from them, and the sender is
-            # not told either way (review #17): no messages from strangers, no "online?" probing
+            # not told either way (review #17): no messages from strangers, no "online?" probing.
+            # A challenge by friend code (0.14.17, Revival/ChallengeByCode) opens the way both ways for a while.
             return ok({"sent": True})
         # The game asks "are you online?" before a challenge and gives up after 4 seconds, too
         # short for a question and its answer to each wait for a chat poll. When the other game
@@ -6470,6 +6471,50 @@ class PlayFabEmulator:
             invites[target] = now + self.ALLIANCE_INVITE_DAYS * 86400 * 1000
             self._alliance_save(g)
             return {}
+
+    # ---- challenge by friend code (2026-10-19, mod 0.14.17)
+    # The Social > Challenge page takes a friend code as well as a friend: the server finds the player and,
+    # since the code was handed over on purpose, lets the two games exchange the challenge messages (the
+    # challenge, its "are you online?" check, the accept, a cancel) although they are not friends. The pass
+    # lasts PASS_SECONDS both ways; it opens nothing else (no friend status, no list), and the reply says
+    # only what the game's own challenge popup shows anyway: the name, and whether the game is on now.
+    PASS_SECONDS = 15 * 60
+
+    def _challenge_pass(self, a, b):
+        passes = self.__dict__.setdefault("_challenge_passes", {})
+        now = time.time()
+        for k in [k for k, until in passes.items() if until < now]:
+            del passes[k]
+        return passes.get((a, b), 0) >= now or passes.get((b, a), 0) >= now
+
+    def api_Revival_ChallengeByCode(self, req, headers):
+        """{"code": friend code, name or id} -> {"id", "name", "state": "online" | "playing" | "offline"} and a
+        challenge pass between the two players for a while; or an error saying why not."""
+        me = self.store.session_player_id(headers)
+        if not me:
+            return err("NotAuthenticated", "sign in first", 1074, 401)
+        if not self._allow("challenge-code", me, 10, 60):
+            return err("TooManyRequests", "too many look-ups; wait a moment", 1199, 429)
+        code = str(req.get("code") or "").strip()[:64]
+        other = self._find_player(code) if code else None
+        if not other:
+            return err("InvalidParams", "No player with that friend code")
+        oid = other["PlayFabId"]
+        if oid == me:
+            return err("InvalidParams", "That is your own friend code")
+        if oid in self._banned_ids():
+            return err("NotAllowed", "That player cannot be challenged")
+        passes = self.__dict__.setdefault("_challenge_passes", {})
+        passes[(me, oid)] = time.time() + self.PASS_SECONDS
+        playing = False
+        try:
+            with photon_emu.SERVICE.lock:
+                playing = any(a.conn is not None and a.player == oid for room in photon_emu.SERVICE.rooms.values() for a in room.actors.values())
+        except Exception:
+            pass
+        state = "playing" if playing else "online" if time.time() - photon_emu.SEEN.get(oid, 0) <= self.ONLINE_SECONDS else "offline"
+        log.info("challenge: %s looked up %s by friend code (%s)", me, oid, state)
+        return ok({"id": oid, "name": other.get("DisplayName") or oid, "state": state})
 
     def api_Revival_AllianceInvite(self, req, headers):
         """The mod's "invite by friend code" box on the alliance page: {"code": friend code, name or id} ->
