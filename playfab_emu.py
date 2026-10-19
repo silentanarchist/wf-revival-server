@@ -5441,8 +5441,73 @@ class PlayFabEmulator:
         slot["done"].wait(10)                  # the first try is still being carried out (10 s: review #18)
         return dict(slot, first=False) if slot["resp"] is not None else None
 
+    # ---- replies in the player's language (2026-10-18)
+    # The mod and the website say which language the player uses (the X-Revival-Lang header, e.g. "de", "pt-BR").
+    # An error message is then looked up in content/files/localization/server/<lang>.json by the fingerprint of its
+    # English template (the mod repo's tools/localization/extract-server.py lists every err() message the same way:
+    # parts filled in when the message is made are {p1}, {p2}...; those values are taken from the English message
+    # and put into the translation). Anything not found, and every reply without the header, stays English, so
+    # older mods and tools see exactly what they saw before.
+    LANG_HEADER = re.compile(r"[a-z]{2,3}(-[A-Z]{2})?")
+
+    def _server_texts(self, lang):
+        """({English message: translation}, [(pattern of a message with parts, translation)]) for a language."""
+        folder = os.path.join(self.content_root, "files", "localization", "server")
+        paths = (os.path.join(folder, "en.json"), os.path.join(folder, lang + ".json"))
+        try:
+            stamp = tuple(os.path.getmtime(p) for p in paths)
+        except OSError:
+            return {}, []
+        cache = self.__dict__.setdefault("_server_texts_cache", {})
+        hit = cache.get(lang)
+        if hit and hit[0] == stamp:
+            return hit[1]
+        try:
+            with open(paths[0], encoding="utf-8") as f:
+                english = json.load(f)
+            with open(paths[1], encoding="utf-8") as f:
+                theirs = json.load(f)
+        except (OSError, ValueError):
+            return {}, []
+        exact, patterns = {}, []
+        for key, template in (english.items() if isinstance(english, dict) else []):
+            said = theirs.get(key) if isinstance(theirs, dict) else None
+            if not isinstance(template, str) or not isinstance(said, str) or not said.strip():
+                continue
+            parts = re.split(r"\{(p\d+)\}", template)
+            if len(parts) == 1:
+                exact[template] = said
+            else:
+                rx = "".join(re.escape(x) if i % 2 == 0 else "(?P<%s>.+?)" % x for i, x in enumerate(parts))
+                try:
+                    patterns.append((re.compile(rx, re.S), said))
+                except re.error:
+                    pass
+        cache[lang] = (stamp, (exact, patterns))
+        return exact, patterns
+
+    def _localize_reply(self, headers, resp):
+        lang = str(headers.get("X-Revival-Lang") or "")
+        msg = resp.get("errorMessage") if isinstance(resp, dict) else None
+        if not isinstance(msg, str) or not msg or lang == "en" or not self.LANG_HEADER.fullmatch(lang):
+            return resp
+        try:
+            exact, patterns = self._server_texts(lang)
+            said = exact.get(msg)
+            if said is None:
+                for rx, translation in patterns:
+                    m = rx.fullmatch(msg)
+                    if m:
+                        said = re.sub(r"\{(p\d+)\}", lambda x: m.groupdict().get(x.group(1)) or x.group(0), translation)
+                        break
+            return dict(resp, errorMessage=said) if said else resp
+        except Exception:
+            log.exception("translating a reply")
+            return resp
+
     def _handle(self, api, req, headers, handler, replay):
         status, resp = self._handle_inner(api, req, headers, handler)
+        resp = self._localize_reply(headers, resp)
         if replay is not None and replay.get("first"):
             replay["status"], replay["resp"] = status, resp
         return status, resp
