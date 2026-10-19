@@ -6839,7 +6839,12 @@ class PlayFabEmulator:
         grant = getattr(photon_emu, "grant", None)
         if grant is None:                     # the match service part is older (restart the server)
             return err("NotAvailable", "restart the server to use match tickets", 1000, 503)
-        return ok({"ticket": grant(p["PlayFabId"]), "seconds": getattr(photon_emu, "TICKET_SECONDS", 1800)})
+        mod = str(headers.get("X-Revival-Mod") or "")[:40]      # 0.14.17+ says it: the match service picks who goes first
+        try:
+            ticket = grant(p["PlayFabId"], mod=mod)
+        except TypeError:                     # a match service from before 2026-10-19 (restart the server)
+            ticket = grant(p["PlayFabId"])
+        return ok({"ticket": ticket, "seconds": getattr(photon_emu, "TICKET_SECONDS", 1800)})
 
     def api_Client_GetPhotonAuthenticationToken(self, req, headers):
         return ok({"PhotonCustomAuthenticationToken": uuid.uuid4().hex})

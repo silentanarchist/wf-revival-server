@@ -17,6 +17,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import re
 import struct
 import threading
@@ -465,6 +466,32 @@ _tickets = {}                                 # sha256(ticket) -> (player id, ex
 _tickets_lock = threading.Lock()
 _tickets_loaded = [None]                      # the file the tickets were last read from
 
+# ---- who goes first (2026-10-19)
+# Every playable warlord has the same initiative, so the game decides who goes first by a coin: the room
+# creator's draw from the shared random table in matchmaking, the challenger's own toss in a friend challenge.
+# Friend challenges with custom rules showed the two games can take different routes and both start first,
+# which breaks the match on the first move. So the server tosses the coin instead: when the second player
+# joins a room it writes the room property "RevivalFirst" = the player id that goes first; the joiner gets it
+# in the join reply and the creator by a properties-changed event, before either sees the other arrive, and
+# the mod (0.14.17+) makes both games follow it (a challenge's own "Goes first" rule still wins there).
+# Only when BOTH players run a mod that follows it: a mod that does not would keep the game's own coin while
+# its opponent followed the server's, so the property is written only when both tickets say 0.14.17 or newer
+# (the mod says its version when asking for its match ticket). Older pairs play exactly as before.
+FIRST_KEY = "RevivalFirst"
+FIRST_MIN_MOD = (0, 14, 17)
+_mods = {}                                    # player id -> mod version tuple, from the match ticket request
+
+
+def _version_tuple(text):
+    m = re.match(r"\s*(\d+)\.(\d+)\.(\d+)", str(text or ""))
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def mod_of(player_id):
+    """The mod version (tuple) a signed-in player said when asking for their match ticket, or None."""
+    with _tickets_lock:
+        return _mods.get(player_id)
+
 
 def _fingerprint(ticket):
     return hashlib.sha256(ticket.encode("utf-8")).hexdigest()
@@ -481,8 +508,10 @@ def _tickets_sync():
             kept = json.load(f)
         now = time.time()
         for k, v in (kept.items() if isinstance(kept, dict) else []):
-            if isinstance(v, list) and len(v) == 2 and float(v[1]) > now:
+            if isinstance(v, list) and len(v) in (2, 3) and float(v[1]) > now:
                 _tickets.setdefault(str(k), (str(v[0]), float(v[1])))
+                if len(v) == 3 and _version_tuple(v[2]):           # the mod version the ticket was asked with
+                    _mods.setdefault(str(v[0]), _version_tuple(v[2]))
     except FileNotFoundError:
         pass
     except Exception as e:
@@ -497,14 +526,18 @@ def _tickets_save():
     try:
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({k: [who, until] for k, (who, until) in _tickets.items()}, f)
+            json.dump({k: [who, until, ".".join(str(n) for n in _mods[who])] if who in _mods else [who, until]
+                   for k, (who, until) in _tickets.items()}, f)
         os.replace(tmp, path)
     except Exception as e:
         log.warning("match tickets: could not write %s: %s", path, e)
 
 
-def grant(player_id):
-    """A match ticket for a signed-in player (valid TICKET_SECONDS, usable for every connection)."""
+def grant(player_id, mod=None):
+    """A match ticket for a signed-in player (valid TICKET_SECONDS, usable for every connection).
+
+    mod: the version the mod said in its request ("0.14.17-w"); it decides whether the server picks who goes
+    first for this player's matches (see FIRST_MIN_MOD). A ticket asked for without one counts as an older mod."""
     ticket = uuid.uuid4().hex + uuid.uuid4().hex
     now = time.time()
     with _tickets_lock:
@@ -512,6 +545,11 @@ def grant(player_id):
         for k in [k for k, (_, until) in _tickets.items() if until < now]:
             del _tickets[k]
         _tickets[_fingerprint(ticket)] = (player_id, now + TICKET_SECONDS)
+        version = _version_tuple(mod)
+        if version:
+            _mods[player_id] = version
+        else:
+            _mods.pop(player_id, None)
         _tickets_save()
     return ticket
 
@@ -899,6 +937,8 @@ class Service(object):
                 actor.props.update(props)
             conn.room, conn.actor = room, actor
             room.empty_since = None
+            if back is None:
+                self._pick_first(room, actor)
             others = {a.nr: dict(a.props) for a in room.actors.values() if a.nr != actor.nr}
             conn.reply(code, {254: actor.nr, 248: dict(room.props), 249: others, 252: self._actor_list(room)})
             self._send_room(room, event(255, {254: actor.nr, 249: dict(actor.props), 252: self._actor_list(room)}))
@@ -910,6 +950,30 @@ class Service(object):
             log.info("room %s: %s %s as actor %d (%d in room)", room.name, actor.name or conn.peer,
                      "is back" if back else "joined", actor.nr, len(room.actors))
             self._record(room, "back" if back else "join", a=actor.nr, p=actor.player or conn.player, n=(actor.name or "")[:40])
+
+    def _pick_first(self, room, joined):
+        """A new player has just joined (call with the lock held): once two signed-in players are in, toss the
+        coin for who goes first and tell the room (see FIRST_KEY above). Tossed again for every new pairing
+        (a player who left and someone else took the seat); a player coming back keeps the toss."""
+        try:
+            seated = [a for a in room.actors.values() if a.player]
+            if len(room.actors) != 2 or len(seated) != 2:
+                room.props.pop(FIRST_KEY, None)
+                return
+            players = [a.player for a in seated]
+            if any((mod_of(pl) or (0,)) < FIRST_MIN_MOD for pl in players):
+                if room.props.pop(FIRST_KEY, None) is not None:
+                    log.info("room %s: who goes first left to the games (a mod older than %s)", room.name,
+                             ".".join(str(n) for n in FIRST_MIN_MOD))
+                return
+            first = random.choice(players)
+            room.props[FIRST_KEY] = first
+            log.info("room %s: %s goes first (server's coin)", room.name, first)
+            self._record(room, "first", p=first)
+            # the one already in the room hears it now, before the join event; the joiner gets it in the join reply
+            self._send_room(room, event(253, {253: 0, 251: {FIRST_KEY: first}, 254: 0}), skip=joined.nr)
+        except Exception:
+            log.exception("room %s: who goes first", room.name)
 
     def _new_room(self, name, p):
         room = Room(name, (p.get(213) or "", plain(p.get(212)) or 0))
