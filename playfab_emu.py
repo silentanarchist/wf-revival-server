@@ -4524,6 +4524,7 @@ class PlayFabEmulator:
                     posted[code] = (time.time(), url)
                     text = f"Shared in <#{cid}>: {url}"
                     log.info("discord bot: replay %s shared by Discord user %s", self._code_show(code), did)
+                    self._shared_replay_add(code, did, comment)
                 else:
                     text = f"The bot could not post in #{bot['replayChannel']} (HTTP {status}). Ask an admin to let it send messages and embed links there."
                     log.warning("discord bot: replay post refused (HTTP %s)", status)
@@ -6471,6 +6472,66 @@ class PlayFabEmulator:
             invites[target] = now + self.ALLIANCE_INVITE_DAYS * 86400 * 1000
             self._alliance_save(g)
             return {}
+
+    # ---- shared replays and news for the mod's Community page (2026-10-19, mod 0.14.28)
+    # A replay shared with the Discord bot's /replay is also listed in the game (Social > Community), newest first,
+    # with a Watch button. Kept in data/replays-shared.json: code, when, the sharer's account name if their Discord
+    # is linked (else ""), the comment (already word-filtered). At most SHARED_KEEP entries. Only what the Discord
+    # post already shows is handed out (match info through _code_public, never the recording).
+    SHARED_KEEP = 200
+
+    def _shared_path(self):
+        return os.path.join(self.store.root, "replays-shared.json")
+
+    def _shared_replays(self):
+        try:
+            with open(self._shared_path(), encoding="utf-8") as f:
+                d = json.load(f)
+            return [x for x in d if isinstance(x, dict) and isinstance(x.get("code"), str)] if isinstance(d, list) else []
+        except (OSError, ValueError):
+            return []
+
+    def _shared_replay_add(self, code, did, comment):
+        try:
+            who = ""
+            try:
+                key, u = self._discord_account_of(did)
+                who = str(u.get("name") or "") if u else ""
+            except Exception:
+                who = ""
+            with self.store.lock:
+                entries = [e for e in self._shared_replays() if e.get("code") != code]
+                entries.insert(0, {"code": code, "at": now_iso(), "by": who[:40], "comment": str(comment or "")[:200]})
+                del entries[self.SHARED_KEEP:]
+                tmp = self._shared_path() + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(entries, f, ensure_ascii=False, indent=1)
+                os.replace(tmp, self._shared_path())
+        except Exception:
+            log.exception("shared replays: could not note %s", code)
+
+    def api_Revival_SharedReplays(self, req, headers):
+        """The replays shared in Discord, newest first (game session): [{code, at, by, comment, + _code_public}]."""
+        me = self.store.session_player_id(headers)
+        if not me:
+            return err("NotAuthenticated", "sign in first", 1074, 401)
+        if not self._allow("shared-replays", me, 30, 60):
+            return err("TooManyRequests", "too many requests; wait a moment", 1199, 429)
+        out = []
+        for e in self._shared_replays()[:50]:
+            d = self._code_load(e["code"])
+            if not d or d.get("report"):
+                continue
+            pub = self._code_public(e["code"], d)
+            pub.update({"at": e.get("at") or "", "by": e.get("by") or "", "comment": e.get("comment") or "",
+                        "mode": self.REPLAY_MODES.get(pub.get("matchType")) if isinstance(pub.get("matchType"), int) else ""})
+            out.append(pub)
+        return ok({"replays": out})
+
+    # News for the Community page: content/files/news.json, written by the owner (served publicly like the other
+    # content files; the mod reads it directly). Form: {"discord": "https://discord.gg/...", "items": [{"date":
+    # "2026-10-19", "title": "...", "text": "...", "link": "https://..."}]} - newest first; "link" optional.
+    # Nothing to do on the server beyond serving the file.
 
     # ---- challenge by friend code (2026-10-19, mod 0.14.17)
     # The Social > Challenge page takes a friend code as well as a friend: the server finds the player and,
