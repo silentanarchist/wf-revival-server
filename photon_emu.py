@@ -24,6 +24,18 @@ import threading
 import time
 import uuid
 
+
+# ---- hot reload (2026-10-20)
+# The game server reloads this file when it changes on disk (warpforge_server.current_services), like playfab_emu.py.
+# importlib.reload runs the file again in the same module namespace, so every module-level table would start empty
+# and every live connection, room and record would keep the old classes. _keep() hands the old value back for the
+# tables that must survive, and _adopt() at the end of the file moves the live objects onto the new classes, so
+# the code that runs from then on is the new one (a connection's read loop itself stays the old one until that
+# connection ends, which is at most one match). State that must not change shape between versions: see _adopt.
+def _keep(name, make):
+    old = globals().get(name)
+    return old if old is not None else make()
+
 log = logging.getLogger("photon")
 try:                                              # kept in logs/photon.log as well as on the console
     _dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
@@ -457,14 +469,14 @@ def _ttl(v):
 # client sends.
 OP_TICKET = 160
 TICKET_SECONDS = 1800
-REQUIRE = [True]              # closed until the game server has read its settings (it sets this at start-up)
+REQUIRE = _keep("REQUIRE", lambda: [True])   # closed until the game server has read its settings (it sets this at start-up)
 # Tickets are kept by fingerprint (sha256, never the ticket itself) and, once the game server has set
 # TICKET_FILE (data/match-tickets.json), on disk too, so a restart of the server does not turn away the games
 # that were already open (before 2026-10-17 they were refused every 2 s until their ticket ran out).
-TICKET_FILE = [None]
-_tickets = {}                                 # sha256(ticket) -> (player id, expires at, unix seconds)
-_tickets_lock = threading.Lock()
-_tickets_loaded = [None]                      # the file the tickets were last read from
+TICKET_FILE = _keep("TICKET_FILE", lambda: [None])
+_tickets = _keep("_tickets", dict)            # sha256(ticket) -> (player id, expires at, unix seconds)
+_tickets_lock = _keep("_tickets_lock", threading.Lock)
+_tickets_loaded = _keep("_tickets_loaded", lambda: [None])      # the file the tickets were last read from
 
 # ---- who goes first (2026-10-19)
 # Every playable warlord has the same initiative, so the game decides who goes first by a coin: the room
@@ -479,7 +491,7 @@ _tickets_loaded = [None]                      # the file the tickets were last r
 # (the mod says its version when asking for its match ticket). Older pairs play exactly as before.
 FIRST_KEY = "RevivalFirst"
 FIRST_MIN_MOD = (0, 14, 17)
-_mods = {}                                    # player id -> mod version tuple, from the match ticket request
+_mods = _keep("_mods", dict)                  # player id -> mod version tuple, from the match ticket request
 
 
 def _version_tuple(text):
@@ -623,10 +635,10 @@ class Room(object):
 # data/matches/<YYYY-MM>/<id>.jsonl, one JSON object per line. The revival server sets MATCH_DIR at
 # start-up (without it nothing is written) and deletes records after MATCH_KEEP_DAYS unless a
 # replay code or a report holds them (playfab_emu). Nothing personal beyond player ids and names.
-MATCH_DIR = [None]
+MATCH_DIR = _keep("MATCH_DIR", lambda: [None])
 MATCH_MAX_LINES = 20000                       # per match; a record that reaches either cap stops,
 MATCH_MAX_BYTES = 4 * 1024 * 1024             # with a last line saying so
-RECENT_MATCHES = []                           # newest last: {"id", "players": set, "opened", "last"}, at most 500
+RECENT_MATCHES = _keep("RECENT_MATCHES", list)   # newest last: {"id", "players": set, "opened", "last"}, at most 500
 MATCH_ID = re.compile(r"[0-9a-f]{16}")
 
 
@@ -1149,8 +1161,9 @@ def _brief(p):
     return ", ".join("%d=%s" % (k, one(v)) for k, v in sorted(p.items()))
 
 
-SERVICE = Service()
-SEEN = {}          # player id -> when their game last asked the game server for chat (kept across reloads of playfab_emu)
+SERVICE = _keep("SERVICE", Service)
+SEEN = _keep("SEEN", dict)          # player id -> when their game last asked the game server for chat (kept across reloads)
+PRIVATE = _keep("PRIVATE", dict)    # private messages waiting for their reader (playfab_emu fills and drains it)
 
 # Oakley group 1: the well-known prime the client's key exchange uses.
 _PRIME = int("FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B"
@@ -1322,3 +1335,26 @@ def serve(sock, peer):
     except OSError:
         pass
     Connection(sock, peer, SERVICE).run()
+
+
+def _adopt():
+    """After a reload: the live service, its rooms, actors, records and connections take the new classes."""
+    svc = globals().get("SERVICE")
+    if svc is None or type(svc) is Service:
+        return
+    moved = 0
+    with svc.lock:
+        svc.__class__ = Service
+        for room in list(svc.rooms.values()):
+            room.__class__ = Room
+            for a in list(room.actors.values()):
+                a.__class__ = Actor
+            if room.record is not None:
+                room.record.__class__ = MatchRecord
+            moved += 1
+        for c in list(svc.conns):
+            c.__class__ = Connection
+    log.info("photon_emu.py reloaded: %d room(s) and %d connection(s) carried over", moved, len(svc.conns))
+
+
+_adopt()

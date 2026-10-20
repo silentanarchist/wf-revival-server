@@ -340,9 +340,41 @@ class Handler(BaseHTTPRequestHandler):
     playfab_mtime: float = 0
     reload_lock = threading.Lock()
 
+    photon_mtime: float = 0
+
+    @classmethod
+    def current_photon(cls):
+        """Reload photon_emu.py (the match service) when it changes on disk (2026-10-20; before, a restart).
+        The module keeps its live state across the reload and moves the open rooms and connections onto the new
+        code (photon_emu._keep / _adopt). The new file is compiled first, so a file that does not even parse is
+        never half-loaded; a half-copied file is left alone until it has settled."""
+        try:
+            path = photon_emu.__file__
+            mtime = os.path.getmtime(path)
+        except OSError:
+            return
+        if cls.photon_mtime == 0:
+            cls.photon_mtime = mtime                  # the version loaded at start-up
+            return
+        if mtime == cls.photon_mtime or time.time() - mtime < cls.RELOAD_SETTLE:
+            return
+        with cls.reload_lock:
+            if mtime == cls.photon_mtime:
+                return
+            cls.photon_mtime = mtime
+            log.info("photon_emu.py changed: loading it")
+            try:
+                with open(path, "rb") as f:
+                    compile(f.read(), path, "exec")
+                importlib.reload(photon_emu)
+                log.info("loaded photon_emu.py")
+            except BaseException:
+                log.exception("photon_emu.py failed to load; keeping the previous version")
+
     @classmethod
     def current_playfab(cls):
         """Reload playfab_emu.py automatically when it changes on disk (no server restart needed)."""
+        cls.current_photon()
         try:
             mtime = os.path.getmtime(playfab_emu.__file__)
         except OSError:
