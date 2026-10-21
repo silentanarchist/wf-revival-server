@@ -475,6 +475,7 @@ REQUIRE = _keep("REQUIRE", lambda: [True])   # closed until the game server has 
 # TICKET_FILE (data/match-tickets.json), on disk too, so a restart of the server does not turn away the games
 # that were already open (before 2026-10-17 they were refused every 2 s until their ticket ran out).
 TICKET_FILE = _keep("TICKET_FILE", lambda: [None])
+MATCH_CLOSED = _keep("MATCH_CLOSED", lambda: [None])       # playfab_emu sets a function(record id) run when a recorded room closes
 _tickets = _keep("_tickets", dict)            # sha256(ticket) -> (player id, expires at, unix seconds)
 _tickets_lock = _keep("_tickets_lock", threading.Lock)
 _tickets_loaded = _keep("_tickets_loaded", lambda: [None])      # the file the tickets were last read from
@@ -698,6 +699,7 @@ class MatchRecord(object):
 
     def __init__(self, room):
         self.room_name = room.name
+        self.lobby = str(room.lobby[0]) if isinstance(room.lobby, tuple) and room.lobby else ""
         self.id = uuid.uuid4().hex[:16]
         self.t0 = time.monotonic()
         self.opened = time.time()
@@ -732,7 +734,7 @@ class MatchRecord(object):
             log.warning("match record %s: cannot write (%s)", self.id, e)
             self.stopped = True
             return
-        self._write({"t": 0, "k": "open", "id": self.id, "room": self.room_name[:200],
+        self._write({"t": 0, "k": "open", "id": self.id, "room": self.room_name[:200], "lobby": self.lobby[:200],
                      "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.opened)), "info": self.info})
         for line in self.pending:
             self._write(line)
@@ -816,6 +818,11 @@ class Service(object):
             if kind == "close":
                 rec.note("close")
                 rec.close()
+                if MATCH_CLOSED[0] and rec.players:
+                    try:
+                        MATCH_CLOSED[0](rec.id)                     # playfab_emu checks the record (its own thread)
+                    except Exception:
+                        log.exception("match record %s: closed hook", rec.id)
                 return
             rec.note(kind, **fields)
         except Exception:

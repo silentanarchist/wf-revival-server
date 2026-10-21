@@ -3959,7 +3959,8 @@ $("reportsClosed").onchange = loadReports;
 // Admins: reported players and anti-cheat alarms, with a review of the match.
 // The page's words for the reasons and alarms (functions: the language file arrives after the page loads).
 function preportReasons() { return { cheating: T("admin.moderation.reason.cheating", "Cheating"), unsportsmanlike: T("admin.moderation.reason.unsportsmanlike", "Unsportsmanlike"), stalling: T("admin.moderation.reason.stalling", "Stalling / AFK"), other: T("admin.moderation.reason.other", "Other") }; }
-function alarmKinds() { return { tamper: T("admin.moderation.alarm.tamper", "game memory edited (tampering detector)"), speed: T("admin.moderation.alarm.speed", "game sped up (speed-hack detector)") }; }
+function alarmKinds() { return { tamper: T("admin.moderation.alarm.tamper", "game memory edited (tampering detector)"), speed: T("admin.moderation.alarm.speed", "game sped up (speed-hack detector)"),
+  deck: T("admin.moderation.alarm.deck", "deck not legal for the mode (server check)"), card: T("admin.moderation.alarm.card", "played a card of the opponent's deck (server check)"), mana: T("admin.moderation.alarm.mana", "played more than the turn's Energy allows (server check)") }; }
 function preportTitle(r) {
   return r.kind === "auto"
     ? T("admin.moderation.antiCheat", "Anti-cheat: {alarm}", { alarm: alarmKinds()[(r.auto || {}).kind] || T("admin.moderation.alarm", "alarm") }) + ((r.auto || {}).count > 1 ? " " + T("admin.moderation.times", "({count} times)", { count: r.auto.count }) : "")
@@ -4005,7 +4006,7 @@ async function showPlayerReport(id, keepPlace) {
   const add = (...parts) => box.append(...parts.filter(x => x));
   const au = d.auto || {}, reasons = preportReasons(), at = x => (x || "").replace("T", " ").slice(0, 16);
   add(el("p", { text: T("admin.moderation.reported", "Reported: {who}", { who: reportWho(d.reported) }) }),
-    el("p", { text: d.kind === "auto" ? T("admin.moderation.raisedBy", "Raised by the reported player's own game: {alarm}", { alarm: alarmKinds()[au.kind] || "" }) + (au.detail ? " (" + au.detail + ")" : "") + "; " +
+    el("p", { text: d.kind === "auto" ? (au.server ? T("admin.moderation.foundByServer", "Found by the server in its record of the match: {alarm}", { alarm: alarmKinds()[au.kind] || "" }) : T("admin.moderation.raisedBy", "Raised by the reported player's own game: {alarm}", { alarm: alarmKinds()[au.kind] || "" })) + (au.detail ? " (" + au.detail + ")" : "") + "; " +
                                          T("admin.moderation.firstLast", "first {first}, last {last} UTC.", { first: at(au.firstAt), last: at(au.lastAt) })
                                        : T("admin.moderation.reporterReason", "Reporter: {who}. Reason: {reason}", { who: reportWho(d.reporter), reason: preportTitle(d) }) }),
     m.reporterHero ? el("p", { class: "hint", text: T("admin.moderation.matchLine", "Match: {reporterWarlord} ({reporter}, {result}) against {reportedWarlord} ({reported})", { reporterWarlord: cardName(m.reporterHero), reporter: sideName.reporter, result: m.reporterResult, reportedWarlord: cardName(m.reportedHero), reported: sideName.reported }) +

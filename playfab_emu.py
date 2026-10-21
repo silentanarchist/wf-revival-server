@@ -24,6 +24,7 @@ import time
 import unicodedata
 
 import photon_emu
+import match_checks
 if not hasattr(photon_emu, "SEEN"):        # an older photon_emu (before a restart) has no table of its own
     photon_emu.SEEN = {}
 if not hasattr(photon_emu, "PRIVATE"):     # private messages waiting for their reader (kept across reloads of this file)
@@ -1424,6 +1425,8 @@ class PlayFabEmulator:
             photon_emu.TICKET_FILE[0] = os.path.join(self.store.root, "match-tickets.json")
         if hasattr(photon_emu, "DEAL_EVENTS_REFRESH"):   # which game modes are server-deal tests (GameModes.json)
             photon_emu.DEAL_EVENTS_REFRESH[0] = lambda: _mode_lists_now(self)
+        if hasattr(photon_emu, "MATCH_CLOSED"):          # the server's own checks of each finished match (match_checks.py)
+            photon_emu.MATCH_CLOSED[0] = self._match_closed
         if not photon_emu.REQUIRE[0]:
             # Steam and phone sign-ins carry no proof the server can check, so without accounts
             # anyone who knows a player's Steam id or device id can play as that player.
@@ -7936,6 +7939,76 @@ class PlayFabEmulator:
         log.warning("anti-cheat alarm %s for %s (%s); report %s", kind, pfid, detail[:80], rid)
         return ok({"id": rid, "count": 1})
 
+    # -- the server's own checks of a finished match (match_checks.py): run when the room closes, a few seconds
+    #    later on their own thread; each flag is an automatic report ("auto" with "server": True), one per player
+    #    and kind per match. Report-only, like the game's detectors.
+    SERVER_FLAG_KINDS = ("deck", "card", "mana")
+
+    def _match_closed(self, match_id):
+        t = threading.Thread(target=self._match_checks_run, args=(match_id,), name="match-checks", daemon=True)
+        t.start()
+
+    def _mode_rules(self):
+        """{event id: gameplayVariables} from content/liveops/GameModes.json (re-read when it changes)."""
+        path = os.path.join(self.content_root, "liveops", "GameModes.json")
+        try:
+            stamp = os.path.getmtime(path)
+        except OSError:
+            return {}
+        cached = self.__dict__.get("_mode_rules_cache")
+        if cached and cached[0] == stamp:
+            return cached[1]
+        rules = {}
+        try:
+            with open(path, encoding="utf-8-sig") as f:
+                for ev in json.load(f).get("RawEvents", []):
+                    d = (ev or {}).get("Data") or {}
+                    if isinstance(d.get("eventId"), str) and isinstance(d.get("gameplayVariables"), dict):
+                        rules[d["eventId"]] = d["gameplayVariables"]
+        except (OSError, ValueError):
+            log.exception("match checks: GameModes.json")
+        self._mode_rules_cache = (stamp, rules)
+        return rules
+
+    def _match_checks_run(self, match_id):
+        try:
+            time.sleep(3)                                            # the record's last lines are flushed on close
+            global match_checks
+            try:
+                import importlib
+                match_checks = importlib.reload(match_checks)        # edits to the checks need no restart
+            except Exception:
+                log.exception("match checks: reload")
+            relay = self._relay_game(match_id)
+            if not relay or len(relay.get("players") or {}) != 2:
+                return
+            copies = ((self._settings().get("longGame") or {}).get("copies") or {}) if isinstance(self._settings().get("longGame"), dict) else {}
+            long_copies = {n: copies[k] for k, n in (("Common", 1), ("Rare", 2), ("Epic", 3), ("Legendary", 4)) if isinstance(copies.get(k), int)}
+            flags = match_checks.check_match(relay, relay.get("lobby", ""), relay.get("room", ""), self._replay_carddata(),
+                                             self._mode_rules(), long_copies)
+            for fl in flags:
+                self._server_flag(match_id, fl["player"], fl["kind"], fl["detail"])
+        except Exception:
+            log.exception("match checks: %s", match_id)
+
+    def _server_flag(self, match_id, pfid, kind, detail):
+        if kind not in self.SERVER_FLAG_KINDS or not isinstance(pfid, str) or not pfid:
+            return
+        detail = re.sub(r"[\x00-\x1f\x7f]", " ", str(detail or ""))[:400]
+        with self.store.lock:
+            for d in self._preport_all():
+                a = d.get("auto") or {}
+                if d.get("kind") == "auto" and d.get("reported") == pfid and a.get("kind") == kind \
+                        and (d.get("match") or {}).get("matchId") == match_id:
+                    return                                           # already filed for this match
+            rid = self._preport_new_id()
+            d = {"id": rid, "kind": "auto", "at": now_iso(), "reporter": "", "reported": pfid,
+                 "reason": "cheating", "note": "", "closed": False,
+                 "auto": {"kind": kind, "count": 1, "firstAt": now_iso(), "lastAt": now_iso(), "detail": detail, "server": True},
+                 "match": {"matchId": match_id}, "evidence": {}}
+            self._preport_save(d)
+        log.warning("match check %s for %s in match %s (%s); report %s", kind, pfid, match_id, detail[:120], rid)
+
     # -- admin side (website Moderation page)
     ACTION_NAMES = {0: "undefined", 1: "attack", 2: "createMinion", 3: "drawCard", 4: "minionDeath", 5: "playCardFromHand",
                     6: "showEnemyCard", 7: "reorderMinionsInPlay", 8: "doDamage", 9: "doMultiDamage", 10: "heal", 11: "playAnim",
@@ -8176,6 +8249,7 @@ class PlayFabEmulator:
         if not path:
             return None
         actors, players, rng, first, unread, other = {}, {}, {}, None, 0, []
+        goes_first, room_name, lobby = None, "", ""
         def me(a):
             pid = actors.get(a, "")
             return players.setdefault(pid, {"deck": None, "env": None, "mulligan": None, "moves": {}, "resent": 0, "conflicts": []}) if pid else None
@@ -8188,6 +8262,12 @@ class PlayFabEmulator:
                 k, a = e.get("k"), e.get("a")
                 if k in ("join", "back") and isinstance(e.get("p"), str):
                     actors[a] = e["p"]
+                    continue
+                if k == "open":
+                    room_name, lobby = str(e.get("room") or ""), str(e.get("lobby") or "")
+                    continue
+                if k == "first" and isinstance(e.get("p"), str):
+                    goes_first = e["p"]                                # the server's coin (2026-10-19 on)
                     continue
                 if k not in ("ev", "props"):
                     continue
@@ -8230,7 +8310,8 @@ class PlayFabEmulator:
             joined = [n for i in sorted(parts) for n in parts[i]]
             if numbers is None or len(joined) > len(numbers):
                 numbers = joined
-        return {"id": match_id, "players": players, "rng": numbers, "first": first, "unread": unread, "events": other[:100]}
+        return {"id": match_id, "players": players, "rng": numbers, "first": first, "goesFirst": goes_first,
+                "room": room_name, "lobby": lobby, "unread": unread, "events": other[:100]}
 
     def _preport_compare(self, sides, ids, match_id):
         """Each player's own recording against what the server relayed: shuffle numbers, who went first, decks,
