@@ -468,7 +468,8 @@ def _ttl(v):
 # refused, and a player's seat in a room belongs to the signed-in player, not to whatever name a
 # client sends.
 OP_TICKET = 160
-TICKET_SECONDS = 1800
+TICKET_SECONDS = 4 * 3600      # from grant and from every use (2026-10-21: a 21-minute match outlived a 30-minute ticket
+                               # fetched at sign-in; the game then reconnected with it and was refused once)
 REQUIRE = _keep("REQUIRE", lambda: [True])   # closed until the game server has read its settings (it sets this at start-up)
 # Tickets are kept by fingerprint (sha256, never the ticket itself) and, once the game server has set
 # TICKET_FILE (data/match-tickets.json), on disk too, so a restart of the server does not turn away the games
@@ -613,11 +614,16 @@ def grant(player_id, mod=None):
 def _redeem(ticket):
     if not isinstance(ticket, str) or not ticket:
         return None
+    now = time.time()
     with _tickets_lock:
         _tickets_sync()
-        found = _tickets.get(_fingerprint(ticket))
-    if found and found[1] >= time.time():
-        return found[0]
+        key = _fingerprint(ticket)
+        found = _tickets.get(key)
+        if found and found[1] >= now:
+            # a ticket in use stays valid: its life starts again at every connection, so an open game is never
+            # turned away because its sign-in was long ago (saved with the next grant, which is good enough)
+            _tickets[key] = (found[0], now + TICKET_SECONDS)
+            return found[0]
     return None
 FLAG_DELETE_NULL, FLAG_PROPS_TO_ALL = 16, 32
 
