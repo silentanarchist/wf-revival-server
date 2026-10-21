@@ -509,19 +509,24 @@ DEAL_EVENTS_REFRESH = _keep("DEAL_EVENTS_REFRESH", lambda: [None])   # playfab_e
 _sysrand = random.SystemRandom()
 
 
-def deal_event(room):
-    """The game mode of a matchmaking room when it is a server-deal test, else None. The game names the room's
-    lobby after the mode: 'Everguild.LiveOps.RankedV3EventEventRoom#RevivalClassic@r1-0.1.0'."""
+def deal_lobby(lobby):
+    """The game mode of a matchmaking lobby when it is a server-deal test, else None. The game names the lobby
+    after the mode: 'Everguild.LiveOps.RankedV3EventEventRoom#RevivalClassic@r1-0.1.0'."""
     try:
         if DEAL_EVENTS_REFRESH[0]:
             DEAL_EVENTS_REFRESH[0]()
-        name = room.lobby[0] if isinstance(room.lobby, tuple) and room.lobby else ""
+        name = lobby[0] if isinstance(lobby, tuple) and lobby else ""
         m = re.search(r"#([A-Za-z0-9_.-]+)@", str(name))
         eid = m.group(1) if m else None
         return eid if eid and eid in DEAL_EVENTS else None
     except Exception:
-        log.exception("room %s: deal event", getattr(room, "name", "?"))
+        log.exception("deal lobby %r", lobby)
         return None
+
+
+def deal_event(room):
+    """The game mode of a matchmaking room when it is a server-deal test, else None."""
+    return deal_lobby(getattr(room, "lobby", None))
 
 
 def deal_pair(a, b):
@@ -889,6 +894,13 @@ class Service(object):
         lobby = (p.get(213) or "", plain(p.get(212)) or 0)
         want = p.get(248) or {}
         sql = p.get(245) if isinstance(p.get(245), str) else ""
+        # a server-deal test mode has one pool: the game's ranked / casual split ("C4 == 0|1", which can differ
+        # between two testers of a mode neither has played) would keep two testers from finding each other
+        if deal_lobby(lobby):
+            stripped = re.sub(r"\s*AND\s+C4\s*==\s*\d+", "", sql, flags=re.I)
+            if stripped != sql:
+                log.info("matchmaking: %s searches a server-deal mode; the ranked/casual filter is ignored", conn.peer)
+                sql = stripped
         now = time.monotonic()
         with self.lock:
             found = []
