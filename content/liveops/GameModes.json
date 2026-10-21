@@ -113,7 +113,7 @@
           "handLimit": 10,
           "shouldReshuffle": false,
           "showMulligan": true,
-          "assignDefensiveCardsInEditMode": true,
+          "assignDefensiveCardsInEditMode": false,
           "alternativeTraitLogic": false,
           "offenseCards": true
         },
@@ -536,7 +536,7 @@
           "handLimit": 10,
           "shouldReshuffle": false,
           "showMulligan": true,
-          "assignDefensiveCardsInEditMode": true,
+          "assignDefensiveCardsInEditMode": false,
           "alternativeTraitLogic": false,
           "offenseCards": true
         },
