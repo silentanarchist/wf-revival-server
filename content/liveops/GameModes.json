@@ -1183,6 +1183,250 @@
         "currentRating": 0,
         "armyStats": {}
       }
+    },
+    {
+      "Data": {
+        "$type": "Everguild.LiveOps.DraftEventData",
+        "eventId": "RevivalSkirmishDraft",
+        "uploadToLive": true,
+        "uploadToPreprod": true,
+        "enabled": true,
+        "activationType": 0,
+        "dates": {
+          "startDate": 0,
+          "endDate": 0,
+          "previewable": false,
+          "previewDate": 0,
+          "expirable": false,
+          "expireDate": 0,
+          "eventStages": []
+        },
+        "filter": {
+          "army": 0,
+          "expansion": 0,
+          "hasDuration": false,
+          "eventDuration": 24,
+          "hasCooldown": false,
+          "eventCooldown": 168,
+          "eventGroups": [],
+          "Triggers": {
+            "list": []
+          },
+          "Conditions": {
+            "list": []
+          }
+        },
+        "location": {
+          "type": 0
+        },
+        "priority": 6,
+        "showInMainMenu": true,
+        "admisionPrices": [],
+        "skullsRewards": [],
+        "gameplayVariables": {
+          "maxLegendaries": 4,
+          "numberOfCopiesOtherRarities": 2,
+          "numberOfCopiesLegendary": 1,
+          "slotsPerSide": 4,
+          "warlordLifeChange": 0,
+          "deckSize": 12,
+          "overtimeTurn": 10,
+          "startingMana": 1,
+          "startingManaSecond": 2,
+          "addedManaSecond": 0,
+          "manaPerTurn": 2,
+          "drawCardsPerTurn": 1,
+          "manaAccumulation": 1,
+          "handLimit": 8,
+          "shouldReshuffle": false,
+          "showMulligan": true,
+          "assignDefensiveCardsInEditMode": true,
+          "alternativeTraitLogic": false,
+          "offenseCards": true,
+          "startingHand": 4,
+          "secondPlayerExtraCards": 0
+        },
+        "matches": [
+          {
+            "matchType": 0,
+            "progressionTypes": 1
+          },
+          {
+            "matchType": 0,
+            "progressionTypes": 1
+          },
+          {
+            "matchType": 0,
+            "progressionTypes": 1
+          },
+          {
+            "matchType": 0,
+            "progressionTypes": 1
+          },
+          {
+            "matchType": 0,
+            "progressionTypes": 1
+          },
+          {
+            "matchType": 0,
+            "progressionTypes": 1
+          },
+          {
+            "matchType": 0,
+            "progressionTypes": 1
+          }
+        ],
+        "maxTries": 3,
+        "draftRounds": 4,
+        "packsPerDraft": 3,
+        "warlordsPerDraft": 3,
+        "premiumPrice": 0,
+        "premium10Price": 0,
+        "premiumGuaranteedWarlords": [],
+        "specificWarlords": [],
+        "specificArmies": [
+          10,
+          20,
+          30,
+          40,
+          50,
+          60,
+          70,
+          80,
+          90,
+          100,
+          110,
+          120
+        ],
+        "guaranteedArmies": [],
+        "blacklistedWarlords": [],
+        "Rewards": [],
+        "reRollCosts": [
+          {
+            "numberOfReRolls": 1,
+            "costs": {
+              "Currency": 0,
+              "Amount": 0
+            }
+          },
+          {
+            "numberOfReRolls": 1000000,
+            "costs": {
+              "Currency": 0,
+              "Amount": 999999
+            }
+          }
+        ],
+        "drawData": {
+          "EventAssets": [
+            {
+              "key": 10,
+              "value": {
+                "m_AssetGUID": "ad67075b6ab054264a8c4c1c8cbc92d2",
+                "m_SubObjectName": "",
+                "m_SubObjectType": ""
+              }
+            },
+            {
+              "key": 2,
+              "value": {
+                "m_AssetGUID": "72d7008754e774dceac4c886765692df",
+                "m_SubObjectName": "",
+                "m_SubObjectType": ""
+              }
+            }
+          ],
+          "EventComponents": [
+            {
+              "key": 35,
+              "value": {
+                "m_AssetGUID": "167a3d9bf611a4446be4207fe0584899",
+                "m_SubObjectName": "",
+                "m_SubObjectType": ""
+              }
+            },
+            {
+              "key": 10,
+              "value": {
+                "m_AssetGUID": "ac53c629080ac4175a32b07dd46623a8",
+                "m_SubObjectName": "",
+                "m_SubObjectType": ""
+              }
+            }
+          ],
+          "EventLabels": [
+            {
+              "key": 0,
+              "useLargeSizeOnMobile": false,
+              "value": {
+                "mTerm": "text:Skirmish Draft"
+              },
+              "Args": []
+            },
+            {
+              "key": 5,
+              "useLargeSizeOnMobile": false,
+              "value": {
+                "mTerm": "Demo/DraftMode/TitleIntroScreen"
+              },
+              "Args": []
+            },
+            {
+              "key": 2,
+              "useLargeSizeOnMobile": false,
+              "value": {
+                "mTerm": "Demo/DraftMode/IntroHelp1"
+              },
+              "Args": []
+            },
+            {
+              "key": 1,
+              "useLargeSizeOnMobile": false,
+              "value": {
+                "mTerm": "Demo/DraftMode/IntroHelp2"
+              },
+              "Args": []
+            }
+          ],
+          "ShowWindowOnTrigger": false,
+          "ShowWindowOnExpire": false,
+          "HideContainer": false,
+          "ForceRun": false,
+          "showPreviousPrice": false
+        },
+        "packTierWeights": {
+          "Common": 50,
+          "Epic": 35,
+          "Legendary": 15
+        },
+        "legendaryRounds": [
+          4
+        ]
+      },
+      "Persistence": {
+        "$type": "Everguild.LiveOps.DraftEventSaveGame",
+        "rewardsCollected": false,
+        "allianceRewardsCollected": false,
+        "refunded": false,
+        "won": 0,
+        "payState": 0,
+        "lastTimeEnteredFree": 0,
+        "selectedWarlord": null,
+        "selectedPacks": [],
+        "selectedCards": [],
+        "selectableWarlords": [],
+        "cardbackId": "",
+        "currentReRolls": 0,
+        "joinState": 0,
+        "defaultDeckId": "",
+        "randomSeed": 0,
+        "matchStarted": false,
+        "numberOfMatchesWon": 0,
+        "numberOfMatchesLost": 0,
+        "numberOfMatchesDraw": 0,
+        "currentRating": 0,
+        "armyStats": {}
+      }
     }
   ]
 }

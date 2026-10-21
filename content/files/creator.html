@@ -4098,7 +4098,7 @@ async function showPlayerReport(id, keepPlace) {
 let cfg = null;
 // The page's words for the settings (functions: the language file arrives after the page loads); the keys are what the files hold.
 function modeNames() {
-  return { RevivalClassic: T("mode.classic", "Classic"), RevivalSkirmish: T("mode.skirmish", "Skirmish"), RevivalDraft: T("mode.draft", "Draft"), RevivalLongGame: T("admin.server.modeLongGame", "Long Game"),
+  return { RevivalClassic: T("mode.classic", "Classic"), RevivalSkirmish: T("mode.skirmish", "Skirmish"), RevivalDraft: T("mode.draft", "Draft"), RevivalSkirmishDraft: T("mode.skirmishDraft", "Skirmish Draft"), RevivalServerDeal: T("mode.serverDeal", "Server Deal (test)"), RevivalLongGame: T("admin.server.modeLongGame", "Long Game"),
     PracticeEvent: T("mode.practice", "Practice"), PracticeEventClassic: T("admin.server.modePracticeClassic", "Practice Classic") };
 }
 // [key, label, kind]; "top" keys live on the mode itself, the rest in its gameplayVariables
@@ -4114,7 +4114,12 @@ function modeRows() {
     ["deckSize", T("admin.server.mode.deckSize", "Deck size"), "num"], ["numberOfCopiesOtherRarities", T("admin.server.mode.numberOfCopiesOtherRarities", "Copies of each card"), "num"],
     ["numberOfCopiesLegendary", T("admin.server.mode.numberOfCopiesLegendary", "Copies of each legendary"), "num"], ["maxLegendaries", T("admin.server.mode.maxLegendaries", "Legendaries per deck"), "num"],
     ["showMulligan", T("admin.server.mode.showMulligan", "Mulligan"), "bool"], ["shouldReshuffle", T("admin.server.mode.shouldReshuffle", "Reshuffle"), "bool"], ["alternativeTraitLogic", T("admin.server.mode.alternativeTraitLogic", "Alternative trait logic"), "bool"],
-    ["offenseCards", T("admin.server.mode.offenseCards", "Offence cards (the battlefield card pick before a match)"), "bool"]
+    ["offenseCards", T("admin.server.mode.offenseCards", "Offence cards (the battlefield card pick before a match)"), "bool"],
+    ["aiFallback", T("admin.server.mode.aiFallback", "AI opponent when nobody is found (off: keep waiting for a person)"), "bool"],
+    ["testersOnly", T("admin.server.mode.testersOnly", "Testers only (shown in the Testers window, hidden from everyone else)"), "bool"],
+    ["serverDeal", T("admin.server.mode.serverDeal", "Server deal test (the server supplies the match's random numbers)"), "bool"],
+    ["draftRounds", T("admin.server.mode.draftRounds", "Draft: rounds (packs picked; 3 cards each)"), "topnum"], ["packsPerDraft", T("admin.server.mode.packsPerDraft", "Draft: packs offered per round"), "topnum"],
+    ["warlordsPerDraft", T("admin.server.mode.warlordsPerDraft", "Draft: warlords offered"), "topnum"]
   ];
 }
 // [path, label, kind, hint]
@@ -4147,6 +4152,7 @@ function cfgInput(kind, value) {
 function cfgValue(input, kind) {
   if (kind === "bool" || kind === "top") return input.checked;
   if (kind === "text") return input.value.trim();
+  if (kind === "topnum" && input.value.trim() === "") return undefined;
   if (input.value.trim() === "") return undefined;
   const n = Number(input.value);
   if (!isFinite(n) || (kind !== "dec" && !Number.isInteger(n))) throw new Error(T("admin.server.notWhole", "not a whole number: {value}", { value: input.value }));
@@ -4166,7 +4172,7 @@ function drawServer() {
   for (const [key, label, kind] of modeRows()) {
     const tr = el("tr", {}, el("td", { text: label }));
     for (const e of events) {
-      const value = kind === "top" ? e.Data[key] : (e.Data.gameplayVariables || {})[key];
+      const value = kind === "top" || kind === "topnum" ? e.Data[key] : (e.Data.gameplayVariables || {})[key];
       const input = cfgInput(kind, value); input.dataset.mode = e.Data.eventId; input.dataset.key = key; input.dataset.kind = kind;
       input.addEventListener("input", () => tr.classList.add("changed"));
       tr.append(el("td", {}, input));
@@ -4214,6 +4220,7 @@ $("modeSave").onclick = () => {
       const ev = data.RawEvents.find(e => e && e.Data && e.Data.eventId === input.dataset.mode);
       const v = cfgValue(input, input.dataset.kind);
       if (input.dataset.kind === "top") ev.Data[input.dataset.key] = v;
+      else if (input.dataset.kind === "topnum") { if (v === undefined) delete ev.Data[input.dataset.key]; else ev.Data[input.dataset.key] = v; }
       else { ev.Data.gameplayVariables = ev.Data.gameplayVariables || {}; if (v === undefined) delete ev.Data.gameplayVariables[input.dataset.key]; else ev.Data.gameplayVariables[input.dataset.key] = v; }
     }
   } catch (e) { return say(T("creator.notSaved", "Not saved: {error}", { error: e.message }), "bad"); }

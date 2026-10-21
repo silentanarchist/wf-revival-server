@@ -7245,7 +7245,7 @@ class PlayFabEmulator:
             self._replays_prune(player["PlayFabId"], kept)
         return kept
 
-    STAT_MODES = (("Classic", ("RevivalClassic",)), ("Skirmish", ("RevivalSkirmish",)), ("Draft", ("RevivalDraft",)),
+    STAT_MODES = (("Classic", ("RevivalClassic",)), ("Skirmish", ("RevivalSkirmish",)), ("Draft", ("RevivalDraft", "RevivalSkirmishDraft")),
                   ("Custom Test", ("RevivalLongGame",)), ("Practice", ("PracticeEvent", "PracticeEventClassic")))
 
     def api_Revival_PlayerStats(self, req, headers):
