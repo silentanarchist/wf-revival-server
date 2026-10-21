@@ -1634,9 +1634,22 @@ class PlayFabEmulator:
             return ok({"sent": False})              # the game's messages to itself are not passed back
         if not self._allow("private", me, 30, 60):
             return err("TooManyRequests", "too many messages; wait a moment", 1199, 429)
-        if not self._private_rules_ok(data):
+        rules = self._private_rules(data)
+        if rules is False:
             log.info("private message from %s dropped: its challenge rules are not in the expected form", me)
             return err("InvalidParams", "that challenge's rules are not in the expected form")
+        if isinstance(rules, dict):
+            # the server-deal test (mod 0.14.34, ServerDeal.cs): a challenge asking for it opens the test for this pair's
+            # next match room (photon_emu DEAL_PAIRS); only testers may ask; a later challenge without it closes it again
+            if rules.get("serverDeal") == 1:
+                perms = self.creator_perms_for_player(me)
+                if not perms or perms["access"] != "approved" or not perms["tester"]:
+                    log.info("private message from %s dropped: the server-deal test is for testers", me)
+                    return err("NotAuthorized", "the server-deal test is for testers")
+                photon_emu.DEAL_PAIRS[(me, to)] = time.time() + self.PASS_SECONDS
+                log.info("server deal: %s challenged %s with the server-deal test", me, to)
+            else:
+                photon_emu.DEAL_PAIRS.pop((me, to), None)
         if me not in self._friend_ids(to) and not self._challenge_pass(me, to):
             # only players who have the sender on their friend list hear from them, and the sender is
             # not told either way (review #17): no messages from strangers, no "online?" probing.
@@ -1668,18 +1681,21 @@ class PlayFabEmulator:
     CHALLENGE_RULE_FIELDS_NEW = dict(CHALLENGE_RULE_FIELDS, offenseCards=(0, 1, 1), firstPlayer=(0, 2, 1))
     # from mod 0.13.33: unspent mana carried over to the next turn (at most this much)
     CHALLENGE_RULE_FIELDS_0133 = dict(CHALLENGE_RULE_FIELDS_NEW, manaAccumulation=(0, 5, 1))
+    # from mod 0.14.34: the server-deal test (0 off, 1 on; 1 only from a tester - see api_Revival_ChatPrivate)
+    CHALLENGE_RULE_FIELDS_01434 = dict(CHALLENGE_RULE_FIELDS_0133, serverDeal=(0, 1, 1))
     CHALLENGE_RULE_EVENT = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
-    def _private_rules_ok(self, data):
-        """False only for a message that carries "revivalRules" not in the exact form the mod sends."""
+    def _private_rules(self, data):
+        """The challenge rules' values in a private message: None when it carries none, False when they are not
+        in the exact form the mod sends, else the {rule: value} dict."""
         if "revivalRules" not in data:
-            return True
+            return None
         try:
             msg = json.loads(data)
         except ValueError:
-            return True                                  # not JSON: not a challenge, passed on as before
+            return None                                  # not JSON: not a challenge, passed on as before
         if not isinstance(msg, dict) or "revivalRules" not in msg:
-            return True
+            return None
         rr = msg["revivalRules"]
         whole = lambda x: isinstance(x, int) and not isinstance(x, bool)
         if not isinstance(rr, dict) or set(rr) != {"event", "v"}:
@@ -1689,14 +1705,14 @@ class PlayFabEmulator:
         v = rr["v"]
         if not isinstance(v, dict):
             return False
-        fields = next((f for f in (self.CHALLENGE_RULE_FIELDS_0133, self.CHALLENGE_RULE_FIELDS_NEW, self.CHALLENGE_RULE_FIELDS)
+        fields = next((f for f in (self.CHALLENGE_RULE_FIELDS_01434, self.CHALLENGE_RULE_FIELDS_0133, self.CHALLENGE_RULE_FIELDS_NEW, self.CHALLENGE_RULE_FIELDS)
                        if set(v) == set(f)), None)
         if fields is None:
             return False
         for k, (lo, hi, step) in fields.items():
             if not whole(v[k]) or not lo <= v[k] <= hi or (v[k] - lo) % step:
                 return False
-        return v["startingHand"] + v["secondPlayerExtraCards"] <= v["handLimit"]
+        return v if v["startingHand"] + v["secondPlayerExtraCards"] <= v["handLimit"] else False
 
     ACK_SECONDS = 15               # chat polls come every 3 s in front, every 12 s in the background
 

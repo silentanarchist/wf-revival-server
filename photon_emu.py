@@ -495,6 +495,24 @@ FIRST_MIN_MOD = (0, 14, 17)
 # the mod can switch on a change both games must make together (skulls in friend matches, 0.14.31) only when
 # the opponent's mod makes it too. Absent when either player's version is unknown (an older mod).
 PAIR_KEY = "RevivalMod"
+# The server-deal test (2026-10-20, mod 0.14.34 ServerDeal.cs; plan: claude/server-deal-plan.md). A tester's friend
+# challenge with the rule "serverDeal" puts the pair in DEAL_PAIRS (playfab_emu ChatPrivate). When their match room
+# seats both and both mods are new enough, the room gets "RevivalDeal" = 1 and "RevivalRng" = the server's own random
+# table (100 numbers 0..999, the game's shape), which the creator's game sends instead of its own and the joiner's
+# checks. Step 1 of the plan: a table nobody picked; later steps deal the cards.
+DEAL_KEY = "RevivalDeal"
+RNG_KEY = "RevivalRng"
+DEAL_MIN_MOD = (0, 14, 34)
+DEAL_PAIRS = _keep("DEAL_PAIRS", dict)        # (challenger id, friend id) -> until (time.time())
+_sysrand = random.SystemRandom()
+
+
+def deal_pair(a, b):
+    """True while a server-deal challenge between the two is open (either way round)."""
+    now = time.time()
+    for k in [k for k, until in DEAL_PAIRS.items() if until < now]:
+        DEAL_PAIRS.pop(k, None)
+    return DEAL_PAIRS.get((a, b), 0) >= now or DEAL_PAIRS.get((b, a), 0) >= now
 _mods = _keep("_mods", dict)                  # player id -> mod version tuple, from the match ticket request
 
 
@@ -976,6 +994,8 @@ class Service(object):
             if len(room.actors) != 2 or len(seated) != 2:
                 room.props.pop(FIRST_KEY, None)
                 room.props.pop(PAIR_KEY, None)
+                room.props.pop(DEAL_KEY, None)
+                room.props.pop(RNG_KEY, None)
                 return
             players = [a.player for a in seated]
             mods = [mod_of(pl) for pl in players]
@@ -997,6 +1017,19 @@ class Service(object):
             changed = {FIRST_KEY: first}
             if pair:
                 changed[PAIR_KEY] = pair
+            room.props.pop(DEAL_KEY, None)
+            room.props.pop(RNG_KEY, None)
+            if deal_pair(players[0], players[1]):
+                if min(mods) >= DEAL_MIN_MOD:
+                    table = " ".join(str(_sysrand.randrange(1000)) for _ in range(100))
+                    room.props[DEAL_KEY] = 1
+                    room.props[RNG_KEY] = table
+                    changed[DEAL_KEY] = 1
+                    changed[RNG_KEY] = table
+                    log.info("room %s: server deal on (the server's random table %s...)", room.name, table[:24])
+                    self._record(room, "deal", rng=table)
+                else:
+                    log.info("room %s: server deal asked for but a mod is older than %s; off", room.name, ".".join(str(n) for n in DEAL_MIN_MOD))
             self._send_room(room, event(253, {253: 0, 251: changed, 254: 0}), skip=joined.nr)
         except Exception:
             log.exception("room %s: who goes first", room.name)
