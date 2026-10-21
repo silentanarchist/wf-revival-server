@@ -4478,7 +4478,7 @@ class PlayFabEmulator:
             fields.append({"name": "Comment", "value": plain(comment, 200), "inline": False})
         title = " ".join(f"{info.get('ownName') or '?'} vs {info.get('enemyName') or '?'}".split())[:250]   # titles show no Markdown
         return {"embeds": [{"title": title, "description": "\n".join(lines)[:2000], "color": 0x8B1A1A,
-                            "fields": fields, "footer": {"text": "To watch it in the game: Settings > Mod > Watch a replay code"}}],
+                            "fields": fields, "footer": {"text": "To watch it in the game: Social > Community > Replays - it is in the list there with a Watch button, or paste the code into the box and press Watch"}}],
                 "components": [{"type": 1, "components": [{"type": 2, "style": 2, "label": "Moves",
                                                            "custom_id": "replay-moves:" + code}]}],
                 "allowed_mentions": {"parse": []}}
@@ -8302,7 +8302,7 @@ class PlayFabEmulator:
 
     def _preport_codes(self, d, sides):
         """{side: replay code} for each recording of the report, made the first time an admin opens it and kept
-        on the report. Played in the game like any code (Settings > Mod > Watch a replay code). The codes belong
+        on the report. Played in the game like any code (Social > Community > Replays, paste it and press Watch). The codes belong
         to the report, not to a player, so they are not on anyone's Profile page or count against their codes."""
         codes = dict(d.get("replayCodes") or {})
         made = False
