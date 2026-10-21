@@ -1211,7 +1211,7 @@ def _offence_modes(handler):
     except OSError:
         return {}
     if _offence_cache[0] != stamp:
-        modes, testers, deal = {}, [], []
+        modes, testers, deal, noai = {}, [], [], []
         with open(path, encoding="utf-8-sig") as f:
             for ev in json.load(f).get("RawEvents", []):
                 d = (ev or {}).get("Data") or {}
@@ -1222,13 +1222,15 @@ def _offence_modes(handler):
                         testers.append(d["eventId"])
                     if gv.get("serverDeal") is True:
                         deal.append(d["eventId"])
+                    if gv.get("aiFallback") is False:
+                        noai.append(d["eventId"])
         _offence_cache[0], _offence_cache[1] = stamp, modes
-        _mode_lists[0], _mode_lists[1] = testers, deal
+        _mode_lists[0], _mode_lists[1], _mode_lists[2] = testers, deal, noai
         photon_emu.DEAL_EVENTS[:] = deal
     return _offence_cache[1]
 
 
-_mode_lists = [[], []]        # [tester-only event ids, server-deal event ids], filled with _offence_modes
+_mode_lists = [[], [], []]    # [tester-only event ids, server-deal event ids, no-AI-fallback event ids], filled with _offence_modes
 
 
 def _mode_lists_now(api):
@@ -1284,7 +1286,7 @@ def _site_content_get(handler, path):
                 try:
                     obj = json.loads(body)
                     if isinstance(obj, dict):
-                        extra = {"offenseCardModes": modes, "testerModes": _mode_lists[0], "dealModes": _mode_lists[1]}
+                        extra = {"offenseCardModes": modes, "testerModes": _mode_lists[0], "dealModes": _mode_lists[1], "noAiModes": _mode_lists[2]}
                         if layout is not None:
                             extra["menuLayout"] = layout
                         body = json.dumps(dict(obj, **extra), ensure_ascii=False).encode("utf-8")
@@ -1842,8 +1844,10 @@ class PlayFabEmulator:
     # without it has no pick)
     # "serverDeal" and "testersOnly" are the revival's own too: the server-deal test mode (claude/server-deal-plan.md),
     # and a mode handed only to testers' games (and listed to the mod as "testerModes" for its Testers window)
+    # "aiFallback" (default true): whether a search in the mode starts a match against the AI when nobody comes;
+    # false keeps waiting for a person (the mod reads the modes with it off as "noAiModes")
     MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic", "offenseCards",
-                     "serverDeal", "testersOnly")
+                     "serverDeal", "testersOnly", "aiFallback")
     SETTING_SWITCHES = ("offenseCards", "onlyRevivalMod", "requireAccount", "requireHttps", "requireEncryptedMatches")
     # every top-level key the server or the mod reads; keys starting with "_" are notes (review #21)
     SETTING_KEYS = SETTING_SWITCHES + ("turnSeconds", "practiceClassicWarlordLife", "rulesVersion", "minModVersion", "creatorUrl",
