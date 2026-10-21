@@ -8832,16 +8832,14 @@ class PlayFabEmulator:
         pool = [pid for pid, p in packs.items() if p.get("enabled") and p.get("army") == army]
         if not pool:
             log.warning("draft: no packs for army %s (warlord %s)", army, save.get("selectedWarlord"))
-        # Packs already picked this run are not offered again, nor (on a reroll) the offer being
-        # replaced: a pack offered again right after it was picked looked like the screen had not
-        # changed, and a quick second tap picked it twice. Only when too few packs are left does
-        # the offer fall back to the whole pool.
-        used = set(save.get("selectedPacks") or [])
+        # A pack picked earlier in the run may come up again (2026-10-21, owner: repeats are part of a draft), but
+        # not the pack just picked (offered again right away it looked like the screen had not changed, and a quick
+        # second tap picked it twice) and, on a reroll, not the packs of the offer being replaced. Only when too few
+        # packs are left does the offer fall back to the whole pool.
+        used = {(save.get("selectedPacks") or [None])[-1]}
         if avoid_offer:
             used |= set(save.get("revivalDraftOffer") or [])
         fresh = [pid for pid in pool if pid not in used]
-        if len(fresh) < per_round:
-            fresh = [pid for pid in pool if pid not in set(save.get("selectedPacks") or [])]
         if len(fresh) < per_round:
             last = (save.get("selectedPacks") or [None])[-1]
             fresh = [pid for pid in pool if pid != last] or pool     # never the pack just picked
