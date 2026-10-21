@@ -160,19 +160,27 @@ class BundleStore:
 
 
 class ModStore:
-    """The current mod builds in mod/ (next to this script): WarpforgeRevival.dll for Windows and
-    WarpforgeRevival.Android.dll for phones. Clients compare the version with their own and offer
+    """The current mod builds in mod/ (next to this script): WFRevival.dll for Windows and
+    WFRevival.Android.dll for phones (WarpforgeRevival(.Android).dll before the rename, still served). Clients compare the version with their own and offer
     to update. Replace a file to publish a new build for that kind of device."""
 
-    NAME = "WarpforgeRevival.dll"
-    ANDROID_NAME = "WarpforgeRevival.Android.dll"
+    # the mod's file names: WFRevival(.Android).dll from the rename on (mod 0.15.0), WarpforgeRevival(.Android).dll
+    # before; whichever is in mod/ is served (the new name first when both are there)
+    NAMES = ("WFRevival.dll", "WarpforgeRevival.dll")
+    ANDROID_NAMES = ("WFRevival.Android.dll", "WarpforgeRevival.Android.dll")
+    NAME, ANDROID_NAME = NAMES[1], ANDROID_NAMES[1]
 
     def __init__(self, d):
         self.dir = d
         self._cache = {}
 
     def path(self, android=False):
-        return os.path.join(self.dir, self.ANDROID_NAME if android else self.NAME)
+        names = self.ANDROID_NAMES if android else self.NAMES
+        for n in names:
+            p = os.path.join(self.dir, n)
+            if os.path.isfile(p):
+                return p
+        return os.path.join(self.dir, names[0])
 
     def info(self, android=False):
         path = self.path(android)
@@ -187,7 +195,7 @@ class ModStore:
             # the version is the string after the mod name in the MelonInfo attribute: 0.11.0-w for
             # Windows, 0.11.0-a for Android. "label" is that name; "version" is the same number in the
             # form builds from before 0.11.0 can compare (plain for Windows, -android0 for phones).
-            m = re.search(rb"Warpforge Revival[\s\S](\d+(?:\.\d+){1,3})(-[a-z][a-z0-9]*)?", data)
+            m = re.search(rb"(?:WF|Warpforge) Revival[\s\S](\d+(?:\.\d+){1,3})(-[a-z][a-z0-9]*)?", data)   # the mod's name: "WF Revival" from 0.15.0 on
             number = m.group(1).decode() if m else "0.0.0"
             label = number + (m.group(2).decode() if m and m.group(2) else "")
             cached = (key, {"version": number + ("-android0" if android else ""), "label": label,
