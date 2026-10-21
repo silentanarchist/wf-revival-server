@@ -851,7 +851,16 @@
           "HideContainer": false,
           "ForceRun": false,
           "showPreviousPrice": false
-        }
+        },
+        "packTierWeights": {
+          "Common": 50,
+          "Epic": 35,
+          "Legendary": 15
+        },
+        "legendaryRounds": [
+          5,
+          10
+        ]
       },
       "Persistence": {
         "$type": "Everguild.LiveOps.DraftEventSaveGame",

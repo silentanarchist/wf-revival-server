@@ -8778,6 +8778,49 @@ class PlayFabEmulator:
             free += step.get("numberOfReRolls") or 0 if isinstance(step, dict) else 0
         return num("draftRounds", 10), num("packsPerDraft", 3), free
 
+    # Pack tiers in a draft run (2026-10-21). The game's draft packs each have a tier (Common, Epic, Legendary: 236 /
+    # 387 / 232 of 855 in game 1.35.0); the original odds were server-side and are lost. Ours, on the Draft event:
+    #   "packTierWeights": {"Common": 50, "Epic": 35, "Legendary": 15}  - odds of each offered pack's tier
+    #   "legendaryRounds": [5, 10]                                        - rounds whose whole offer is Legendary packs
+    # Missing settings: these defaults. A tier with no packs left for the army is skipped.
+    DRAFT_TIER_WEIGHTS = {"Common": 50, "Epic": 35, "Legendary": 15}
+    DRAFT_LEGENDARY_ROUNDS = (5, 10)
+
+    def _draft_tiers(self, event_id):
+        evd = (self._event_file(event_id)[1] or {}).get("Data", {})
+        w = evd.get("packTierWeights")
+        weights = {k: v for k, v in (w.items() if isinstance(w, dict) else []) if k in self.DRAFT_TIER_WEIGHTS
+                   and isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0}
+        if not weights or not any(weights.values()):
+            weights = dict(self.DRAFT_TIER_WEIGHTS)
+        r = evd.get("legendaryRounds")
+        rounds = tuple(x for x in r if isinstance(x, int) and not isinstance(x, bool)) if isinstance(r, list) else self.DRAFT_LEGENDARY_ROUNDS
+        return weights, rounds
+
+    def _draft_pick_offer(self, fresh, packs, per_round, round_no, event_id):
+        """per_round distinct packs from `fresh` (pack ids), by tier: all Legendary in a legendary round, else each
+        drawn by the tier weights among the tiers that still have packs."""
+        weights, legendary_rounds = self._draft_tiers(event_id)
+        by_tier = {}
+        for pid in fresh:
+            by_tier.setdefault(str((packs.get(pid) or {}).get("tier") or ""), []).append(pid)
+        out = []
+        if round_no in legendary_rounds and len(by_tier.get("Legendary") or []) >= per_round:
+            return random.sample(by_tier["Legendary"], per_round)
+        while len(out) < per_round:
+            choices = [(t, w) for t, w in weights.items() if by_tier.get(t)]
+            if not choices:
+                rest = [pid for pid in fresh if pid not in out]          # packs of a tier the weights do not name
+                if not rest:
+                    break
+                out.append(random.choice(rest))
+                continue
+            tier = random.choices([t for t, _ in choices], weights=[w for _, w in choices])[0] if any(w for _, w in choices) else random.choice([t for t, _ in choices])
+            pid = random.choice(by_tier[tier])
+            by_tier[tier].remove(pid)
+            out.append(pid)
+        return out
+
     def _draft_new_offer(self, save, data, avoid_offer=False):
         """A fresh random offer for the run's next pack pick ([] once every round is picked)."""
         rounds, per_round, _ = self._draft_settings(data.get("eventID") or data.get("eventId") or "")
@@ -8802,7 +8845,9 @@ class PlayFabEmulator:
         if len(fresh) < per_round:
             last = (save.get("selectedPacks") or [None])[-1]
             fresh = [pid for pid in pool if pid != last] or pool     # never the pack just picked
-        save["revivalDraftOffer"] = random.sample(fresh, min(per_round, len(fresh)))
+        round_no = len(save.get("selectedPacks") or []) + 1
+        save["revivalDraftOffer"] = self._draft_pick_offer(fresh, packs, min(per_round, len(fresh)), round_no,
+                                                           data.get("eventID") or data.get("eventId") or "")
 
     def cs_PickDraftWarlord(self, player, params):
         result = {}
