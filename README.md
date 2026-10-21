@@ -2,7 +2,7 @@
 
 A self-hosted server that lets *Warhammer 40,000: Warpforge* be played again now that the game's
 own servers are closed. Players connect with the
-[Warpforge Revival mod](https://github.com/silentanarchist/warpforge-revival-mod).
+[Warpforge Revival mod](https://github.com/silentanarchist/wf-revival-mod).
 
 This is an unofficial fan project. It is not affiliated with or endorsed by Everguild or
 Games Workshop. It contains no game files.
@@ -57,7 +57,7 @@ they start the game. There is one slot per kind of device:
 
 The server reads the version out of the file itself, so replacing a file is all it takes; no
 restart. Versions are numbered `x.y.z.f-w` for Windows and `x.y.z.f-a` for Android
-([Android mod and patcher](https://github.com/silentanarchist/warpforge-revival-mod-android)):
+([Android mod and patcher](https://github.com/silentanarchist/wf-revival-mod-android)):
 `x.y.z` is the shared code and always the same on both; `f` counts fixes made for one of them
 only, is left off while it is 0 (`0.12.1-w`), and starts again with every new `x.y.z`.
 
