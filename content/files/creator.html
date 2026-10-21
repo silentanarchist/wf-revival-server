@@ -267,7 +267,7 @@
 <div id="viewLogin" class="hidden">
   <form class="login" id="loginForm" autocomplete="on">
     <h2 id="loginTitle">Sign in</h2>
-    <p class="hint" id="loginIntro">Sign in to design cards for Warpforge Revival.</p>
+    <p class="hint" id="loginIntro">Sign in to design cards for WF Revival.</p>
     <p id="loginMsg" class="note hidden"></p>
     <div class="field"><label for="author" data-t="login.username">Username</label>
       <input id="author" name="username" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
@@ -919,7 +919,7 @@
   </div>
 </main>
 <footer class="site">
-  <p data-t="footer.unofficial">Warpforge Revival is an unofficial, non-commercial fan project. It is not affiliated with, endorsed or supported by Games Workshop or Everguild Ltd. Warhammer 40,000, Warhammer 40,000: Warpforge and all related names, images and game content belong to their owners.</p>
+  <p data-t="footer.unofficial">WF Revival is an unofficial, non-commercial fan project. It is not affiliated with, endorsed or supported by Games Workshop or Everguild Ltd. Warhammer 40,000, Warhammer 40,000: Warpforge and all related names, images and game content belong to their owners.</p>
   <p data-t="footer.noGame">The game itself is not provided by this project: players install their own copy. The project runs a replacement server and a mod so the game keeps working now that its official servers are closed. The project makes no money.</p>
   <p><span data-t="footer.takedown">If any of your work appears here without your permission, let us know at <a href="mailto:wf-revival@silentanarchist.com" data-t-part="email">wf-revival@silentanarchist.com</a> and we'll take it down. Questions are welcome there too.</span> <a href="/terms" target="_blank" rel="noopener" data-t="login.termsAndPrivacy">Terms and Privacy</a></p>
 </footer>
@@ -2665,7 +2665,7 @@ function loginMode(create) {
 function loginTexts() {                          // the sign-in page's words for signing in or creating an account
   const create = creating;
   $("loginTitle").textContent = create ? T("login.createTitle", "Create an account") : T("login.signIn", "Sign in");
-  $("loginIntro").textContent = create ? T("login.createIntro", "Pick a username and a password. That is all an account needs.") : T("login.intro", "Sign in to design cards for Warpforge Revival.");
+  $("loginIntro").textContent = create ? T("login.createIntro", "Pick a username and a password. That is all an account needs.") : T("login.intro", "Sign in to design cards for WF Revival.");
   $("loginGo").textContent = create ? T("login.createGo", "Create account") : T("login.signIn", "Sign in");
   $("loginAsk").textContent = create ? T("login.haveAccount", "Already have an account?") : T("login.newHere", "New here?");
   $("loginSwitch").textContent = create ? T("login.signIn", "Sign in") : T("login.createTitle", "Create an account");
@@ -3326,7 +3326,7 @@ async function recoveryCode() {
     const d = await call("CreatorRecoveryCode", { passphrase: val("p_recPass") });
     $("p_recPass").value = "";
     $("p_recCode").textContent = d.recoveryCode; $("p_recShow").classList.remove("hidden");
-    const text = T("profile.recoveryFileTitle", "Warpforge Revival - account recovery code") + "\n\n" +
+    const text = T("profile.recoveryFileTitle", "WF Revival - account recovery code") + "\n\n" +
       T("login.username", "Username") + ": " + d.name + "\n" + T("profile.recoveryCode", "Recovery code") + ": " + d.recoveryCode + "\n" +
       T("profile.recoveryFileMade", "Made: {date}", { date: d.at.slice(0, 10) }) + "\n\n" +
       T("profile.recoveryFileHow", "If you forget your password: open the website, choose \"Forgot your password?\" and enter your username, this code and a new password.") + "\n" +
@@ -3818,7 +3818,7 @@ async function makeResetCode(name, replacing) {
   if (!d) return;
   if (d instanceof Error) return say(T("admin.people.noCode", "No code made: {error}", { error: d.message }), "bad");
   const until = new Date(d.until).toLocaleString();
-  const msg = T("admin.people.resetMessage1", "Your Warpforge Revival password reset code: {code}", { code: d.recoveryCode }) + "\n" +
+  const msg = T("admin.people.resetMessage1", "Your WF Revival password reset code: {code}", { code: d.recoveryCode }) + "\n" +
     T("admin.people.resetMessage2", "On the website's sign-in page choose \"Forgot your password?\", enter your username ({name}), this code and a new password. It works once, until {time}. Afterwards, make your own recovery code on your Profile page.", { name: d.name, time: until });
   const box = el("div", { class: "box resetCode" },
     el("strong", { text: T("admin.people.resetFor", "Reset code for {name}", { name: d.name }) }),
