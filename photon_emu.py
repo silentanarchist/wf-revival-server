@@ -504,7 +504,24 @@ DEAL_KEY = "RevivalDeal"
 RNG_KEY = "RevivalRng"
 DEAL_MIN_MOD = (0, 14, 34)
 DEAL_PAIRS = _keep("DEAL_PAIRS", dict)        # (challenger id, friend id) -> until (time.time())
+DEAL_EVENTS = _keep("DEAL_EVENTS", list)      # game modes that are server-deal tests ("serverDeal" in GameModes.json; playfab_emu fills it)
+DEAL_EVENTS_REFRESH = _keep("DEAL_EVENTS_REFRESH", lambda: [None])   # playfab_emu sets a function that re-reads GameModes.json when it changed
 _sysrand = random.SystemRandom()
+
+
+def deal_event(room):
+    """The game mode of a matchmaking room when it is a server-deal test, else None. The game names the room's
+    lobby after the mode: 'Everguild.LiveOps.RankedV3EventEventRoom#RevivalClassic@r1-0.1.0'."""
+    try:
+        if DEAL_EVENTS_REFRESH[0]:
+            DEAL_EVENTS_REFRESH[0]()
+        name = room.lobby[0] if isinstance(room.lobby, tuple) and room.lobby else ""
+        m = re.search(r"#([A-Za-z0-9_.-]+)@", str(name))
+        eid = m.group(1) if m else None
+        return eid if eid and eid in DEAL_EVENTS else None
+    except Exception:
+        log.exception("room %s: deal event", getattr(room, "name", "?"))
+        return None
 
 
 def deal_pair(a, b):
@@ -1019,14 +1036,19 @@ class Service(object):
                 changed[PAIR_KEY] = pair
             room.props.pop(DEAL_KEY, None)
             room.props.pop(RNG_KEY, None)
-            if deal_pair(players[0], players[1]):
+            why = "a tester's challenge" if deal_pair(players[0], players[1]) else None
+            if why is None:
+                ev = deal_event(room)
+                if ev:
+                    why = "the %s mode" % ev
+            if why:
                 if min(mods) >= DEAL_MIN_MOD:
                     table = " ".join(str(_sysrand.randrange(1000)) for _ in range(100))
                     room.props[DEAL_KEY] = 1
                     room.props[RNG_KEY] = table
                     changed[DEAL_KEY] = 1
                     changed[RNG_KEY] = table
-                    log.info("room %s: server deal on (the server's random table %s...)", room.name, table[:24])
+                    log.info("room %s: server deal on, from %s (the server's random table %s...)", room.name, why, table[:24])
                     self._record(room, "deal", rng=table)
                 else:
                     log.info("room %s: server deal asked for but a mod is older than %s; off", room.name, ".".join(str(n) for n in DEAL_MIN_MOD))

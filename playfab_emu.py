@@ -1211,14 +1211,35 @@ def _offence_modes(handler):
     except OSError:
         return {}
     if _offence_cache[0] != stamp:
-        modes = {}
+        modes, testers, deal = {}, [], []
         with open(path, encoding="utf-8-sig") as f:
             for ev in json.load(f).get("RawEvents", []):
                 d = (ev or {}).get("Data") or {}
                 if isinstance(d.get("eventId"), str):
-                    modes[d["eventId"]] = (d.get("gameplayVariables") or {}).get("offenseCards") is True
+                    gv = d.get("gameplayVariables") or {}
+                    modes[d["eventId"]] = gv.get("offenseCards") is True
+                    if gv.get("testersOnly") is True:
+                        testers.append(d["eventId"])
+                    if gv.get("serverDeal") is True:
+                        deal.append(d["eventId"])
         _offence_cache[0], _offence_cache[1] = stamp, modes
+        _mode_lists[0], _mode_lists[1] = testers, deal
+        photon_emu.DEAL_EVENTS[:] = deal
     return _offence_cache[1]
+
+
+_mode_lists = [[], []]        # [tester-only event ids, server-deal event ids], filled with _offence_modes
+
+
+def _mode_lists_now(api):
+    """(tester-only event ids, server-deal event ids) from GameModes.json, re-read when it changes."""
+    class _H:                 # _offence_modes wants a handler; only its current_playfab() is used
+        current_playfab = staticmethod(lambda: api)
+    try:
+        _offence_modes(_H)
+    except Exception:
+        log.exception("game modes: could not read the tester / server-deal lists")
+    return _mode_lists[0], _mode_lists[1]
 
 
 def _site_content_get(handler, path):
@@ -1263,7 +1284,7 @@ def _site_content_get(handler, path):
                 try:
                     obj = json.loads(body)
                     if isinstance(obj, dict):
-                        extra = {"offenseCardModes": modes}
+                        extra = {"offenseCardModes": modes, "testerModes": _mode_lists[0], "dealModes": _mode_lists[1]}
                         if layout is not None:
                             extra["menuLayout"] = layout
                         body = json.dumps(dict(obj, **extra), ensure_ascii=False).encode("utf-8")
@@ -1399,6 +1420,8 @@ class PlayFabEmulator:
             photon_emu.MATCH_DIR[0] = self._matches_dir()
         if hasattr(photon_emu, "TICKET_FILE"):        # match tickets kept across restarts (by fingerprint)
             photon_emu.TICKET_FILE[0] = os.path.join(self.store.root, "match-tickets.json")
+        if hasattr(photon_emu, "DEAL_EVENTS_REFRESH"):   # which game modes are server-deal tests (GameModes.json)
+            photon_emu.DEAL_EVENTS_REFRESH[0] = lambda: _mode_lists_now(self)
         if not photon_emu.REQUIRE[0]:
             # Steam and phone sign-ins carry no proof the server can check, so without accounts
             # anyone who knows a player's Steam id or device id can play as that player.
@@ -1817,7 +1840,10 @@ class PlayFabEmulator:
                     "startingHand": (0, 10), "secondPlayerExtraCards": (0, 10)}
     # "offenseCards" is the revival's own: the Offence card pick in that mode (mod 0.13.24 on; a mode
     # without it has no pick)
-    MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic", "offenseCards")
+    # "serverDeal" and "testersOnly" are the revival's own too: the server-deal test mode (claude/server-deal-plan.md),
+    # and a mode handed only to testers' games (and listed to the mod as "testerModes" for its Testers window)
+    MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic", "offenseCards",
+                     "serverDeal", "testersOnly")
     SETTING_SWITCHES = ("offenseCards", "onlyRevivalMod", "requireAccount", "requireHttps", "requireEncryptedMatches")
     # every top-level key the server or the mod reads; keys starting with "_" are notes (review #21)
     SETTING_KEYS = SETTING_SWITCHES + ("turnSeconds", "practiceClassicWarlordLife", "rulesVersion", "minModVersion", "creatorUrl",
@@ -7032,9 +7058,20 @@ class PlayFabEmulator:
             log.warning("liveops/%s.json is not valid JSON: %s", handler, e)
             return {"SharedData": {}, "RawEvents": []}
         saves = player.setdefault("LiveOps", {}).setdefault(handler, {})
+        tester = None            # worked out once, only when a mode asks for it
         events = []
         for ev in cfg.get("RawEvents", []):
             eid = ev["Data"].get("eventId", "")
+            if (ev["Data"].get("gameplayVariables") or {}).get("testersOnly") is True:
+                if tester is None:
+                    try:
+                        perms = self.creator_perms_for_player(player.get("PlayFabId", ""))
+                        tester = bool(perms and perms["access"] == "approved" and perms["tester"])
+                    except Exception:
+                        log.exception("liveops: could not tell whether %s is a tester", player.get("PlayFabId"))
+                        tester = False
+                if not tester:
+                    continue                # a mode for testers: other players' games never hear of it
             pers = dict({"eventId": eid, "IsNew": True, "WasSeen": False, "IsActive": True,
                          "triggerTime": 0, "expiredTime": 0}, **ev.get("Persistence", {}))
             pers.update(saves.get(eid, {}))

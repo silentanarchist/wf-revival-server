@@ -1025,6 +1025,154 @@
         "currentRating": 0,
         "armyStats": {}
       }
+    },
+    {
+      "Data": {
+        "eventId": "RevivalServerDeal",
+        "uploadToLive": true,
+        "uploadToPreprod": true,
+        "enabled": true,
+        "activationType": 0,
+        "dates": {
+          "startDate": 0,
+          "endDate": 0,
+          "previewable": false,
+          "previewDate": 0,
+          "expirable": false,
+          "expireDate": 0,
+          "eventStages": []
+        },
+        "filter": {
+          "army": 0,
+          "expansion": 0,
+          "hasDuration": false,
+          "eventDuration": 24,
+          "hasCooldown": false,
+          "eventCooldown": 168,
+          "eventGroups": [],
+          "Triggers": {
+            "list": []
+          },
+          "Conditions": {
+            "list": []
+          }
+        },
+        "priority": 7,
+        "location": {
+          "type": 0
+        },
+        "showInMainMenu": true,
+        "$type": "Everguild.LiveOps.RankedV3Data",
+        "seasonNumber": 1,
+        "leaderboard": "RevivalServerDealS1",
+        "legendaryElo": 2500,
+        "maxEloCap": 15000,
+        "ratingDifferenceForMatchMaking": [
+          100000,
+          100000,
+          100000,
+          100000,
+          100000,
+          100000,
+          100000,
+          100000,
+          100000,
+          100000,
+          100000,
+          100000
+        ],
+        "rewardsPerTier": [],
+        "rewardsPerPosition": [],
+        "lossShieldCount": 2,
+        "boostedFactions": [],
+        "boostedFactionCount": 0,
+        "boostedFactionBonus": 0,
+        "defaultFactionBoostCount": 0,
+        "defaultFactionBoostBonus": 0,
+        "admisionPrices": [],
+        "skullsRewards": [],
+        "gameplayVariables": {
+          "maxLegendaries": 30,
+          "numberOfCopiesOtherRarities": 2,
+          "numberOfCopiesLegendary": 1,
+          "slotsPerSide": 4,
+          "warlordLifeChange": 10,
+          "deckSize": 30,
+          "overtimeTurn": 18,
+          "startingMana": 1,
+          "startingManaSecond": 1,
+          "addedManaSecond": 0,
+          "manaPerTurn": 1,
+          "drawCardsPerTurn": 1,
+          "manaAccumulation": 0,
+          "handLimit": 10,
+          "shouldReshuffle": false,
+          "showMulligan": true,
+          "assignDefensiveCardsInEditMode": true,
+          "alternativeTraitLogic": false,
+          "offenseCards": true,
+          "serverDeal": true,
+          "testersOnly": true
+        },
+        "drawData": {
+          "EventAssets": [
+            {
+              "key": 10,
+              "value": {
+                "m_AssetGUID": "93cda5b09dc454964bd61a51c4cc2606",
+                "m_SubObjectName": "",
+                "m_SubObjectType": ""
+              }
+            }
+          ],
+          "EventComponents": [
+            {
+              "key": 35,
+              "value": {
+                "m_AssetGUID": "cc245b8011f624bcfbbc8ee3f5b63e77",
+                "m_SubObjectName": "",
+                "m_SubObjectType": ""
+              }
+            },
+            {
+              "key": 10,
+              "value": {
+                "m_AssetGUID": "769b53202b2cc471db62926328a5f3db",
+                "m_SubObjectName": "",
+                "m_SubObjectType": ""
+              }
+            }
+          ],
+          "EventLabels": [
+            {
+              "key": 0,
+              "useLargeSizeOnMobile": false,
+              "value": {
+                "mTerm": "text:Server Deal (test)"
+              },
+              "Args": []
+            }
+          ],
+          "ShowWindowOnTrigger": false,
+          "ShowWindowOnExpire": false,
+          "HideContainer": false,
+          "ForceRun": false,
+          "showPreviousPrice": false
+        }
+      },
+      "Persistence": {
+        "$type": "Everguild.LiveOps.RankedV3Save",
+        "currentStreak": 0,
+        "joinState": 0,
+        "defaultDeckId": "",
+        "randomSeed": 0,
+        "matchStarted": false,
+        "numberOfMatchesWon": 0,
+        "numberOfMatchesLost": 0,
+        "numberOfMatchesDraw": 0,
+        "currentRating": 0,
+        "armyStats": {}
+      }
     }
   ]
 }
