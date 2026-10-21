@@ -491,6 +491,10 @@ _tickets_loaded = _keep("_tickets_loaded", lambda: [None])      # the file the t
 # (the mod says its version when asking for its match ticket). Older pairs play exactly as before.
 FIRST_KEY = "RevivalFirst"
 FIRST_MIN_MOD = (0, 14, 17)
+# "RevivalMod" (2026-10-20) = the LOWER of the two players' mod versions ("0.14.31"), written with the coin, so
+# the mod can switch on a change both games must make together (skulls in friend matches, 0.14.31) only when
+# the opponent's mod makes it too. Absent when either player's version is unknown (an older mod).
+PAIR_KEY = "RevivalMod"
 _mods = _keep("_mods", dict)                  # player id -> mod version tuple, from the match ticket request
 
 
@@ -971,19 +975,29 @@ class Service(object):
             seated = [a for a in room.actors.values() if a.player]
             if len(room.actors) != 2 or len(seated) != 2:
                 room.props.pop(FIRST_KEY, None)
+                room.props.pop(PAIR_KEY, None)
                 return
             players = [a.player for a in seated]
-            if any((mod_of(pl) or (0,)) < FIRST_MIN_MOD for pl in players):
+            mods = [mod_of(pl) for pl in players]
+            pair = ".".join(str(n) for n in min(mods)) if all(mods) else None
+            if pair:
+                room.props[PAIR_KEY] = pair
+            else:
+                room.props.pop(PAIR_KEY, None)
+            if any((m or (0,)) < FIRST_MIN_MOD for m in mods):
                 if room.props.pop(FIRST_KEY, None) is not None:
                     log.info("room %s: who goes first left to the games (a mod older than %s)", room.name,
                              ".".join(str(n) for n in FIRST_MIN_MOD))
                 return
             first = random.choice(players)
             room.props[FIRST_KEY] = first
-            log.info("room %s: %s goes first (server's coin)", room.name, first)
+            log.info("room %s: %s goes first (server's coin); the pair's mod is %s", room.name, first, pair)
             self._record(room, "first", p=first)
             # the one already in the room hears it now, before the join event; the joiner gets it in the join reply
-            self._send_room(room, event(253, {253: 0, 251: {FIRST_KEY: first}, 254: 0}), skip=joined.nr)
+            changed = {FIRST_KEY: first}
+            if pair:
+                changed[PAIR_KEY] = pair
+            self._send_room(room, event(253, {253: 0, 251: changed, 254: 0}), skip=joined.nr)
         except Exception:
             log.exception("room %s: who goes first", room.name)
 
