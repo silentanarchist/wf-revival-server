@@ -1061,7 +1061,7 @@
         "location": {
           "type": 0
         },
-        "showInMainMenu": true,
+        "showInMainMenu": false,
         "$type": "Everguild.LiveOps.RankedV3Data",
         "seasonNumber": 1,
         "leaderboard": "RevivalServerDealS1",
