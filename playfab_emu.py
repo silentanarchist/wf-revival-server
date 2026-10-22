@@ -1198,6 +1198,23 @@ def _bundle_signed_in(handler):
     return user is not None and api._creator_perms(user)["access"] == "approved"
 
 
+CUSTOM_PACKAGE_FILES = ("custom-tester.json", "custom-cards_pc.bundle", "custom-art_pc.bundle",
+                        "custom-cards_android.bundle", "custom-art_android.bundle")
+
+
+def _custom_package_allowed(handler):
+    """True when the request carries the saved game sign-in of an approved account that is a tester or an admin."""
+    token = str(handler.headers.get("X-Revival-Login") or "").strip()
+    if not token or len(token) > 200:
+        return False
+    api = handler.current_playfab()
+    _, user = api._game_login_user_cached(token)
+    if user is None:
+        return False
+    perms = api._creator_perms(user)
+    return perms["access"] == "approved" and bool(perms.get("tester") or perms.get("admin"))
+
+
 _offence_cache = [None, {}]
 
 
@@ -1257,7 +1274,8 @@ def _site_content_get(handler, path):
       (warpforge_server.py hands the game only its own list of settings, which needs a restart to change).
     - /api/v1/content/pack is no longer handed out: the mod never used its cards (only its version,
       now "cardsVersion" in the manifest); mods before 0.13.20 still ask and keep their cached copy.
-    - /api/v1/content/manifest gains "cardsVersion"."""
+    - /api/v1/content/manifest gains "cardsVersion".
+    - /api/v1/content/custom/<file>: the custom-card package, testers only (saved sign-in header)."""
     if path == "/api/v1/content/pack":
         handler._json(404, {"error": "not found"})
         return True
@@ -1272,6 +1290,27 @@ def _site_content_get(handler, path):
             handler._json(403, {"error": "sign in to the game first"})
             return True
         return False
+    if path.startswith("/api/v1/content/custom/"):
+        # the custom-card package (claude/custom-bundle-plan.md): content/custom/<file>, only to a game whose saved
+        # sign-in belongs to an approved tester (or admin); the mod asks at start-up, before signing in
+        name = path[len("/api/v1/content/custom/"):]
+        if name not in CUSTOM_PACKAGE_FILES:
+            handler._json(404, {"error": "not found"})
+            return True
+        try:
+            allowed = _custom_package_allowed(handler)
+        except Exception:
+            log.exception("custom package: could not check the sign-in")
+            allowed = False
+        if not allowed:
+            handler._json(403, {"error": "the custom-card package is for testers"})
+            return True
+        full = os.path.join(handler.current_playfab().content_root, "custom", name)
+        if not os.path.isfile(full):
+            handler._json(404, {"error": "no custom-card package on this server"})
+            return True
+        handler._send_file(full, "application/json" if name.endswith(".json") else "application/octet-stream")
+        return True
     if path == "/api/v1/content/files/revival-settings.json":
         try:
             modes = _offence_modes(handler)
