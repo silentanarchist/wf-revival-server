@@ -24,6 +24,10 @@ content/files/card-frames/
 content/files/card-masks.zip
 content/creator-official.json
 content/unreleased-cards.json
+# the custom-card package: built from player uploads and the game's own bundles
+content/custom/
+# old copies of bundles kept next to them
+*.bak
 # python
 __pycache__/
 *.pyc
