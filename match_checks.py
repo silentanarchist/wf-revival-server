@@ -15,7 +15,8 @@ files them when a match room closes); nothing is blocked.
 
 Checks:
   deck  - the deck list a game sent at the start: size, cards that exist and are deck-legal, one army (the
-          warlord's), copies per card and legendaries per deck by the mode's rules.
+          warlord's), copies per card and legendaries per deck by the mode's rules; a custom card (CUSTOM-NNNN)
+          only in a mode whose rules have "customCards".
   card  - a card played by its in-match number that belongs to the OPPONENT's deck (the game numbers both decks
           in a known order: first player's warlord, their deck, second player's warlord, their deck).
   mana  - a turn in which the base cost of the cards played is far more than the Energy that turn could possibly
@@ -64,10 +65,19 @@ def check_deck(deck, gv, carddata, long_copies=None, long_game=False):
         out.append("warlord %s is not a playable warlord" % w.get("name", warlord))
     army = w.get("army") if w else None
     counts, legendaries, bad = {}, 0, []
+    custom_ok = bool(gv) and gv.get("customCards") is True
     for c in cards:
         cid = c.get("id") if isinstance(c, dict) else None
+        if isinstance(cid, str) and cid.startswith("CUSTOM-"):
+            # a custom card (the tester bundle): only a mode with "customCards" may hold one
+            if not custom_ok:
+                bad.append("%s is a custom card, not allowed in this mode" % cid)
+                continue
         d = carddata.get(cid) if isinstance(cid, str) else None
         if not d:
+            if isinstance(cid, str) and cid.startswith("CUSTOM-") and custom_ok:
+                counts[cid] = counts.get(cid, 0) + 1          # not in the card data yet: counted, otherwise unchecked
+                continue
             bad.append("unknown card %r" % (cid,))
             continue
         if d.get("kind") not in ("unit", "tactic") or not d.get("collection"):

@@ -1212,7 +1212,7 @@ def _offence_modes(handler):
     except OSError:
         return {}
     if _offence_cache[0] != stamp:
-        modes, testers, deal, noai = {}, [], [], []
+        modes, testers, deal, noai, decks, custom = {}, [], [], [], {}, []
         with open(path, encoding="utf-8-sig") as f:
             for ev in json.load(f).get("RawEvents", []):
                 d = (ev or {}).get("Data") or {}
@@ -1225,13 +1225,17 @@ def _offence_modes(handler):
                         deal.append(d["eventId"])
                     if gv.get("aiFallback") is False:
                         noai.append(d["eventId"])
+                    if isinstance(gv.get("deckListMode"), int) and gv["deckListMode"] > 0:
+                        decks[d["eventId"]] = gv["deckListMode"]
+                    if gv.get("customCards") is True:
+                        custom.append(d["eventId"])
         _offence_cache[0], _offence_cache[1] = stamp, modes
-        _mode_lists[0], _mode_lists[1], _mode_lists[2] = testers, deal, noai
+        _mode_lists[0], _mode_lists[1], _mode_lists[2], _mode_lists[3], _mode_lists[4] = testers, deal, noai, decks, custom
         photon_emu.DEAL_EVENTS[:] = deal
     return _offence_cache[1]
 
 
-_mode_lists = [[], [], []]    # [tester-only event ids, server-deal event ids, no-AI-fallback event ids], filled with _offence_modes
+_mode_lists = [[], [], [], {}, []]    # [tester-only ids, server-deal ids, no-AI-fallback ids, {id: deckListMode}, custom-card ids], filled with _offence_modes
 
 
 def _mode_lists_now(api):
@@ -1247,7 +1251,7 @@ def _mode_lists_now(api):
 
 def _site_content_get(handler, path):
     """Game content answers changed without a restart. Returns True when the request was answered.
-    - /api/v1/content/files/revival-settings.json (what the mod reads) gains "offenseCardModes",
+    - /api/v1/content/files/revival-settings.json (what the mod reads) gains "offenseCardModes", "deckModes", "customCardModes",
       each game mode's Offence card switch (mod 0.13.24 on; older mods read "offenseCards"), and
       "menuLayout", the menus' inner ribbons (mod 0.13.51 on), when the settings file has one
       (warpforge_server.py hands the game only its own list of settings, which needs a restart to change).
@@ -1287,7 +1291,8 @@ def _site_content_get(handler, path):
                 try:
                     obj = json.loads(body)
                     if isinstance(obj, dict):
-                        extra = {"offenseCardModes": modes, "testerModes": _mode_lists[0], "dealModes": _mode_lists[1], "noAiModes": _mode_lists[2]}
+                        extra = {"offenseCardModes": modes, "testerModes": _mode_lists[0], "dealModes": _mode_lists[1], "noAiModes": _mode_lists[2],
+                                 "deckModes": _mode_lists[3], "customCardModes": _mode_lists[4]}
                         if layout is not None:
                             extra["menuLayout"] = layout
                         body = json.dumps(dict(obj, **extra), ensure_ascii=False).encode("utf-8")
@@ -1842,15 +1847,21 @@ class PlayFabEmulator:
                     "slotsPerSide": (1, 8), "warlordLifeChange": (-100, 100), "deckSize": (1, 200), "overtimeTurn": (1, 100),
                     "startingMana": (0, 50), "startingManaSecond": (0, 50), "addedManaSecond": (0, 50), "manaPerTurn": (0, 50),
                     "drawCardsPerTurn": (0, 20), "manaAccumulation": (0, 50), "handLimit": (1, 30),
-                    "startingHand": (0, 10), "secondPlayerExtraCards": (0, 10)}
+                    "startingHand": (0, 10), "secondPlayerExtraCards": (0, 10),
+                    # "deckListMode" (revival's own, 2026-10-21): the play-mode number the mode's own decks are stored
+                    # under (one the game never uses: 3 Dungeon, 11 RankedFriendly, 12 OwnDeckTraining; the Long Game
+                    # has 14 through "longGame"); 0 or absent: the mode plays Classic decks. Sent to the mod as "deckModes".
+                    "deckListMode": (0, 20)}
     # "offenseCards" is the revival's own: the Offence card pick in that mode (mod 0.13.24 on; a mode
     # without it has no pick)
     # "serverDeal" and "testersOnly" are the revival's own too: the server-deal test mode (claude/server-deal-plan.md),
     # and a mode handed only to testers' games (and listed to the mod as "testerModes" for its Testers window)
     # "aiFallback" (default true): whether a search in the mode starts a match against the AI when nobody comes;
     # false keeps waiting for a person (the mod reads the modes with it off as "noAiModes")
+    # "customCards" (2026-10-21): the mode's decks may hold custom cards (CUSTOM-NNNN, the tester bundle); sent to the
+    # mod as "customCardModes" and checked in match_checks
     MODE_SWITCHES = ("shouldReshuffle", "showMulligan", "assignDefensiveCardsInEditMode", "alternativeTraitLogic", "offenseCards",
-                     "serverDeal", "testersOnly", "aiFallback")
+                     "serverDeal", "testersOnly", "aiFallback", "customCards")
     SETTING_SWITCHES = ("offenseCards", "onlyRevivalMod", "requireAccount", "requireHttps", "requireEncryptedMatches")
     # every top-level key the server or the mod reads; keys starting with "_" are notes (review #21)
     SETTING_KEYS = SETTING_SWITCHES + ("turnSeconds", "practiceClassicWarlordLife", "rulesVersion", "minModVersion", "creatorUrl",

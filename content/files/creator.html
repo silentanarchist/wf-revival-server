@@ -4098,7 +4098,7 @@ async function showPlayerReport(id, keepPlace) {
 let cfg = null;
 // The page's words for the settings (functions: the language file arrives after the page loads); the keys are what the files hold.
 function modeNames() {
-  return { RevivalClassic: T("mode.classic", "Classic"), RevivalSkirmish: T("mode.skirmish", "Skirmish"), RevivalDraft: T("mode.draft", "Draft"), RevivalSkirmishDraft: T("mode.skirmishDraft", "Skirmish Draft"), RevivalServerDeal: T("mode.serverDeal", "Server Deal (test)"), RevivalLongGame: T("admin.server.modeLongGame", "Long Game"),
+  return { RevivalClassic: T("mode.classic", "Classic"), RevivalSkirmish: T("mode.skirmish", "Skirmish"), RevivalDraft: T("mode.draft", "Draft"), RevivalSkirmishDraft: T("mode.skirmishDraft", "Skirmish Draft"), RevivalServerDeal: T("mode.serverDeal", "Server Deal (test)"), RevivalCustomClassic: T("mode.customClassic", "Custom Cards (test)"), RevivalLongGame: T("admin.server.modeLongGame", "Long Game"),
     PracticeEvent: T("mode.practice", "Practice"), PracticeEventClassic: T("admin.server.modePracticeClassic", "Practice Classic") };
 }
 // [key, label, kind]; "top" keys live on the mode itself, the rest in its gameplayVariables
@@ -4119,6 +4119,8 @@ function modeRows() {
     ["aiFallback", T("admin.server.mode.aiFallback", "AI opponent when nobody is found (off: keep waiting for a person)"), "bool"],
     ["testersOnly", T("admin.server.mode.testersOnly", "Testers only (shown in the Testers window, hidden from everyone else)"), "bool"],
     ["serverDeal", T("admin.server.mode.serverDeal", "Server deal test (the server supplies the match's random numbers)"), "bool"],
+    ["customCards", T("admin.server.mode.customCards", "Custom cards allowed in its decks (the tester bundle)"), "bool"],
+    ["deckListMode", T("admin.server.mode.deckListMode", "Own deck list (play-mode number its decks are stored under: 3, 11 or 12; 0 = plays Classic decks)"), "num"],
     ["draftRounds", T("admin.server.mode.draftRounds", "Draft: rounds (packs picked; 3 cards each)"), "topnum"], ["packsPerDraft", T("admin.server.mode.packsPerDraft", "Draft: packs offered per round"), "topnum"],
     ["warlordsPerDraft", T("admin.server.mode.warlordsPerDraft", "Draft: warlords offered"), "topnum"]
   ];
