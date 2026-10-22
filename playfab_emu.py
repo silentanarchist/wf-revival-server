@@ -6003,7 +6003,36 @@ class PlayFabEmulator:
                               "CatalogVersion": "Warpforge", "DisplayName": c.get("name", c["id"]),
                               "RemainingUses": c["copies"], "UnitPrice": 0,
                               "PurchaseDate": player.get("Created")})
+        # the custom-card package (content/custom/custom-tester.json): its cards are owned by testers and admins only,
+        # keyed like official cards by their GUID (the mod hands them to the game's collection under that key)
+        try:
+            perms = self.creator_perms_for_player(player.get("PlayFabId"))
+            if perms and perms["access"] == "approved" and (perms.get("tester") or perms.get("admin")):
+                owned = {i.get("ItemId") for i in items}
+                for c in self._custom_package_cards():
+                    if c["guid"] in owned:
+                        continue
+                    items.append({"ItemId": c["guid"], "ItemInstanceId": "RV-" + c["guid"], "ItemClass": "Card",
+                                  "CatalogVersion": "Warpforge", "DisplayName": c.get("name", c["id"]),
+                                  "RemainingUses": 1 if c.get("rarity") == 4 else 4, "UnitPrice": 0,
+                                  "PurchaseDate": player.get("Created")})
+        except Exception:
+            log.exception("inventory: could not add the custom-card package's cards")
         return items
+
+    def _custom_package_cards(self):
+        """The cards of the custom-card package ([] without one), read again when the manifest changes."""
+        path = os.path.join(self.content_root, "custom", "custom-tester.json")
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            return []
+        if getattr(self, "_custom_pkg_mtime", None) != mtime:
+            with open(path, encoding="utf-8") as f:
+                cards = json.load(f).get("cards") or []
+            self._custom_pkg = [c for c in cards if isinstance(c, dict) and isinstance(c.get("guid"), str) and isinstance(c.get("id"), str)]
+            self._custom_pkg_mtime = mtime
+        return self._custom_pkg
 
     def api_Client_GetUserInventory(self, req, headers):
         p = self._player(headers)
