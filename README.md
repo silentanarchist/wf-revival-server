@@ -151,10 +151,13 @@ server believes it (`"relays": ["10.66.0.1"]`), and let Caddy read it too:
 them (the card list and effect list the creator page uses) are the publisher's, so they are left
 out and listed in `.gitignore`. Without them:
 
-- the server runs, and players can sign in, chat and be matched;
+- the server runs and players can sign in and chat, but the game has no cards to play with until
+  the bundles, `content/collection.json` and `data/replay-carddata.json` are in place (see
+  [SELF-HOSTING.md](SELF-HOSTING.md) for the full list);
 - the card creator page has no menus to show until `content/files/creator-schema.json` and
   `content/files/creator-cards.json` are generated from your own copy of the game;
-- cards the mod should add or change come from `content/cards/*.json`, which you supply.
+- `content/cards/*.json` (an early hand-made card pack) is no longer used for cards; only its
+  version number is still reported;
 - the creator's card preview shows an official card's picture when a design borrows its art only
   from the player's own export (see "Card art for the creator" below). Any folder under
   `content/files/` can be kept as a zip of the same name.
