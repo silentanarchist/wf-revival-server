@@ -8346,7 +8346,9 @@ class PlayFabEmulator:
                     room_name, lobby = str(e.get("room") or ""), str(e.get("lobby") or "")
                     continue
                 if k == "first" and isinstance(e.get("p"), str):
-                    goes_first = e["p"]                                # the server's coin (2026-10-19 on)
+                    # the server's coin (2026-10-19 on); the first one counts: until 2026-10-22 a player who
+                    # reconnected as a new actor made the server toss again in the middle of the match
+                    goes_first = goes_first or e["p"]
                     continue
                 if k not in ("ev", "props"):
                     continue

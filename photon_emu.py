@@ -657,6 +657,7 @@ class Room(object):
         self.creator = None                   # the signed-in player who opened it, when known
         self.cache_full_noted = False
         self.record = None                    # its MatchRecord (see below)
+        self.toss = None                      # (the two players, the props the coin wrote) - kept when one drops out
 
     def active(self):
         return [a for a in self.actors.values() if a.conn is not None]
@@ -1040,6 +1041,14 @@ class Service(object):
                 room.props.pop(RNG_KEY, None)
                 return
             players = [a.player for a in seated]
+            # the same two players again (one left the room and came back as a new actor - a reconnect on a bad
+            # line, 2026-10-22): the match goes on, so the coin stays; a fresh toss told the server's record the
+            # other player went first and the match checks read every card played as the opponent's
+            toss = getattr(room, "toss", None)
+            if toss and toss[0] == frozenset(players):
+                room.props.update(toss[1])
+                log.info("room %s: the same two players again; the coin stays (%s goes first)", room.name, toss[1].get(FIRST_KEY))
+                return
             mods = [mod_of(pl) for pl in players]
             pair = ".".join(str(n) for n in min(mods)) if all(mods) else None
             if pair:
@@ -1078,6 +1087,7 @@ class Service(object):
                 else:
                     log.info("room %s: server deal asked for but a mod is older than %s; off", room.name, ".".join(str(n) for n in DEAL_MIN_MOD))
             self._send_room(room, event(253, {253: 0, 251: changed, 254: 0}), skip=joined.nr)
+            room.toss = (frozenset(players), {k: room.props[k] for k in (FIRST_KEY, PAIR_KEY, DEAL_KEY, RNG_KEY) if k in room.props})
         except Exception:
             log.exception("room %s: who goes first", room.name)
 

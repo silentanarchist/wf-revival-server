@@ -22,7 +22,8 @@ Checks:
   mana  - a turn in which the base cost of the cards played is far more than the Energy that turn could possibly
           have had (starting Energy + per-turn gains + carried over). Cost reductions and Energy gains are
           invisible to the server and real matches reach 6 over, so only a turn 10 or more over, or three turns
-          5 or more over, is a flag: the "set my Energy to 99" cheat, not a subtle one.
+          5 or more over, is a flag: the "set my Energy to 99" cheat, not a subtle one. A player's turns stop being
+          counted once they play a card that lowers costs or gives Energy back (COST_CHANGERS).
 Friend challenges (rooms without a mode in the lobby name) play under rules the record does not carry: only the
 deck check runs there, against the mode the deck size points to.
 """
@@ -32,6 +33,27 @@ PLAY, END_TURN = 5, 14
 MANA_SLACK = 3           # cost reductions and Energy gains the server cannot see: this much over the bound is normal...
 MANA_WILD = 10           # ...this much over in one turn is not (real matches reach +6 with cost tricks; a memory edit shows +20 or more)
 MANA_REPEAT = 3          # or this many turns at least 5 over
+
+# Cards that lower other cards' cost or give Energy back (from the cards' texts, 2026-10-22). The small ones fit in
+# MANA_SLACK, the big ones do not (Reclaim the Stars: draw 5, each 5 cheaper - a legal turn read as 20 Energy with 6),
+# so once a player plays one, the mana check stops counting that player's turns from that turn on.
+COST_CHANGERS = frozenset((
+    "Fire and Fade", "Webway Gate", "Wild Host", "Reclaim the Stars", "Faeburn Vanquisher", "Minka Lesk", "Astropath",
+    "Tech-Priest Enginseer", "Cadian Castellan", "Maelon Dhrost", "Full Throttle", "Munitorum Supplies",
+    "Armoured Squadron", "At All Costs", "High Command", "Venomcrawler", "Iskandar Khayon", "Throne of the Heretic",
+    "Company Master", "Inner Circle", "Master of Manoeuvre", "Convoke the Circle", "Obscure Ritual", "Plasma Generator",
+    "Desperate Mission", "Winged Daemon Prince", "Decadent Throne", "Atalan Leader", "Metamorph Iconbearer",
+    "Metamorph Leader", "Alien Idol", "Rusted Vent", "Eve of the Uprising", "Lying in Wait", "Living Icon",
+    "Roaming Outriders", "Rampant Infestation", "Divination Menhir", "Implacable Conqueror", "Mekboy Gazmek",
+    "Beastboss on Squigosaur", "Weirdboy", "Battlewagon", "Extractor Rig", "Da Green Horde", "Thundering Stampede",
+    "Fasta Than Yooz", "Guidance of the Saints", "Imperial Creed", "Emperor's Judgement", "Njal Stormcaller",
+    "Hrolf the Ironhowl", "High King of Fenris", "Trail Shaper", "Piranha", "Aun'Shi", "Emergency Dispensation",
+    "Saviour Protocols", "Mawloc", "Winged Tyrant", "Digestion Pool", "Brood Progenitor", "Overwhelming Swarm",
+    "Hive Fleet Leviathan", "Sergeant Telion", "Hive Factory", "Tactical Insight", "Fall Back", "Greatest Deeds",
+    "Rapid Deployment", "Battlefield Supremacy", "Armoured Offensive", "Gather the Company"))
+# cards that get cheaper by themselves during the match ("costs 1 less for each..."): counted as free
+SELF_REDUCING = frozenset(("Fate Inescapable", "Mechanised Infantry", "Vengeance for Cadia", "Unholy Smite", "Patriarch",
+                           "Fenrisian Wolfpack", "Burgeoning Empire", "Norn Emissary", "Avenging Zeal"))
 
 
 def _rules_for(lobby, deck_sizes, rules):
@@ -109,6 +131,8 @@ def _numbering(relay):
     players = relay.get("players") or {}
     if not first or first not in players or len(players) != 2:
         return None
+    if relay.get("first") and relay["first"] != first:
+        return None                                     # the games say another player started (FirstPlayer): the order is not known
     second = next(p for p in players if p != first)
     table, n = {}, 0
     for pid in (first, second):
@@ -167,18 +191,23 @@ def check_match(relay, lobby, room_name, carddata, rules, long_copies=None):
             turn, spent, over = 1, 0, []
             def bound(t):
                 return start + (t - 1) * per_turn + carry + MANA_SLACK
+            changed = False                 # a cost changer was played: this turn and the rest are not counted
             for mv in moves:
                 if mv.get("typ") == PLAY:
                     act = mv.get("act")
                     if isinstance(act, int) and act in table and table[act][0] == pid:
                         d = carddata.get(table[act][1]) or {}
-                        if isinstance(d.get("cost"), int):
+                        if d.get("name") in COST_CHANGERS:
+                            changed = True
+                        elif isinstance(d.get("cost"), int) and d.get("name") not in SELF_REDUCING:
                             spent += d["cost"]
                 elif mv.get("typ") == END_TURN:
+                    if changed:
+                        break
                     if spent > bound(turn):
                         over.append((turn, spent, bound(turn) - MANA_SLACK))
                     turn, spent = turn + 1, 0
-            if spent > bound(turn):
+            if not changed and spent > bound(turn):
                 over.append((turn, spent, bound(turn) - MANA_SLACK))
             if sum(1 for _, s, b in over if s - b >= 5) >= MANA_REPEAT or any(s - b >= MANA_WILD for _, s, b in over):
                 flags.append({"player": pid, "kind": "mana",
