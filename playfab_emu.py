@@ -6004,15 +6004,15 @@ class PlayFabEmulator:
                               "RemainingUses": c["copies"], "UnitPrice": 0,
                               "PurchaseDate": player.get("Created")})
         # the custom-card package (content/custom/custom-tester.json): its cards are owned by testers and admins only,
-        # keyed like official cards by their GUID (the mod hands them to the game's collection under that key)
+        # by their unique id (CUSTOM-NNNN), as the game matches inventory items to cards
         try:
             perms = self.creator_perms_for_player(player.get("PlayFabId"))
             if perms and perms["access"] == "approved" and (perms.get("tester") or perms.get("admin")):
                 owned = {i.get("ItemId") for i in items}
                 for c in self._custom_package_cards():
-                    if c["guid"] in owned:
+                    if c["id"] in owned:
                         continue
-                    items.append({"ItemId": c["guid"], "ItemInstanceId": "RV-" + c["guid"], "ItemClass": "Card",
+                    items.append({"ItemId": c["id"], "ItemInstanceId": "RV-" + c["id"], "ItemClass": "Card",
                                   "CatalogVersion": "Warpforge", "DisplayName": c.get("name", c["id"]),
                                   "RemainingUses": 1 if c.get("rarity") == 4 else 4, "UnitPrice": 0,
                                   "PurchaseDate": player.get("Created")})
