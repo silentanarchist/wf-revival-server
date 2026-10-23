@@ -1471,6 +1471,14 @@ class PlayFabEmulator:
             photon_emu.DEAL_EVENTS_REFRESH[0] = lambda: _mode_lists_now(self)
         if hasattr(photon_emu, "MATCH_CLOSED"):          # the server's own checks of each finished match (match_checks.py)
             photon_emu.MATCH_CLOSED[0] = self._match_closed
+        if hasattr(photon_emu, "BANNED"):                # a ban reaches the match service too (security review 32)
+            photon_emu.BANNED[0] = lambda pfid: pfid in self._banned_ids()
+        if hasattr(photon_emu, "MATCH_CAP") and not photon_emu.MATCH_CAP[0]:
+            try:                                         # the records folder's size, once per process (then hourly)
+                self._matches_prune()
+                self._matches_pruned_at = time.time()
+            except Exception:
+                log.exception("could not measure the match records")
         if not photon_emu.REQUIRE[0]:
             # Steam and phone sign-ins carry no proof the server can check, so without accounts
             # anyone who knows a player's Steam id or device id can play as that player.
@@ -1681,7 +1689,8 @@ class PlayFabEmulator:
             private = [{"from": m["from"], "data": m["data"]} for m in photon_emu.PRIVATE.pop(me, [])
                        if m["t"] > time.time() - self.PRIVATE_SECONDS]
         try:
-            waiting = len(self._requests(self.store.load(me) or {})[0])
+            cut = self._now_ms() - self.FRIEND_REQUEST_DAYS * 86400000
+            waiting = sum(1 for t in self._player_brief(me)[0] if t > cut)
         except Exception:
             waiting = 0
         return ok({"messages": out, "last": max(last, since, 0), "history": since < 0,
@@ -1905,7 +1914,7 @@ class PlayFabEmulator:
     # every top-level key the server or the mod reads; keys starting with "_" are notes (review #21)
     SETTING_KEYS = SETTING_SWITCHES + ("turnSeconds", "practiceClassicWarlordLife", "rulesVersion", "minModVersion", "creatorUrl",
                                        "relays", "accounts", "longGame", "photon", "logDays", "matchPort", "startingHands",
-                                       "bugReports", "bugStorageMB")
+                                       "bugReports", "bugStorageMB", "matchStorageMB")
 
     def _config_unknown(self, which, data):
         """Top-level settings nothing reads (most likely a typo) - warned about, not refused."""
@@ -2460,6 +2469,8 @@ class PlayFabEmulator:
             user.pop(k, None)
         for pfid in self._account_players(user):
             self.store.sign_out(pfid, "This account is being deleted. Sign in again with your password within %d days to keep it." % self.DELETE_DAYS)
+            if hasattr(photon_emu, "revoke"):
+                photon_emu.revoke(pfid)      # its match tickets and open matches end too (security review 32)
 
     @staticmethod
     def _account_delete_cancel(user, by_staff=False):
@@ -2545,6 +2556,8 @@ class PlayFabEmulator:
         players = self._account_players(user)
         for pfid in players:
             self.store.sign_out(pfid, "This account has been deleted.")
+            if hasattr(photon_emu, "revoke"):
+                photon_emu.revoke(pfid)      # its match tickets and open matches end too (security review 32)
             try:
                 os.remove(self.store._path(pfid))
             except (OSError, ValueError):
@@ -2670,14 +2683,22 @@ class PlayFabEmulator:
             cap = int(self._settings().get("bugStorageMB", self.BUG_STORAGE_MB)) * 1024 * 1024
         except (TypeError, ValueError):
             cap = self.BUG_STORAGE_MB * 1024 * 1024
-        used = 0
-        for root, _dirs, files in os.walk(self._bugs_dir()):
-            for name in files:
-                try:
-                    used += os.path.getsize(os.path.join(root, name))
-                except OSError:
-                    pass
-        return used + incoming > cap
+        # a running total, counted on disk at most every 10 minutes (security review E5: os.walk on every report);
+        # each accepted report adds its size until the next count, so deletions show up within 10 minutes
+        counted = self.__dict__.get("_bugs_used")
+        if counted is None or time.time() - counted[1] > 600:
+            used = 0
+            for root, _dirs, files in os.walk(self._bugs_dir()):
+                for name in files:
+                    try:
+                        used += os.path.getsize(os.path.join(root, name))
+                    except OSError:
+                        pass
+            counted = self._bugs_used = [used, time.time()]
+        if counted[0] + incoming > cap:
+            return True
+        counted[0] += incoming
+        return False
 
     def _bugs_dir(self):
         d = os.path.join(self.store.root, "bugs")
@@ -3141,15 +3162,35 @@ class PlayFabEmulator:
         return 2 if perms["admin"] else 1 if perms["reviewer"] else 0
 
     def _creator_load(self):
-        cards = []
+        """Every custom card in id order, READ-ONLY (copy.deepcopy before changing one). Kept per file and re-read
+        only when a file's stamp changes (security review E2: every card list parsed every card file, under the store
+        lock); a save is always tmp + os.replace, so the stamp always changes."""
         d = self._creator_dir()
-        for name in sorted(os.listdir(d)):
-            if re.fullmatch(r"CUSTOM-\d{4}\.json", name):
+        cache = self.__dict__.setdefault("_cards_cache", {})
+        cards, seen = [], set()
+        for entry in sorted(os.scandir(d), key=lambda e: e.name):
+            name = entry.name
+            if not re.fullmatch(r"CUSTOM-\d{4}\.json", name):
+                continue
+            try:
+                st = entry.stat()
+            except OSError:
+                continue
+            stamp = (st.st_mtime_ns, st.st_size)
+            seen.add(name)
+            hit = cache.get(name)
+            if hit is None or hit[0] != stamp:
                 try:
-                    with open(os.path.join(d, name), encoding="utf-8") as f:
-                        cards.append(json.load(f))
+                    with open(entry.path, encoding="utf-8") as f:
+                        card = json.load(f)
                 except (OSError, ValueError):
                     log.warning("custom card %s is unreadable", name)
+                    card = None
+                hit = cache[name] = (stamp, card)
+            if hit[1] is not None:
+                cards.append(hit[1])
+        for name in [k for k in cache if k not in seen]:
+            del cache[name]
         return cards
 
     def _creator_compile(self, card):
@@ -3315,8 +3356,8 @@ class PlayFabEmulator:
                                    "recoveryAt": waiting.get("recoveryAt") or "" if waiting.get("recoveryHash") else "",
                                    "discord": self._discord_view(waiting), "discordReady": self._discord_app() is not None,
                                    "discordReset": (waiting.get("discordReset") or {}).get("due") or 0}})
+        cards = self._creator_load()            # outside the store lock (E2)
         with self.store.lock:
-            cards = self._creator_load()
             me = self._creator_user(req)
         role = self._creator_role(req)
         mine = lambda c: bool(me) and c.get("author", "").lower() == me.lower()
@@ -3733,7 +3774,16 @@ class PlayFabEmulator:
         for user in self._creator_users_view().values():
             if user.get("player") and self._creator_perms(user)["access"] == "banned":
                 ids.add(user["player"])
+        before = cached[1] if cached else None
         self._banned_cache = (stamp, frozenset(ids))
+        # a player banned since the last look (People page, game ban, either file edited by hand) loses their match
+        # tickets and open match connections at once, not only their next game request (security review 32)
+        if before is not None and hasattr(photon_emu, "revoke"):
+            for pfid in ids - before:
+                try:
+                    photon_emu.revoke(pfid)
+                except Exception:
+                    log.exception("could not end the matches of banned player %s", pfid)
         return self._banned_cache[1]
 
     @staticmethod
@@ -3914,6 +3964,7 @@ class PlayFabEmulator:
             d = self._creator_dir()
             for card in self._creator_load():                  # the author's cards carry the name
                 if card.get("author", "").lower() == old_key:
+                    card = copy.deepcopy(card)                  # the list is the shared cache: change a copy (E2)
                     card["author"] = new
                     path = os.path.join(d, card["id"] + ".json")
                     with open(path + ".tmp", "w", encoding="utf-8") as f:
@@ -4241,6 +4292,11 @@ class PlayFabEmulator:
     def _discord_startup(self):
         """Once per loaded copy of this file (and again when the bot settings change): register the slash commands and
         bring every linked member's roles in line. In the background; requests never wait for it."""
+        # looked at once a minute, not on every request (security review E9: three file stats per request)
+        now = time.time()
+        if now - self.__dict__.get("_discord_checked_at", 0) < 60:
+            return
+        self._discord_checked_at = now
         bot = self._discord_bot()
         if bot is None:
             return
@@ -5214,8 +5270,9 @@ class PlayFabEmulator:
         """Every account with its permissions and number of cards (admins only)."""
         if self._creator_role(req) < 2:
             return err("NotAuthorized", "only admins can see the accounts")
+        cards = self._creator_load()            # outside the store lock (E2)
         with self.store.lock:
-            users, cards = self._creator_users_view(), self._creator_load()
+            users = self._creator_users_view()
         counts = {}
         for c in cards:
             counts[c.get("author", "").lower()] = counts.get(c.get("author", "").lower(), 0) + 1
@@ -6079,6 +6136,14 @@ class PlayFabEmulator:
                 by_code = pfid
         return self.store.load(by_code) if by_code else None
 
+    def _find_player_by_code(self, query):
+        """Find a player by friend code (the id's first 8 characters) or id only - never by display name, so a
+        look-up that answers whether the player is online cannot be used on a stranger's name (security review 33)."""
+        key = (query or "").strip().replace("-", "").replace(" ", "").upper()
+        if not re.fullmatch(r"[0-9A-F]{8}|[0-9A-F]{16}", key):
+            return None
+        return self._find_player(key)
+
     def _set_display_name(self, player, name):
         """Returns None on success, or (error, message, code) for a PlayFab-style error."""
         name = " ".join((name or "").split())
@@ -6213,12 +6278,34 @@ class PlayFabEmulator:
             pass
 
     def _alliance_all(self):
-        out = []
-        for name in os.listdir(self._alliance_dir()):
-            if name.endswith(".json"):
-                g = self._alliance_load(name[:-5])
-                if g:
-                    out.append(g)
+        """Every alliance, READ-ONLY: kept per file and re-read only when a file's stamp changes (security review E9;
+        every alliance list or ranking the game asks for used to parse every alliance file). Callers that change an
+        alliance load it fresh with _alliance_load."""
+        cache = self.__dict__.setdefault("_alliance_all_cache", {})
+        out, seen = [], set()
+        try:
+            entries = list(os.scandir(self._alliance_dir()))
+        except OSError:
+            return []
+        for entry in entries:
+            name = entry.name
+            if not name.endswith(".json"):
+                continue
+            gid = name[:-5]
+            try:
+                st = entry.stat()
+            except OSError:
+                continue
+            stamp = (st.st_mtime_ns, st.st_size)
+            seen.add(gid)
+            hit = cache.get(gid)
+            if hit is None or hit[0] != stamp:
+                g = self._alliance_load(gid)
+                hit = cache[gid] = (stamp, g)
+            if hit[1]:
+                out.append(hit[1])
+        for gid in [k for k in cache if k not in seen]:
+            del cache[gid]
         return out
 
     def _alliance_max(self):
@@ -6478,11 +6565,60 @@ class PlayFabEmulator:
         """Messages this player may see: alliance channels only for that alliance's members."""
         if not any(self.ALLIANCE_CHANNEL.fullmatch(e["channel"]) for e in entries):
             return entries
-        with self.store.lock:
-            p = self.store.load(me) or {}
-            g = self._alliance_load(p.get("Alliance")) if p.get("Alliance") else None
-        mine = g["groupId"] if g and any(m["id"] == me for m in g.get("members", [])) else None
+        gid = self._player_brief(me)[1]
+        mine = gid if gid and me in self._alliance_members(gid) else None
         return [e for e in entries if not self.ALLIANCE_CHANNEL.fullmatch(e["channel"]) or e["channel"] == mine]
+
+    # ---- the chat poll's look-ups, without parsing files (security review E8, 2026-10-23): every running game polls
+    # every 3 s, and each poll needs the player's waiting friend requests and (once any alliance line is in the chat)
+    # their alliance's member list. Both are kept per file and re-read only when the file's stamp changes, as
+    # _friend_ids does: a poll is then a stat or two instead of two or three JSON parses under the store lock.
+    @staticmethod
+    def _stamp(path):
+        try:
+            st = os.stat(path)
+            return (st.st_mtime_ns, st.st_size)
+        except (OSError, ValueError):
+            return None
+
+    def _player_brief(self, pfid):
+        """(times of the player's incoming friend requests, their alliance id or None), from a per-file cache."""
+        try:
+            stamp = self._stamp(self.store._path(pfid))
+        except ValueError:
+            return (), None
+        if stamp is None:
+            return (), None
+        cache = self.__dict__.setdefault("_player_brief_cache", {})
+        hit = cache.get(pfid)
+        if hit and hit[0] == stamp:
+            return hit[1]
+        p = self.store.load(pfid) or {}
+        incoming = self._requests(p)[0]
+        gid = p.get("Alliance") if isinstance(p.get("Alliance"), str) else None
+        brief = (tuple(incoming.values()), gid)
+        if len(cache) > 5000:
+            cache.clear()
+        cache[pfid] = (stamp, brief)
+        return brief
+
+    def _alliance_members(self, gid):
+        """The member ids of an alliance (empty when it does not exist), from a per-file cache."""
+        if not isinstance(gid, str) or not self.ALLIANCE_ID.fullmatch(gid):
+            return frozenset()
+        stamp = self._stamp(os.path.join(self._alliance_dir(), gid + ".json"))
+        if stamp is None:
+            return frozenset()
+        cache = self.__dict__.setdefault("_alliance_members_cache", {})
+        hit = cache.get(gid)
+        if hit and hit[0] == stamp:
+            return hit[1]
+        g = self._alliance_load(gid) or {}
+        ids = frozenset(m.get("id") for m in g.get("members", []) if isinstance(m, dict))
+        if len(cache) > 5000:
+            cache.clear()
+        cache[gid] = (stamp, ids)
+        return ids
 
     def cs_ExitCurrentGroup(self, player, params):
         self._alliance_args("ExitCurrentGroup", params)
@@ -6677,7 +6813,7 @@ class PlayFabEmulator:
         return passes.get((a, b), 0) >= now or passes.get((b, a), 0) >= now
 
     def api_Revival_ChallengeByCode(self, req, headers):
-        """{"code": friend code, name or id} -> {"id", "name", "state": "online" | "playing" | "offline"} and a
+        """{"code": friend code or id (not a name: security review 33)} -> {"id", "name", "state": "online" | "playing" | "offline"} and a
         challenge pass between the two players for a while; or an error saying why not."""
         me = self.store.session_player_id(headers)
         if not me:
@@ -6685,7 +6821,7 @@ class PlayFabEmulator:
         if not self._allow("challenge-code", me, 10, 60):
             return err("TooManyRequests", "too many look-ups; wait a moment", 1199, 429)
         code = str(req.get("code") or "").strip()[:64]
-        other = self._find_player(code) if code else None
+        other = self._find_player_by_code(code) if code else None
         if not other:
             return err("InvalidParams", "No player with that friend code")
         oid = other["PlayFabId"]
@@ -6717,7 +6853,7 @@ class PlayFabEmulator:
         if not self._allow("alliance-invite", me, 20, 60):
             return err("TooManyRequests", "too many invitations; wait a moment", 1199, 429)
         code = str(req.get("code") or "").strip()[:64]
-        other = self._find_player(code) if code else None
+        other = self._find_player_by_code(code) if code else None
         if not other:
             return err("InvalidParams", "No player with that friend code")
         if other["PlayFabId"] == me:
@@ -7564,18 +7700,66 @@ class PlayFabEmulator:
             return None
         return data if isinstance(data, dict) else None
 
+    def _codes_index_path(self):
+        return os.path.join(self.store.root, "replay-codes-index.json")
+
     def _codes_all(self):
-        """{code: its file's contents} for every replay code."""
-        out = {}
+        """{code: its metadata} for every replay code: everything in the code's file except the recording ("kept"),
+        which only _code_load reads. Security review E6 (2026-10-23): each file holds a whole recording (up to 256 KB),
+        and this used to parse every one of them on each Profile/Replays page and each new code. Now the metadata is
+        kept in memory and in data/replay-codes-index.json by each file's stamp, so a call is a folder listing and the
+        parse of whichever files changed since (normally none). Read-only: change a code through its file."""
+        with self.__dict__.setdefault("_codes_lock", threading.Lock()):
+            return self._codes_all_locked()
+
+    def _codes_all_locked(self):
+        cache = self.__dict__.get("_codes_cache")
+        if cache is None:
+            cache = {}
+            try:
+                with open(self._codes_index_path(), encoding="utf-8") as f:
+                    kept = json.load(f)
+                for code, v in (kept.items() if isinstance(kept, dict) else []):
+                    if isinstance(v, list) and len(v) == 3 and isinstance(v[2], dict):
+                        cache[code] = ((int(v[0]), int(v[1])), v[2])
+            except (OSError, ValueError, TypeError):
+                pass
+            self._codes_cache = cache
+        out, changed, seen = {}, False, set()
         try:
-            names = os.listdir(self._codes_dir())
+            entries = list(os.scandir(self._codes_dir()))
         except OSError:
-            return out
-        for n in names:
-            if n.endswith(".json") and self.REPLAY_CODE.fullmatch(n[:-5]):
-                d = self._code_load(n[:-5])
-                if d:
-                    out[n[:-5]] = d
+            entries = []
+        for entry in entries:
+            n = entry.name
+            if not (n.endswith(".json") and self.REPLAY_CODE.fullmatch(n[:-5])):
+                continue
+            code = n[:-5]
+            try:
+                st = entry.stat()
+            except OSError:
+                continue
+            stamp = (st.st_mtime_ns, st.st_size)
+            seen.add(code)
+            hit = cache.get(code)
+            if hit is None or hit[0] != stamp:
+                d = self._code_load(code)
+                meta = {k: v for k, v in d.items() if k != "kept"} if isinstance(d, dict) else None
+                hit = cache[code] = (stamp, meta)
+                changed = True
+            if hit[1]:
+                out[code] = hit[1]
+        for code in [k for k in cache if k not in seen]:
+            del cache[code]
+            changed = True
+        if changed:
+            try:
+                path = self._codes_index_path()
+                with open(path + ".tmp", "w", encoding="utf-8") as f:
+                    json.dump({c: [st[0], st[1], m] for c, (st, m) in cache.items() if m}, f, separators=(",", ":"))
+                os.replace(path + ".tmp", path)
+            except OSError:
+                log.exception("could not save the replay code index")
         return out
 
     def _code_public(self, code, d):
@@ -7589,44 +7773,80 @@ class PlayFabEmulator:
         held = {d.get("match") for d in self._codes_all().values() if isinstance(d.get("match"), str)}
         return held | self._preports_holding()
 
+    MATCH_STORAGE_MB = 3072     # revival-settings.json "matchStorageMB": the most data/matches may hold (security review 30)
+
+    def _matches_cap(self):
+        try:
+            return max(64, int(self._settings().get("matchStorageMB", self.MATCH_STORAGE_MB))) * 1024 * 1024
+        except (TypeError, ValueError):
+            return self.MATCH_STORAGE_MB * 1024 * 1024
+
     def _matches_prune(self):
-        """Deletes match records past MATCH_KEEP_DAYS that nothing holds."""
+        """Deletes match records past MATCH_KEEP_DAYS that nothing holds; then, while the folder is over its cap
+        (matchStorageMB), the oldest records nothing holds. Tells the match service the folder's size and cap, so
+        it stops opening new records once full (security review 30)."""
         root = self._matches_dir()
         try:
             months = os.listdir(root)
         except OSError:
-            return
+            months = []
         oldest = time.time() - self.MATCH_KEEP_DAYS * 86400
         held = None
         gone = 0
+        files = []                                    # (mtime, size, path, id) of every record kept
         for m in months:
             folder = os.path.join(root, m)
             if not re.fullmatch(r"\d{4}-\d{2}", m) or not os.path.isdir(folder):
                 continue
-            for n in os.listdir(folder):
-                path = os.path.join(folder, n)
+            for entry in os.scandir(folder):
+                n = entry.name
                 if not n.endswith(".jsonl"):
                     continue
                 try:
-                    if os.stat(path).st_mtime >= oldest:
-                        continue
+                    st = entry.stat()
                 except OSError:
+                    continue
+                if st.st_mtime >= oldest:
+                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6]))
                     continue
                 if held is None:
                     held = self._matches_held()
                 if n[:-6] in held:
+                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6]))
                     continue
                 try:
-                    os.remove(path)
+                    os.remove(entry.path)
                     gone += 1
                 except OSError:
-                    pass
+                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6]))
             try:
                 os.rmdir(folder)                      # only when empty
             except OSError:
                 pass
         if gone:
             log.info("match records: %d older than %d days deleted", gone, self.MATCH_KEEP_DAYS)
+        cap = self._matches_cap()
+        total = sum(f[1] for f in files)
+        if total > cap:
+            if held is None:
+                held = self._matches_held()
+            trimmed = 0
+            for mtime, size, path, rid in sorted(files):          # oldest first, down to 90% of the cap
+                if total <= cap * 0.9:
+                    break
+                if rid in held:
+                    continue
+                try:
+                    os.remove(path)
+                    total -= size
+                    trimmed += 1
+                except OSError:
+                    pass
+            log.warning("match records: over the %d MB cap (matchStorageMB); %d oldest deleted, %d MB left",
+                        cap // (1024 * 1024), trimmed, total // (1024 * 1024))
+        if hasattr(photon_emu, "MATCH_BYTES"):
+            photon_emu.MATCH_BYTES[0] = total
+            photon_emu.MATCH_CAP[0] = cap
 
     def api_Revival_ReplayCode(self, req, headers):
         """{"recordingIndex"} of a match in the caller's history -> its replay code (the same code each time)."""
@@ -7859,16 +8079,32 @@ class PlayFabEmulator:
         os.replace(path + ".tmp", path)
 
     def _preport_all(self):
+        """Every report (copies the caller may change), oldest first. Each file is parsed only when its stamp changed
+        since the last call (security review E9: every server match check used to parse every report)."""
         out = []
+        cache = self.__dict__.setdefault("_preport_cache", {})
         try:
-            names = sorted(os.listdir(self._preport_dir()))
+            entries = sorted(os.scandir(self._preport_dir()), key=lambda e: e.name)
         except OSError:
             return out
-        for n in names:
-            if n.endswith(".json") and self.PREPORT_ID.fullmatch(n[:-5]):
-                d = self._preport_load(n[:-5])
-                if d:
-                    out.append(d)
+        seen = set()
+        for entry in entries:
+            n = entry.name
+            if not (n.endswith(".json") and self.PREPORT_ID.fullmatch(n[:-5])):
+                continue
+            try:
+                st = entry.stat()
+            except OSError:
+                continue
+            stamp, rid = (st.st_mtime_ns, st.st_size), n[:-5]
+            seen.add(rid)
+            hit = cache.get(rid)
+            if hit is None or hit[0] != stamp:
+                hit = cache[rid] = (stamp, self._preport_load(rid))
+            if hit[1]:
+                out.append(copy.deepcopy(hit[1]))
+        for rid in [k for k in cache if k not in seen]:
+            del cache[rid]
         return out
 
     def _preport_new_id(self):

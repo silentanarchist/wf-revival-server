@@ -17,8 +17,10 @@ import hashlib
 import json
 import logging
 import os
+import queue
 import random
 import re
+import socket
 import struct
 import threading
 import time
@@ -476,6 +478,9 @@ REQUIRE = _keep("REQUIRE", lambda: [True])   # closed until the game server has 
 # that were already open (before 2026-10-17 they were refused every 2 s until their ticket ran out).
 TICKET_FILE = _keep("TICKET_FILE", lambda: [None])
 MATCH_CLOSED = _keep("MATCH_CLOSED", lambda: [None])       # playfab_emu sets a function(record id) run when a recorded room closes
+# playfab_emu sets a function(player id) -> True for a banned player (security review 32, 2026-10-23): a banned
+# player's ticket is refused and dropped, and they cannot join or open a room; revoke() below ends what they have open.
+BANNED = _keep("BANNED", lambda: [None])
 _tickets = _keep("_tickets", dict)            # sha256(ticket) -> (player id, expires at, unix seconds)
 _tickets_lock = _keep("_tickets_lock", threading.Lock)
 _tickets_loaded = _keep("_tickets_loaded", lambda: [None])      # the file the tickets were last read from
@@ -612,10 +617,41 @@ def grant(player_id, mod=None):
     return ticket
 
 
+def banned(player_id):
+    """True when the game server says this player is banned (never raises; False when it cannot tell)."""
+    check = BANNED[0]
+    if not check or not player_id:
+        return False
+    try:
+        return bool(check(player_id))
+    except Exception:
+        log.exception("ban check for %s", player_id)
+        return False
+
+
+def revoke(player_id):
+    """Ends a player's use of the match service (a ban or an account being deleted): every match ticket of theirs
+    is forgotten and every connection of theirs is closed. Returns (tickets removed, connections closed)."""
+    if not player_id:
+        return 0, 0
+    with _tickets_lock:
+        _tickets_sync()
+        gone = [k for k, (who, _) in _tickets.items() if who == player_id]
+        for k in gone:
+            del _tickets[k]
+        if gone:
+            _tickets_save()
+    closed = SERVICE.drop_player(player_id) if "SERVICE" in globals() else 0
+    if gone or closed:
+        log.info("player %s: %d match ticket(s) revoked, %d connection(s) closed", player_id, len(gone), closed)
+    return len(gone), closed
+
+
 def _redeem(ticket):
     if not isinstance(ticket, str) or not ticket:
         return None
     now = time.time()
+    who = None
     with _tickets_lock:
         _tickets_sync()
         key = _fingerprint(ticket)
@@ -624,8 +660,11 @@ def _redeem(ticket):
             # a ticket in use stays valid: its life starts again at every connection, so an open game is never
             # turned away because its sign-in was long ago (saved with the next grant, which is good enough)
             _tickets[key] = (found[0], now + TICKET_SECONDS)
-            return found[0]
-    return None
+            who = found[0]
+    if who and banned(who):                   # asked outside the ticket lock: the game server takes its own locks
+        revoke(who)
+        return None
+    return who
 FLAG_DELETE_NULL, FLAG_PROPS_TO_ALL = 16, 32
 
 
@@ -690,8 +729,39 @@ class Room(object):
 MATCH_DIR = _keep("MATCH_DIR", lambda: [None])
 MATCH_MAX_LINES = 20000                       # per match; a record that reaches either cap stops,
 MATCH_MAX_BYTES = 4 * 1024 * 1024             # with a last line saying so
+# the records folder's size and cap (playfab_emu measures and trims it hourly, "matchStorageMB"): no new record is
+# opened while it is full; writes add to the size in between (security review 30)
+MATCH_BYTES = _keep("MATCH_BYTES", lambda: [0])
+MATCH_CAP = _keep("MATCH_CAP", lambda: [0])
 RECENT_MATCHES = _keep("RECENT_MATCHES", list)   # newest last: {"id", "players": set, "opened", "last"}, at most 500
 MATCH_ID = re.compile(r"[0-9a-f]{16}")
+
+# Record lines are written by one writer thread, not by the thread relaying the event (security review E7,
+# 2026-10-23): the relay keeps its lock while it relays, and every other match's traffic waited on that disk write.
+# Each item is (open file, text) or (open file, None) to close it; the queue survives reloads of this file.
+_record_q = _keep("_record_q", queue.Queue)
+
+
+def _record_writer():
+    failed = set()
+    while True:
+        f, text = _record_q.get()
+        try:
+            if text is None:
+                f.close()
+                failed.discard(id(f))
+            elif id(f) not in failed:
+                f.write(text)
+                f.flush()
+        except (OSError, ValueError) as e:
+            if id(f) not in failed:
+                failed.add(id(f))
+                log.warning("match record %s: write failed (%s)", getattr(f, "name", "?"), e)
+
+
+if not globals().get("_record_writer_started"):
+    _record_writer_started = True
+    threading.Thread(target=_record_writer, name="match-record-writer", daemon=True).start()
 
 
 class MatchRecord(object):
@@ -714,7 +784,9 @@ class MatchRecord(object):
 
     def note(self, kind, **fields):
         line = dict(t=int((time.monotonic() - self.t0) * 1000), k=kind, **{k: v for k, v in fields.items() if v is not None})
-        if kind == "ev" and self.f is None and not self.stopped:
+        # written once two different players have been in the room (2026-10-23, security review 30): a search
+        # nobody answered, or one player opening rooms in a loop, leaves no file
+        if kind == "ev" and self.f is None and not self.stopped and len(self.players) >= 2:
             self._open()
         if self.f is None:
             if not self.stopped and len(self.pending) < 200:
@@ -725,6 +797,10 @@ class MatchRecord(object):
     def _open(self):
         base = MATCH_DIR[0]
         if not base:
+            self.stopped = True
+            return
+        if MATCH_CAP[0] and MATCH_BYTES[0] >= MATCH_CAP[0]:
+            log.warning("match record %s not written: the records folder is at its cap (matchStorageMB)", self.id)
             self.stopped = True
             return
         try:
@@ -761,20 +837,13 @@ class MatchRecord(object):
             self.recent["last"] = time.time()
 
     def _write_raw(self, text):
-        try:
-            self.f.write(text)
-            self.f.flush()
-        except (OSError, ValueError) as e:
-            log.warning("match record %s: write failed (%s)", self.id, e)
-            self.close()
-            self.stopped = True
+        if self.f is not None:
+            _record_q.put((self.f, text))         # written by the writer thread, in order
+            MATCH_BYTES[0] += len(text)
 
     def close(self):
         if self.f is not None:
-            try:
-                self.f.close()
-            except OSError:
-                pass
+            _record_q.put((self.f, None))
             self.f = None
 
 
@@ -819,7 +888,7 @@ class Service(object):
             if kind == "close":
                 rec.note("close")
                 rec.close()
-                if MATCH_CLOSED[0] and rec.players:
+                if MATCH_CLOSED[0] and rec.recent is not None:              # only a record that was written
                     try:
                         MATCH_CLOSED[0](rec.id)                     # playfab_emu checks the record (its own thread)
                     except Exception:
@@ -893,6 +962,24 @@ class Service(object):
             log.info("room %s: %s (actor %d) left; %d still in", room.name, actor.name, actor.nr, len(room.actors))
             self._record(room, "leave", a=actor.nr)
         self._maybe_close(room, time.monotonic())
+
+    def drop_player(self, player_id):
+        """Closes every connection of a signed-in player (revoke). Each one's own thread then leaves its room
+        the usual way. Returns how many were closed."""
+        with self.lock:
+            mine = [c for c in self.conns if c.player == player_id]
+        for c in mine:
+            c.left = True                     # gone for good: no seat kept for a comeback
+            c.closed = True
+            try:
+                c.sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                c.sock.close()
+            except OSError:
+                pass
+        return len(mine)
 
     def drop(self, conn):
         """The connection closed. In a room with a rejoin window the seat is kept."""
@@ -1389,6 +1476,9 @@ class Connection(object):
             return
         if REQUIRE[0] and not self.player and code in (225, 226, 227, 229, 222):
             return self.reply(code, rc=ERR_AUTH, debug="Sign in to the game first")
+        if self.player and code in (225, 226, 227) and banned(self.player):
+            revoke(self.player)
+            return self.reply(code, rc=ERR_AUTH, debug="This account has been banned from this server")
         if code in (230, 231):
             self.sign_in(code)
         elif code == 229 or code == 228:      # join / leave lobby: rooms are found by searching, nothing to list
