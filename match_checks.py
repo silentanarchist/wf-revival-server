@@ -131,8 +131,6 @@ def _numbering(relay):
     players = relay.get("players") or {}
     if not first or first not in players or len(players) != 2:
         return None
-    if relay.get("first") and relay["first"] != first:
-        return None                                     # the games say another player started (FirstPlayer): the order is not known
     second = next(p for p in players if p != first)
     table, n = {}, 0
     for pid in (first, second):

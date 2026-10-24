@@ -44,9 +44,13 @@ try:                                              # kept in logs/photon.log as w
     os.makedirs(_dir, exist_ok=True)
     # a new file each night, two weeks kept: the log names the addresses players connect from
     from logging.handlers import TimedRotatingFileHandler
-    _file = TimedRotatingFileHandler(os.path.join(_dir, "photon.log"), when="midnight", backupCount=14, encoding="utf-8")
-    _file.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    log.addHandler(_file)
+    _path = os.path.abspath(os.path.join(_dir, "photon.log"))
+    # once per process: this file is reloaded while the server runs (2026-10-20), and every reload used to add one
+    # more handler, so each line was written once per reload since the start (seen 2026-10-23: three times)
+    if not any(getattr(h, "baseFilename", None) == _path for h in log.handlers):
+        _file = TimedRotatingFileHandler(_path, when="midnight", backupCount=14, encoding="utf-8")
+        _file.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        log.addHandler(_file)
     log.setLevel(logging.INFO)
 except OSError:
     pass
