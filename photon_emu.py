@@ -1047,6 +1047,15 @@ class Service(object):
         mode = plain(p.get(215)) or 0                            # 1 create if missing, 2 join or rejoin, 3 rejoin only
         with self.lock:
             room = self.rooms.get(name)
+            if room is not None and not room.actors:
+                # Everyone left this room for good: its match is over, and only the empty-room wait (30 s) kept it.
+                # A friend challenge uses the same name every time (Practice_<challenger>), so a quick rematch landed in
+                # the old room - its match record, coin and cached messages (2026-10-23). It is closed now and the
+                # rematch gets a fresh room. (Players who only dropped are still in room.actors: a reconnect is unaffected.)
+                del self.rooms[name]
+                log.info("room %s closed early: everyone had left and a new match asked for the name", room.name)
+                self._record(room, "close")
+                room = None
             if not on_game_server:
                 # The "master" step: the client only asks where to go. It reconnects and asks again.
                 if code == 227:
