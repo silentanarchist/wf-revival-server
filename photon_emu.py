@@ -820,7 +820,8 @@ class MatchRecord(object):
         for line in self.pending:
             self._write(line)
         self.pending = []
-        self.recent = {"id": self.id, "players": self.players, "opened": self.opened, "last": time.time()}
+        self.recent = {"id": self.id, "players": self.players, "opened": self.opened, "last": time.time(),
+                       "room": self.room_name, "month": time.strftime("%Y-%m", time.gmtime(self.opened))}
         RECENT_MATCHES.append(self.recent)
         del RECENT_MATCHES[:-500]
 
@@ -853,6 +854,17 @@ class MatchRecord(object):
 
 def _b64(data):
     return base64.b64encode(bytes(data)).decode("ascii")
+
+
+def find_room_match(room_name, player_id, since_seconds=3 * 3600):
+    """(record id, month folder) of the recorded match in this room that the player took part in, or (None, None)."""
+    now = time.time()
+    for e in reversed(RECENT_MATCHES):
+        if now - e["last"] > since_seconds:
+            continue
+        if e.get("room") == room_name and player_id in e["players"]:
+            return e["id"], e.get("month")
+    return None, None
 
 
 def find_match(player_ids, since_seconds=3 * 3600):

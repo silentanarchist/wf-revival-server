@@ -7807,18 +7807,18 @@ class PlayFabEmulator:
                 except OSError:
                     continue
                 if st.st_mtime >= oldest:
-                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6]))
+                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6].replace(".state", "")))
                     continue
                 if held is None:
                     held = self._matches_held()
-                if n[:-6] in held:
-                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6]))
+                if n[:-6].replace(".state", "") in held:          # a match's board states go with its record
+                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6].replace(".state", "")))
                     continue
                 try:
                     os.remove(entry.path)
                     gone += 1
                 except OSError:
-                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6]))
+                    files.append((st.st_mtime, st.st_size, entry.path, n[:-6].replace(".state", "")))
             try:
                 os.rmdir(folder)                      # only when empty
             except OSError:
@@ -8220,6 +8220,62 @@ class PlayFabEmulator:
             self._preport_save(d)
         log.info("player report %s: %s reported %s (%s)%s", rid, pfid, reported, reason, "" if match_id else "; no server record of the match")
         return ok({"id": rid})
+
+    # ---- board fingerprints (mod 0.15.0, MatchState.cs): at every end of turn each game sends its view of the board
+    # ({room, turn, hash, board}); kept in data/matches/<month>/<id>.state.jsonl next to the match record, and the first
+    # turn whose fingerprints differ between the two players is logged ("match state differs"). For finding desyncs.
+    STATE_BOARD = re.compile(r"[0-9A-Za-z_.:/,?+-]{0,12000}")
+    STATE_MAX_BYTES = 1024 * 1024        # per match
+
+    def api_Revival_MatchState(self, req, headers):
+        me = self.store.session_player_id(headers)
+        if not me:
+            return err("NotAuthenticated", "sign in first", 1074, 401)
+        room, board, digest = req.get("room"), req.get("board"), req.get("hash")
+        turn = req.get("turn")
+        if not (isinstance(room, str) and 0 < len(room) <= 200 and isinstance(turn, int) and not isinstance(turn, bool)
+                and 0 < turn <= 1000 and isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{8,64}", digest)
+                and isinstance(board, str) and self.STATE_BOARD.fullmatch(board)):
+            return err("InvalidParams", "not a board state")
+        if not self._allow("matchstate", me, 600, 3600):
+            return err("TooManyRequests", "too many board states; wait a moment", 1199, 429)
+        match_id, month = photon_emu.find_room_match(room, me) if hasattr(photon_emu, "find_room_match") else (None, None)
+        if not match_id or not month or not re.fullmatch(r"[0-9a-f]{16}", match_id) or not re.fullmatch(r"\d{4}-\d{2}", month):
+            return ok({"kept": False})
+        path = os.path.join(self._matches_dir(), month, match_id + ".state.jsonl")
+        with self.__dict__.setdefault("_state_lock", threading.Lock()):
+            try:
+                if os.path.exists(path) and os.path.getsize(path) > self.STATE_MAX_BYTES:
+                    return ok({"kept": False})
+                other = None
+                if os.path.exists(path):
+                    with open(path, encoding="utf-8") as f:
+                        for line in f:
+                            try:
+                                e = json.loads(line)
+                            except ValueError:
+                                continue
+                            if e.get("turn") == turn and e.get("p") != me:
+                                other = e
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"t": now_iso(), "p": me, "turn": turn, "hash": digest, "board": board},
+                                       separators=(",", ":")) + "\n")
+            except OSError as e:
+                log.warning("match state %s: %s", match_id, e)
+                return ok({"kept": False})
+        if other is not None and other.get("hash") != digest:
+            seen = self.__dict__.setdefault("_state_differs", {})
+            if match_id not in seen:
+                if len(seen) > 2000:
+                    seen.clear()
+                seen[match_id] = turn
+                mine = dict((x.split(":", 1)[0], x) for x in board.split(",") if ":" in x)
+                theirs = dict((x.split(":", 1)[0], x) for x in str(other.get("board") or "").split(",") if ":" in x)
+                diff = [n for n in sorted(set(mine) | set(theirs), key=lambda k: int(k) if k.isdigit() else 0)
+                        if mine.get(n) != theirs.get(n)]
+                log.warning("match state differs: match %s, end of turn %d, %s vs %s; cards: %s", match_id, turn, me,
+                            other.get("p"), "; ".join("%s | %s" % (theirs.get(n, "-"), mine.get(n, "-")) for n in diff[:8]))
+        return ok({"kept": True})
 
     def api_Revival_CheatAlarm(self, req, headers):
         """{"kind": "tamper" | "speed", "detail"}: the game's own anti-cheat raised an alarm in this player's match
