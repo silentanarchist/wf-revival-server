@@ -1694,7 +1694,19 @@ class PlayFabEmulator:
         except Exception:
             waiting = 0
         return ok({"messages": out, "last": max(last, since, 0), "history": since < 0,
-                   "friends": self._friend_statuses(me), "private": private, "friendRequests": waiting})
+                   "friends": self._friend_statuses(me), "private": private, "friendRequests": waiting,
+                   "online": self._online_count()})
+
+    def _online_count(self):
+        """How many players' games asked for chat in the last ONLINE_SECONDS (the same rule as a friend's "online"
+        light); shown next to the main menu's chat (mod 0.15.1). Worked out at most every 5 seconds."""
+        now = time.time()
+        cached = self.__dict__.get("_online_cache")
+        if cached and now - cached[0] < 5:
+            return cached[1]
+        n = sum(1 for t in list(photon_emu.SEEN.values()) if now - t <= self.ONLINE_SECONDS)
+        self._online_cache = (now, n)
+        return n
 
     # ---- private messages between two players (challenging a friend to a match)
     # The game sent these through the publisher's chat service, which the revival does not use.
