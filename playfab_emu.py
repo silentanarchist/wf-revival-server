@@ -1567,7 +1567,7 @@ class PlayFabEmulator:
     # The mod sends the game's chat messages here instead of to Photon and asks for new ones every
     # few seconds. Messages are kept in data/chat.jsonl so the chat has a history again.
     CHAT_KEEP = 500       # messages remembered in total
-    CHAT_HISTORY = 50     # messages per channel handed to a player who just started the game
+    CHAT_HISTORY = 100    # messages per channel handed to a player who just started the game (the game keeps 100 per channel)
 
     @staticmethod
     def _chat_stamp(message, when_ms):
