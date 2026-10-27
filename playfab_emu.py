@@ -22,6 +22,8 @@ import struct
 import threading
 import time
 import unicodedata
+import io
+import zipfile
 
 import photon_emu
 import match_checks
@@ -2678,6 +2680,13 @@ class PlayFabEmulator:
     BUG_MAX_LOG = 256 * 1024
     BUG_MAX_SCREEN = 3 * 1024 * 1024
     BUG_MAX_DUMP = 4 * 1024 * 1024
+    # "Include extended logs" (mod 0.15.3): one zip with every log the game and its loader keep, Unity's
+    # Player.log and the recent crash folders (error.log, crash.dmp). Admins only; rebuilt here with the
+    # text files scrubbed, so nothing but .log/.txt/.dmp files of sane size reaches the disk.
+    BUG_MAX_EXTENDED = 5 * 1024 * 1024
+    BUG_EXTENDED_FILES = 60
+    BUG_EXTENDED_UNPACKED = 64 * 1024 * 1024
+    BUG_EXTENDED_NAME = re.compile(r"[A-Za-z0-9 ._()-]{1,80}(/[A-Za-z0-9 ._()-]{1,80}){0,3}")
     # All of data/bugs/ together (review #24): new reports are refused past this, so testers cannot fill
     # the disk. revival-settings.json "bugStorageMB" changes it (default 2048).
     BUG_STORAGE_MB = 2048
@@ -2790,6 +2799,39 @@ class PlayFabEmulator:
             return None, err("InvalidParams", f"the {what} is not in a format the server accepts")
         return raw, None
 
+    def _bug_extended(self, raw, headers):
+        """The extended-logs zip rebuilt from what was sent: only .log/.txt/.dmp files with plain names, text
+        scrubbed like the log, crash dumps only with their MDMP header; None when the zip is not like that."""
+        try:
+            src = zipfile.ZipFile(io.BytesIO(raw))
+            infos = src.infolist()
+            if not infos or len(infos) > self.BUG_EXTENDED_FILES:
+                return None
+            if sum(i.file_size for i in infos) > self.BUG_EXTENDED_UNPACKED:
+                return None
+            out = io.BytesIO()
+            with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
+                seen = set()
+                for i in infos:
+                    name = i.filename
+                    low = name.lower()
+                    if i.is_dir() or name in seen or not self.BUG_EXTENDED_NAME.fullmatch(name) or ".." in name:
+                        return None
+                    if not low.endswith((".log", ".txt", ".dmp")):
+                        return None
+                    seen.add(name)
+                    data = src.read(i)
+                    if low.endswith(".dmp"):
+                        if not data.startswith(b"MDMP"):
+                            return None
+                        dst.writestr(name, data)
+                    else:
+                        dst.writestr(name, self._bug_scrub(data.decode("utf-8", "replace"), headers))
+            rebuilt = out.getvalue()
+            return rebuilt if len(rebuilt) <= self.BUG_MAX_EXTENDED * 2 else None
+        except (zipfile.BadZipFile, ValueError, OSError, RuntimeError, EOFError, NotImplementedError):
+            return None
+
     def _bug_who(self, pfid):
         """(account perms with name, None) for a player allowed to send reports, or (None, error)."""
         mode = str(self._settings().get("bugReports") or "testers").lower()
@@ -2807,7 +2849,7 @@ class PlayFabEmulator:
         pfid = self.store.session_player_id(headers)
         if not pfid:
             return err("NotAuthenticated", "sign in to send bug reports", 1074, 401)
-        allowed = {"title", "category", "severity", "description", "kind", "context", "log", "screenshot", "dump"}
+        allowed = {"title", "category", "severity", "description", "kind", "context", "log", "screenshot", "dump", "extended"}
         if not isinstance(req, dict) or not set(req) <= allowed:
             return err("InvalidParams", "that is not a bug report")
         perms, problem = self._bug_who(pfid)
@@ -2837,9 +2879,16 @@ class PlayFabEmulator:
         dump, problem = self._bug_bytes(req.get("dump"), self.BUG_MAX_DUMP, (b"MDMP",), "crash dump")
         if problem:
             return problem
+        extended, problem = self._bug_bytes(req.get("extended"), self.BUG_MAX_EXTENDED, (b"PK\x03\x04",), "extended logs")
+        if problem:
+            return problem
+        if extended:
+            extended = self._bug_extended(extended, headers)
+            if extended is None:
+                return err("InvalidParams", "the extended logs are not in a format the server accepts")
         if not self._allow("bug-hour", pfid, 10, 3600, count=False) or not self._allow("bug-day", pfid, 30, 86400, count=False):
             return err("TooManyAttempts", "too many bug reports - try again later", 1199, 429)
-        incoming = len(log_text.encode("utf-8")) + len(screen or b"") + len(dump or b"") + len(description.encode("utf-8"))
+        incoming = len(log_text.encode("utf-8")) + len(screen or b"") + len(dump or b"") + len(extended or b"") + len(description.encode("utf-8"))
         if self._bugs_storage_full(incoming):
             log.warning("bug report from %s refused: data/bugs is at its storage cap (bugStorageMB)", perms["name"])
             return err("StorageFull", "the server's bug report storage is full - please tell us at wf-revival@silentanarchist.com", 1199, 507)
@@ -2869,6 +2918,10 @@ class PlayFabEmulator:
                 with open(os.path.join(d, "crash.dmp"), "wb") as f:
                     f.write(dump)
                 report["files"]["dump"] = len(dump)
+            if extended:
+                with open(os.path.join(d, "extended.zip"), "wb") as f:
+                    f.write(extended)
+                report["files"]["extended"] = len(extended)
             self._bug_save(report)
         log.info("bug report %s from %s (%s, %s): %s", bug_id, perms["name"], kind, ctx.get("platform", "?"), title)
         site = str(self._settings().get("creatorUrl") or "").rstrip("/")
@@ -2925,31 +2978,33 @@ class PlayFabEmulator:
             files.pop("screen", None)
         if not perms["admin"]:
             files.pop("dump", None)
+            files.pop("extended", None)
         out["files"] = files
         out["mine"], out["admin"] = mine, perms["admin"]
         return ok(out)
 
     def api_Revival_BugFile(self, req, headers):
-        """One attachment: {"id", "file": "log" | "screen" | "dump"} (author and admins; dumps admins only)."""
+        """One attachment: {"id", "file": "log" | "screen" | "dump" | "extended"} (author and admins; dumps and
+        extended logs admins only)."""
         me, perms = self._bug_reader(req)
         if not me:
             return perms
         which = req.get("file")
         with self.store.lock:
             r = self._bug_load(str(req.get("id") or ""))
-        if not r or which not in ("log", "screen", "dump") or which not in (r.get("files") or {}):
+        if not r or which not in ("log", "screen", "dump", "extended") or which not in (r.get("files") or {}):
             return err("NotFound", "that report has no such attachment")
         mine = r.get("author", "").lower() == me["name"].lower()
-        if not perms["admin"] and (which == "dump" or not mine):
+        if not perms["admin"] and (which in ("dump", "extended") or not mine):
             return err("NotAuthorized", "only the reporter and admins can see this")
         d = self._bug_path(r["id"])
         if which == "log":
             with open(os.path.join(d, "log.txt"), encoding="utf-8") as f:
                 return ok({"log": f.read()})
-        name = "crash.dmp" if which == "dump" else "screen." + r["files"]["screen"]
+        name = "crash.dmp" if which == "dump" else "extended.zip" if which == "extended" else "screen." + r["files"]["screen"]
         with open(os.path.join(d, name), "rb") as f:
             raw = f.read()
-        kind = "application/octet-stream" if which == "dump" else {"bmp": "image/bmp", "jpg": "image/jpeg", "png": "image/png"}[r["files"]["screen"]]
+        kind = "application/octet-stream" if which == "dump" else "application/zip" if which == "extended" else {"bmp": "image/bmp", "jpg": "image/jpeg", "png": "image/png"}[r["files"]["screen"]]
         return ok({"name": "%s-%s" % (r["id"], name), "type": kind, "data": base64.b64encode(raw).decode("ascii")})
 
     def api_Revival_BugUpdate(self, req, headers):
