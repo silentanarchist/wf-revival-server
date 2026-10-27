@@ -2685,7 +2685,7 @@ class PlayFabEmulator:
     # text files scrubbed, so nothing but .log/.txt/.dmp files of sane size reaches the disk.
     BUG_MAX_EXTENDED = 5 * 1024 * 1024
     BUG_EXTENDED_FILES = 60
-    BUG_EXTENDED_UNPACKED = 64 * 1024 * 1024
+    BUG_EXTENDED_UNPACKED = 256 * 1024 * 1024   # logs compress 10-20x: 5 MB of zip can be well over 64 MB of text
     BUG_EXTENDED_NAME = re.compile(r"[A-Za-z0-9 ._()-]{1,80}(/[A-Za-z0-9 ._()-]{1,80}){0,3}")
     # All of data/bugs/ together (review #24): new reports are refused past this, so testers cannot fill
     # the disk. revival-settings.json "bugStorageMB" changes it (default 2048).
@@ -2800,37 +2800,43 @@ class PlayFabEmulator:
         return raw, None
 
     def _bug_extended(self, raw, headers):
-        """The extended-logs zip rebuilt from what was sent: only .log/.txt/.dmp files with plain names, text
-        scrubbed like the log, crash dumps only with their MDMP header; None when the zip is not like that."""
+        """(zip, None): the extended-logs zip rebuilt from what was sent - only .log/.txt/.dmp files with plain names,
+        text scrubbed like the log, crash dumps only with their MDMP header; (None, why) when the zip is not like that."""
         try:
             src = zipfile.ZipFile(io.BytesIO(raw))
             infos = src.infolist()
-            if not infos or len(infos) > self.BUG_EXTENDED_FILES:
-                return None
+            if not infos:
+                return None, "the zip is empty"
+            if len(infos) > self.BUG_EXTENDED_FILES:
+                return None, "more than %d files" % self.BUG_EXTENDED_FILES
             if sum(i.file_size for i in infos) > self.BUG_EXTENDED_UNPACKED:
-                return None
+                return None, "more than %d MB unpacked" % (self.BUG_EXTENDED_UNPACKED // (1024 * 1024))
             out = io.BytesIO()
             with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
                 seen = set()
                 for i in infos:
-                    name = i.filename
+                    name = i.filename.replace("\\", "/")
                     low = name.lower()
-                    if i.is_dir() or name in seen or not self.BUG_EXTENDED_NAME.fullmatch(name) or ".." in name:
-                        return None
+                    if i.is_dir():
+                        continue
+                    if name in seen or ".." in name or not self.BUG_EXTENDED_NAME.fullmatch(name):
+                        return None, "a file name that is not allowed (%r)" % name[:60]
                     if not low.endswith((".log", ".txt", ".dmp")):
-                        return None
+                        return None, "a file that is not a log or crash dump (%r)" % name[:60]
                     seen.add(name)
                     data = src.read(i)
                     if low.endswith(".dmp"):
                         if not data.startswith(b"MDMP"):
-                            return None
+                            return None, "a crash dump that is not one (%r)" % name[:60]
                         dst.writestr(name, data)
                     else:
                         dst.writestr(name, self._bug_scrub(data.decode("utf-8", "replace"), headers))
             rebuilt = out.getvalue()
-            return rebuilt if len(rebuilt) <= self.BUG_MAX_EXTENDED * 2 else None
-        except (zipfile.BadZipFile, ValueError, OSError, RuntimeError, EOFError, NotImplementedError):
-            return None
+            if len(rebuilt) > self.BUG_MAX_EXTENDED * 2:
+                return None, "too large after checking"
+            return rebuilt, None
+        except (zipfile.BadZipFile, ValueError, OSError, RuntimeError, EOFError, NotImplementedError, zipfile.LargeZipFile) as e:
+            return None, "the zip could not be read (%s)" % type(e).__name__
 
     def _bug_who(self, pfid):
         """(account perms with name, None) for a player allowed to send reports, or (None, error)."""
@@ -2883,9 +2889,10 @@ class PlayFabEmulator:
         if problem:
             return problem
         if extended:
-            extended = self._bug_extended(extended, headers)
+            extended, why = self._bug_extended(extended, headers)
             if extended is None:
-                return err("InvalidParams", "the extended logs are not in a format the server accepts")
+                log.warning("bug report from %s: extended logs refused (%s)", pfid, why)
+                return err("InvalidParams", f"the extended logs were refused: {why}")
         if not self._allow("bug-hour", pfid, 10, 3600, count=False) or not self._allow("bug-day", pfid, 30, 86400, count=False):
             return err("TooManyAttempts", "too many bug reports - try again later", 1199, 429)
         incoming = len(log_text.encode("utf-8")) + len(screen or b"") + len(dump or b"") + len(extended or b"") + len(description.encode("utf-8"))
