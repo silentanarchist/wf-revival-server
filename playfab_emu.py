@@ -8306,6 +8306,7 @@ class PlayFabEmulator:
     # turn whose fingerprints differ between the two players is logged ("match state differs"). For finding desyncs.
     STATE_BOARD = re.compile(r"[0-9A-Za-z_.:/,?+-]{0,12000}")
     STATE_MAX_BYTES = 1024 * 1024        # per match
+    STATE_STEP_NUMS = re.compile(r"[0-9:/,-]{0,120}")   # a step's numbers: "<warlord no>:<total>/<unused>:<hand>:<deck>,..."
 
     def api_Revival_MatchState(self, req, headers):
         me = self.store.session_player_id(headers)
@@ -8317,6 +8318,15 @@ class PlayFabEmulator:
                 and 0 < turn <= 1000 and isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{8,64}", digest)
                 and isinstance(board, str) and self.STATE_BOARD.fullmatch(board)):
             return err("InvalidParams", "not a board state")
+        # Server Deal matches (mod 0.15.14): the turn's step fingerprints, one per resolved action
+        steps = req.get("steps")
+        if steps is not None:
+            if not (isinstance(steps, list) and len(steps) <= 300 and all(
+                    isinstance(x, dict) and isinstance(x.get("n"), int) and not isinstance(x.get("n"), bool)
+                    and 0 < x["n"] <= 100000 and isinstance(x.get("h"), str) and re.fullmatch(r"[0-9a-f]{8,24}", x["h"])
+                    and isinstance(x.get("c"), str) and self.STATE_STEP_NUMS.fullmatch(x["c"]) for x in steps)):
+                return err("InvalidParams", "not a list of steps")
+            steps = [[x["n"], x["h"], x["c"]] for x in steps]
         if not self._allow("matchstate", me, 600, 3600):
             return err("TooManyRequests", "too many board states; wait a moment", 1199, 429)
         match_id, month = photon_emu.find_room_match(room, me) if hasattr(photon_emu, "find_room_match") else (None, None)
@@ -8337,12 +8347,16 @@ class PlayFabEmulator:
                                 continue
                             if e.get("turn") == turn and e.get("p") != me:
                                 other = e
+                line = {"t": now_iso(), "p": me, "turn": turn, "hash": digest, "board": board}
+                if steps:
+                    line["steps"] = steps
                 with open(path, "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"t": now_iso(), "p": me, "turn": turn, "hash": digest, "board": board},
-                                       separators=(",", ":")) + "\n")
+                    f.write(json.dumps(line, separators=(",", ":")) + "\n")
             except OSError as e:
                 log.warning("match state %s: %s", match_id, e)
                 return ok({"kept": False})
+        if other is not None and steps and isinstance(other.get("steps"), list):
+            self._state_steps_compare(match_id, turn, me, steps, other)
         if other is not None and other.get("hash") != digest:
             seen = self.__dict__.setdefault("_state_differs", {})
             if match_id not in seen:
@@ -8356,6 +8370,39 @@ class PlayFabEmulator:
                 log.warning("match state differs: match %s, end of turn %d, %s vs %s; cards: %s", match_id, turn, me,
                             other.get("p"), "; ".join("%s | %s" % (theirs.get(n, "-"), mine.get(n, "-")) for n in diff[:8]))
         return ok({"kept": True})
+
+    def _state_steps_compare(self, match_id, turn, me, mine, other):
+        """Both games' step fingerprints of one turn (Server Deal matches): the first action after which the two
+        games' boards, Energy, hands or decks differ. Logged once per match, and noted by the match's referee."""
+        try:
+            seen = self.__dict__.setdefault("_steps_differ", {})
+            if match_id in seen:
+                return
+            theirs = {x[0]: x for x in other["steps"] if isinstance(x, list) and len(x) == 3}
+            first = None
+            for n, h, c in mine:
+                o = theirs.get(n)
+                if o is not None and o[1] != h:
+                    first = (n, c, o[2])
+                    break
+            if first is None:
+                if len(mine) == len(theirs):
+                    return
+                detail = "end of turn %d: the games resolved %d and %d actions" % (turn, len(mine), len(theirs))
+            else:
+                n, c_me, c_them = first
+                same_nums = c_me == c_them
+                detail = "turn %d, action %d: %s" % (turn, n, "the boards differ (Energy, hands and decks agree: %s)" % c_me
+                                                     if same_nums else "%s (%s) vs %s (%s)" % (me, c_me, other.get("p"), c_them))
+            if len(seen) > 2000:
+                seen.clear()
+            seen[match_id] = turn
+            log.warning("match steps differ: match %s, %s", match_id, detail)
+            ref = self._ref_for(me)
+            if ref is not None:
+                ref._find(me, "desync", "the games went apart at " + detail)
+        except Exception:
+            log.exception("match steps %s", match_id)
 
     def api_Revival_CheatAlarm(self, req, headers):
         """{"kind": "tamper" | "speed", "detail"}: the game's own anti-cheat raised an alarm in this player's match
