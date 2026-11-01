@@ -26,6 +26,15 @@ import threading
 import time
 import uuid
 
+import match_referee
+if globals().get("_referee_loaded"):          # this file is being reloaded: take edits to the referee too
+    try:
+        import importlib
+        match_referee = importlib.reload(match_referee)
+    except Exception:
+        logging.getLogger("photon").exception("match_referee reload")
+_referee_loaded = True
+
 
 # ---- hot reload (2026-10-20)
 # The game server reloads this file when it changes on disk (warpforge_server.current_services), like playfab_emu.py.
@@ -518,6 +527,33 @@ DEAL_PAIRS = _keep("DEAL_PAIRS", dict)        # (challenger id, friend id) -> un
 DEAL_EVENTS = _keep("DEAL_EVENTS", list)      # game modes that are server-deal tests ("serverDeal" in GameModes.json; playfab_emu fills it)
 DEAL_EVENTS_REFRESH = _keep("DEAL_EVENTS_REFRESH", lambda: [None])   # playfab_emu sets a function that re-reads GameModes.json when it changed
 _sysrand = random.SystemRandom()
+# The live referee of server-deal rooms (match_referee.py, 2026-11-01). playfab_emu sets REFEREE_DECK_CHECK to a
+# function(deck, mode id) -> [problems] (match_checks.check_deck with the mode's rules) and REFEREE_DONE to a
+# function(referee) run when a server-deal room closes (it settles the result). REFEREES keeps the recent ones.
+REFEREE_DECK_CHECK = _keep("REFEREE_DECK_CHECK", lambda: [None])
+REFEREE_DONE = _keep("REFEREE_DONE", lambda: [None])
+REFEREES = _keep("REFEREES", list)            # newest last, at most 200
+
+
+def referee_of(player_id, since_seconds=3 * 3600):
+    """The referee of the most recent server-deal match this player took part in, or None."""
+    now = time.time()
+    for r in reversed(REFEREES):
+        if now - r.started > since_seconds:
+            break
+        if player_id in r.players:
+            return r
+    return None
+
+
+def _ref_value(v):
+    """A decoded Photon value as plain Python: ints, bools, strings, lists."""
+    v = plain(v)
+    if isinstance(v, Arr):
+        return [_ref_value(x) for x in (v.items or [])]
+    if isinstance(v, list):
+        return [_ref_value(x) for x in v]
+    return v
 
 
 def deal_lobby(lobby):
@@ -701,6 +737,7 @@ class Room(object):
         self.cache_full_noted = False
         self.record = None                    # its MatchRecord (see below)
         self.toss = None                      # (the two players, the props the coin wrote) - kept when one drops out
+        self.referee = None                   # the live referee of a server-deal match (match_referee.py)
 
     def active(self):
         return [a for a in self.actors.values() if a.conn is not None]
@@ -950,6 +987,7 @@ class Service(object):
             if self.rooms.get(room.name) is room:
                 del self.rooms[room.name]
                 log.info("room %s closed", room.name)
+                self._referee_end(room)
                 self._record(room, "close")
 
     # -- sending
@@ -972,6 +1010,8 @@ class Service(object):
         else:
             room.actors.pop(actor.nr, None)
             actor.conn = None
+            if getattr(room, "referee", None) is not None and actor.player:
+                room.referee.left_room(actor.player)
             if room.cleanup:
                 room.cache = [c for c in room.cache if c[0] != actor.nr]
             self._send_room(room, event(254, {254: actor.nr, 252: self._actor_list(room)}))
@@ -1160,6 +1200,9 @@ class Service(object):
             if toss and toss[0] == frozenset(players):
                 room.props.update(toss[1])
                 log.info("room %s: the same two players again; the coin stays (%s goes first)", room.name, toss[1].get(FIRST_KEY))
+                ref = getattr(room, "referee", None)
+                if ref is not None and joined is not None and joined.player:
+                    ref.back(joined.player)
                 return
             mods = [mod_of(pl) for pl in players]
             pair = ".".join(str(n) for n in min(mods)) if all(mods) else None
@@ -1196,12 +1239,71 @@ class Service(object):
                     changed[RNG_KEY] = table
                     log.info("room %s: server deal on, from %s (the server's random table %s...)", room.name, why, table[:24])
                     self._record(room, "deal", rng=table)
+                    self._referee_start(room, players, first, table)
                 else:
                     log.info("room %s: server deal asked for but a mod is older than %s; off", room.name, ".".join(str(n) for n in DEAL_MIN_MOD))
             self._send_room(room, event(253, {253: 0, 251: changed, 254: 0}), skip=joined.nr)
             room.toss = (frozenset(players), {k: room.props[k] for k in (FIRST_KEY, PAIR_KEY, DEAL_KEY, RNG_KEY) if k in room.props})
         except Exception:
             log.exception("room %s: who goes first", room.name)
+
+    def _referee_start(self, room, players, first, table):
+        """A server-deal room has its two players: its live referee starts (match_referee.py)."""
+        try:
+            ev = deal_event(room)
+            ref = match_referee.Referee(room.name, players, first, room.creator, table, ev,
+                                        lambda kind, **f: self._record(room, kind, **f),
+                                        REFEREE_DECK_CHECK[0])
+            room.referee = ref
+            REFEREES.append(ref)
+            del REFEREES[:-200]
+            log.info("room %s: referee on (%s)", room.name, ev or "a tester's challenge")
+        except Exception:
+            log.exception("room %s: referee", room.name)
+
+    def _referee_rpc(self, room, ref, actor, data):
+        """An RPC in a refereed room (lock held). False: do not pass it on. Any error passes it on."""
+        try:
+            d = {plain(k): v for k, v in data.items()} if isinstance(data, dict) else {}
+            index = plain(d.get(5))
+            if not isinstance(index, int) or isinstance(index, bool):
+                return True                   # sent by name (not this game's way) or not an RPC
+            args = _ref_value(d.get(4)) if d.get(4) is not None else []
+            if index == match_referee.START_GAME and ref.phase != "start":
+                # a new match in the same room (a friend's challenge room is used again for a rematch): the last
+                # match is over for the referee; a fresh one follows this one
+                log.info("room %s: a new match starts in the room; the referee settles the last one", room.name)
+                self._referee_end(room)
+                self._referee_start(room, ref.players, plain(room.props.get(FIRST_KEY)), room.props.get(RNG_KEY))
+                ref = room.referee
+            forward = ref.rpc(actor.player, index, args if isinstance(args, list) else [args])
+            if not forward and sum(ref.passed_over.values()) == 1:
+                log.info("room %s: referee keeps the opponent's hand moves (hover, reorder) to itself", room.name)
+            return forward
+        except Exception:
+            log.exception("room %s: referee message", room.name)
+            return True
+
+    def _referee_end(self, room):
+        ref = getattr(room, "referee", None)
+        if ref is None or ref.closed:
+            return
+        ref.closed = True
+        s = ref.summary()
+        self._record(room, "ref", what="summary", turns=s["turns"], forfeit=s["forfeitBy"], desync=s["desyncBy"] or None,
+                     finished=s["finishedBy"] or None, left=s["left"] or None, findings=len(s["findings"]),
+                     notPassedOn=s["notPassedOn"])
+        if REFEREE_DONE[0]:
+            rec = room.record
+            mid = rec.id if rec is not None and rec.recent is not None else None
+            threading.Thread(target=self._referee_done, args=(ref, mid), name="referee-done", daemon=True).start()
+
+    @staticmethod
+    def _referee_done(ref, match_id):
+        try:
+            REFEREE_DONE[0](ref, match_id)
+        except Exception:
+            log.exception("referee: done hook")
 
     def _new_room(self, name, p):
         room = Room(name, (p.get(213) or "", plain(p.get(212)) or 0))
@@ -1257,6 +1359,13 @@ class Service(object):
                             return isinstance(c[3], dict) and all(k in c[3] and _same(c[3][k], v) for k, v in data.items())
                         return True
                     room.cache = [c for c in room.cache if not doomed(c)]
+                return
+            ref = getattr(room, "referee", None)
+            forward = True
+            if ref is not None and code == 200 and raw is not None:
+                forward = self._referee_rpc(room, ref, actor, data)
+            if not forward:
+                self._record(room, "ev", a=actor.nr, c=code, d=_b64(raw), kept=1)
                 return
             params = {254: actor.nr}
             if raw is not None:

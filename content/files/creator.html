@@ -3963,7 +3963,10 @@ $("reportsClosed").onchange = loadReports;
 // The page's words for the reasons and alarms (functions: the language file arrives after the page loads).
 function preportReasons() { return { cheating: T("admin.moderation.reason.cheating", "Cheating"), unsportsmanlike: T("admin.moderation.reason.unsportsmanlike", "Unsportsmanlike"), stalling: T("admin.moderation.reason.stalling", "Stalling / AFK"), other: T("admin.moderation.reason.other", "Other") }; }
 function alarmKinds() { return { tamper: T("admin.moderation.alarm.tamper", "game memory edited (tampering detector)"), speed: T("admin.moderation.alarm.speed", "game sped up (speed-hack detector)"),
-  deck: T("admin.moderation.alarm.deck", "deck not legal for the mode (server check)"), card: T("admin.moderation.alarm.card", "played a card of the opponent's deck (server check)"), mana: T("admin.moderation.alarm.mana", "played more than the turn's Energy allows (server check)") }; }
+  deck: T("admin.moderation.alarm.deck", "deck not legal for the mode (server check)"), card: T("admin.moderation.alarm.card", "played a card of the opponent's deck (server check)"), mana: T("admin.moderation.alarm.mana", "played more than the turn's Energy allows (server check)"),
+  turn: T("admin.moderation.alarm.turn", "moved on the opponent's turn (server deal referee)"), move: T("admin.moderation.alarm.move", "sent a move twice with different content (server deal referee)"),
+  rng: T("admin.moderation.alarm.rng", "did not use the server's random table (server deal referee)"), phase: T("admin.moderation.alarm.phase", "sent start-of-match messages out of order (server deal referee)"),
+  result: T("admin.moderation.alarm.result", "claimed a win the other game disputes (server deal referee)") }; }
 function preportTitle(r) {
   return r.kind === "auto"
     ? T("admin.moderation.antiCheat", "Anti-cheat: {alarm}", { alarm: alarmKinds()[(r.auto || {}).kind] || T("admin.moderation.alarm", "alarm") }) + ((r.auto || {}).count > 1 ? " " + T("admin.moderation.times", "({count} times)", { count: r.auto.count }) : "")

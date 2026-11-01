@@ -1473,6 +1473,9 @@ class PlayFabEmulator:
             photon_emu.DEAL_EVENTS_REFRESH[0] = lambda: _mode_lists_now(self)
         if hasattr(photon_emu, "MATCH_CLOSED"):          # the server's own checks of each finished match (match_checks.py)
             photon_emu.MATCH_CLOSED[0] = self._match_closed
+        if hasattr(photon_emu, "REFEREE_DONE"):          # server-deal matches: the live referee (match_referee.py)
+            photon_emu.REFEREE_DONE[0] = self._ref_done
+            photon_emu.REFEREE_DECK_CHECK[0] = self._ref_deck_check
         if hasattr(photon_emu, "BANNED"):                # a ban reaches the match service too (security review 32)
             photon_emu.BANNED[0] = lambda pfid: pfid in self._banned_ids()
         if hasattr(photon_emu, "MATCH_CAP") and not photon_emu.MATCH_CAP[0]:
@@ -7434,11 +7437,14 @@ class PlayFabEmulator:
         data = self._fn_data(params)
         event_id = data.get("eventId") or "unknown"
         won = bool(data.get("hasWon"))
-        with self.store.lock:
-            player.update(self.store.load(player["PlayFabId"]) or {})
-            rec = player.setdefault("MatchRecord", {}).setdefault(event_id, {"Won": 0, "Loss": 0, "Draw": 0})
-            rec["Won" if won else "Loss"] += 1
-            self.store.save(player)
+        ref = self._ref_for(player.get("PlayFabId")) if player else None
+        if ref is None:
+            with self.store.lock:
+                player.update(self.store.load(player["PlayFabId"]) or {})
+                rec = player.setdefault("MatchRecord", {}).setdefault(event_id, {"Won": 0, "Loss": 0, "Draw": 0})
+                rec["Won" if won else "Loss"] += 1
+                self.store.save(player)
+        # (a server-deal match: counted by _ref_settle from the referee and both games' reports)
         return {
             "EndMatchData": {"XP": 0, "NewRating": 0, "EarnedRating": 0, "EarnedSeals": 0, "NewOpponentRating": 0,
                              "ArmyScores": {}, "HighestScores": {}, "TotalScores": {}, "ArmyStats": {},
@@ -8387,7 +8393,152 @@ class PlayFabEmulator:
     # -- the server's own checks of a finished match (match_checks.py): run when the room closes, a few seconds
     #    later on their own thread; each flag is an automatic report ("auto" with "server": True), one per player
     #    and kind per match. Report-only, like the game's detectors.
-    SERVER_FLAG_KINDS = ("deck", "card", "mana")
+    SERVER_FLAG_KINDS = ("deck", "card", "mana", "turn", "move", "rng", "phase", "result")
+
+    # ---- server-deal matches: the relay's live referee (match_referee.py, 2026-11-01) -----------------------------
+    # The relay's referee follows the match as it passes (turns, moves, the random table, decks, resignations, who
+    # left). The result of such a match is decided here from what the referee saw and what both games report,
+    # instead of believing each game's own report: a resignation decides it; otherwise both reports must agree; a
+    # report the other game never answers counts only when the other player left the room. Anything else is void
+    # and filed for the admins ("result"). Every other mode is counted as before.
+    REF_CLAIMS = {"onMatchCancelled": (False, "cancelled the match"),
+                  "onMatchCancelledByEnemy": (True, "says the opponent left"),
+                  "onDesyncByEnemy": (True, "says the opponent's game reported a desync")}
+    REF_FLAG_KINDS = {"turn": "turn", "move": "move", "rng": "rng", "phase": "phase", "deck": "deck",
+                      "stranger": "phase", "unknown": "move"}
+
+    def _ref_for(self, pfid):
+        """The live referee of this player's latest match, when that match is a server-deal one; else None."""
+        if not pfid or not hasattr(photon_emu, "referee_of"):
+            return None
+        ref = photon_emu.referee_of(pfid)
+        if ref is None:
+            return None
+        latest = next((e for e in reversed(photon_emu.RECENT_MATCHES) if pfid in e["players"]), None)
+        if latest is not None and latest.get("room") != ref.room and latest.get("opened", 0) > ref.started + 5:
+            return None                                     # a newer match since, in another room
+        return ref
+
+    def _ref_claim(self, player, fn, params):
+        """A game's report on how its match ended, kept by the referee of a server-deal match."""
+        try:
+            if not player or not isinstance(fn, str) or not (fn.endswith("MatchFinished") or fn in self.REF_CLAIMS):
+                return
+            ref = self._ref_for(player.get("PlayFabId"))
+            if ref is None:
+                return
+            pfid = player["PlayFabId"]
+            if ref.settled is not None:
+                log.info("referee %s: %s reported %s after the result was settled (%s)", ref.room, pfid, fn, ref.settled.get("how"))
+                return
+            if fn in self.REF_CLAIMS:
+                won, how = self.REF_CLAIMS[fn]
+                data = params if isinstance(params, dict) else {}
+                event_id = ref.mode or "serverDeal"
+            else:
+                data = self._fn_data(params)
+                won, how = bool(data.get("hasWon")), "reported the end of the match"
+                event_id = data.get("eventId") or ref.mode or "serverDeal"
+            ref.claims[pfid] = {"won": won, "how": how, "fn": fn, "eventId": str(event_id)[:80]}
+            log.info("referee %s: %s %s (%s)", ref.room, pfid, how, "won" if won else "lost")
+            self._ref_settle(ref, final=False)
+        except Exception:
+            log.exception("referee claim")
+
+    def _ref_deck_check(self, deck, mode):
+        """match_checks.check_deck for a deck as it is sent, by the mode's rules (a challenge: by the deck's size)."""
+        rules = self._mode_rules()
+        cards = deck.get("cardLibrary") if isinstance(deck, dict) else None
+        if mode and mode in rules:
+            eid, gv = mode, rules[mode]
+        else:
+            eid, gv = match_checks._rules_for("", [len(cards or [])], rules)
+        return match_checks.check_deck(deck, gv or {}, self._replay_carddata(), None, bool(eid) and "long" in eid.lower())
+
+    def _ref_done(self, ref, match_id):
+        """A server-deal room closed (its own thread): settle the result with what there is, file the findings."""
+        time.sleep(3)                                       # the record's last lines are flushed on close
+        self._ref_settle(ref, final=True, match_id=match_id)
+        mid = match_id or self._ref_match_id(ref)
+        if not mid:
+            return
+        done = set()
+        for f in ref.findings:
+            kind = self.REF_FLAG_KINDS.get(f.get("kind"))
+            if kind and f.get("player") in ref.players and (f["player"], kind) not in done:
+                done.add((f["player"], kind))
+                self._server_flag(mid, f["player"], kind, "server deal referee: " + f.get("detail", ""))
+
+    def _ref_match_id(self, ref):
+        for pfid in ref.players:
+            mid, _month = photon_emu.find_room_match(ref.room, pfid)
+            if mid:
+                return mid
+        return None
+
+    def _ref_settle(self, ref, final, match_id=None):
+        """Decide a server-deal match's result once it can be decided (or, `final`, with what there is), count it
+        and write it next to the match record. Once only."""
+        with self.__dict__.setdefault("_ref_lock", threading.Lock()):
+            if ref.settled is not None:
+                return
+            a, b = ref.players[0], ref.players[1]
+            other = {a: b, b: a}
+            claims = ref.claims
+            winner, how = None, None
+            if ref.forfeit_by in other:
+                winner, how = other[ref.forfeit_by], "resigned: " + ref.forfeit_by
+            elif len(claims) == 2:
+                says_won = [p for p, c in claims.items() if c["won"]]
+                if len(says_won) == 1:
+                    winner, how = says_won[0], "both games agree"
+                else:
+                    how = "the games disagree: " + ", ".join("%s %s" % (p, "won" if c["won"] else "lost") for p, c in claims.items())
+            elif not final:
+                return                                      # wait for the other game's report (or the room to close)
+            elif len(claims) == 1:
+                p, c = next(iter(claims.items()))
+                if not c["won"]:
+                    winner, how = other[p], "%s reported a loss; %s did not report" % (p, other[p])
+                elif other[p] in ref.left_in_play:
+                    winner, how = p, "%s reported a win and %s left the room during the match without reporting" % (p, other[p])
+                else:
+                    how = "only %s reported (a win); %s neither reported nor left during the match" % (p, other[p])
+            else:
+                how = "neither game reported a result"
+            if ref.desync_by and winner is not None and how != "both games agree" and not how.startswith("resigned"):
+                winner, how = None, how + "; a game reported a desync"
+            ref.settled = {"winner": winner, "how": how, "at": now_iso(), "turns": ref.turns}
+        mid = match_id or self._ref_match_id(ref)
+        log.info("referee %s (match %s): result %s - %s", ref.room, mid, winner or "void", how)
+        for pfid in (a, b):
+            if winner is None:
+                continue
+            c = claims.get(pfid) or {}
+            event_id = c.get("eventId") or ref.mode or "serverDeal"
+            with self.store.lock:
+                pl = self.store.load(pfid)
+                if not pl:
+                    continue
+                rec = pl.setdefault("MatchRecord", {}).setdefault(event_id, {"Won": 0, "Loss": 0, "Draw": 0})
+                rec["Won" if pfid == winner else "Loss"] += 1
+                self.store.save(pl)
+            if c and c["won"] != (pfid == winner):
+                log.warning("referee %s: %s reported %s but the result is a %s", ref.room, pfid,
+                            "a win" if c["won"] else "a loss", "win" if pfid == winner else "loss")
+        if mid:
+            if winner is None and len(claims) == 2:
+                for pfid in claims:
+                    if claims[pfid]["won"]:
+                        self._server_flag(mid, pfid, "result", "server deal: " + how)
+            try:
+                rec = next((e for e in reversed(photon_emu.RECENT_MATCHES) if e["id"] == mid), None)
+                if rec and rec.get("month") and re.fullmatch(r"\d{4}-\d{2}", rec["month"]):
+                    path = os.path.join(self._matches_dir(), rec["month"], mid + ".result.json")
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(dict(ref.summary(), matchId=mid), f, separators=(",", ":"), default=str)
+            except OSError as e:
+                log.warning("referee %s: result file: %s", ref.room, e)
 
     def _match_closed(self, match_id):
         t = threading.Thread(target=self._match_checks_run, args=(match_id,), name="match-checks", daemon=True)
@@ -9437,6 +9588,7 @@ class PlayFabEmulator:
     def api_Client_ExecuteCloudScript(self, req, headers):
         p = self._player(headers)
         fn = req.get("FunctionName", "")
+        self._ref_claim(p, fn, req.get("FunctionParameter"))
         h = self.cloudscript.get(fn)
         if not h and fn.endswith("MatchFinished"):
             h = self.cs_match_finished          # ranked / skirmish / draft results share one shape
@@ -9459,6 +9611,7 @@ class PlayFabEmulator:
     def api_CloudScript_ExecuteFunction(self, req, headers):
         p = self._player(headers)
         fn = req.get("FunctionName", "")
+        self._ref_claim(p, fn, req.get("FunctionParameter"))
         h = self.cloudscript.get(fn)
         result = h(p, req.get("FunctionParameter")) if h else {}
         if not h:
