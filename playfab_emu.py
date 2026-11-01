@@ -838,7 +838,7 @@ class CardCompiler:
         self.notes = []
         d = self._new("card")
         kind = card["kind"]
-        d.update(m_Enabled=1, m_Script=copy.deepcopy(self.n["script"]), uniqueId=card.get("id") or "", cardName=card["name"],
+        d.update(m_Enabled=1, m_Script=copy.deepcopy(self.n["script"]), uniqueId=card.get("updates") or card.get("id") or "", cardName=card["name"],      # an update keeps the official card's id
                  cardArmy=self._enum("CardArmy", card.get("army") or "Neutral", "faction"),
                  cardRarity=self._enum("CardRarity", card["rarity"], "rarity"), cardType=self.KINDS[kind],
                  # attacks deal "Attack" damage; 56 of 66 official warlords say "Normal" instead
@@ -3334,6 +3334,42 @@ class PlayFabEmulator:
             raise ValueError(f"{what} must be a whole number from {lo} to {hi}")
         return v
 
+    def _creator_official_data(self):
+        """creator-official.json ({cards, detail}), read again when the file changes; None when it is not on this server."""
+        path = os.path.join(self.content_root, "creator-official.json")
+        try:
+            stamp = os.path.getmtime(path)
+            if getattr(self, "_official_stamp", None) != stamp:
+                with open(path, encoding="utf-8") as f:
+                    self._official = json.load(f)
+                self._official_stamp = stamp
+        except (OSError, ValueError):
+            return None
+        return self._official
+
+    # An update to an official card (owner, 2026-11-01): same card, new rules. Later it becomes a patch on the official
+    # card (mod side); for now it is compiled with the official card's id. Only the rules change: rules text, abilities,
+    # keywords, cost, stats and unit type. These stay as the official card has them, whatever the page sends:
+    UPDATE_LOCKED = ("name", "army", "kind", "rarity", "art", "token", "enchantment", "stratagemType", "lore")
+
+    def _creator_update_locks(self, card):
+        """Checks that card["updates"] names an official card and puts that card's locked fields back (ValueError if not)."""
+        data = self._creator_official_data()
+        one = ((data or {}).get("detail") or {}).get(card["updates"])
+        if not one:
+            raise ValueError("an update must name an official card")
+        design, game = one.get("design") or {}, one.get("data") or {}
+        listed = next((c for c in data.get("cards") or [] if isinstance(c, dict) and c.get("id") == card["updates"]), {})
+        for k in self.UPDATE_LOCKED:
+            card.pop(k, None)
+        card.update(name=str(game.get("cardName") or design.get("name") or card["updates"])[:40],      # the game's own name for it
+                    army=design.get("army") or "", kind=design.get("kind") or listed.get("kind") or card.get("kind"),
+                    rarity=design.get("rarity") or "Common", art=card["updates"], token=bool(design.get("token")), lore="")
+        if listed.get("enchantment"):
+            card["enchantment"] = True
+        if card["kind"] == "tactic":
+            card["stratagemType"] = design.get("stratagemType") or "Normal"
+
     def _creator_clean(self, card):
         """Checks a submitted design and returns only the fields the creator defines."""
         if not isinstance(card, dict):
@@ -3417,6 +3453,9 @@ class PlayFabEmulator:
                                  for h in hints[:8] if isinstance(h, str) or isinstance(h, dict)]
         if card.get("needsTarget") is not None:
             out["needsTarget"] = card.get("needsTarget")
+        if card.get("updates"):
+            # an update to an official card (its id): checked and completed in CreatorSave (_creator_update_locks)
+            out["updates"] = str(card["updates"])[:40]
         # what the player picks when playing the card (a filter), or False for "nothing is picked";
         # left out by designs that describe the pick on the effect itself
         if isinstance(card.get("choose"), dict) or card.get("choose") is False:
@@ -3456,6 +3495,8 @@ class PlayFabEmulator:
         """Saves a design. "submit" sends it to the reviewer; without it the design stays a private draft."""
         try:
             card = self._creator_clean(req.get("card"))
+            if card.get("updates"):
+                self._creator_update_locks(card)
         except ValueError as e:
             return err("InvalidParams", str(e))
         role = self._creator_role(req)
@@ -3496,7 +3537,7 @@ class PlayFabEmulator:
                         # the reviewer's note stays visible while the author reworks a rejected card
                         reviewNote=(existing or {}).get("reviewNote", ""),
                         returned=bool((existing or {}).get("returned") or was == "rejected") and status == "draft")
-            if (existing or {}).get("artUpload") and not card.get("art") and os.path.isfile(self._creator_art_path(card_id)):
+            if (existing or {}).get("artUpload") and not card.get("art") and not card.get("updates") and os.path.isfile(self._creator_art_path(card_id)):
                 card["artUpload"] = existing["artUpload"]      # the uploaded artwork stays unless art is borrowed instead
                 if existing.get("artMask") and card.get("kind") != "tactic":
                     card["artMask"] = existing["artMask"]
@@ -5307,14 +5348,7 @@ class PlayFabEmulator:
         """The card viewer: every official card (the list), or one card's creator design and game data (signed-in accounts only)."""
         if not self._creator_user(req):
             return err("NotAuthorized", "sign in first")
-        path = os.path.join(self.content_root, "creator-official.json")
-        try:
-            stamp = os.path.getmtime(path)
-            if getattr(self, "_official_stamp", None) != stamp:
-                with open(path, encoding="utf-8") as f:
-                    self._official = json.load(f)
-                self._official_stamp = stamp
-        except (OSError, ValueError):
+        if self._creator_official_data() is None:
             return err("NotFound", "the card viewer's data is not on this server")
         card_id = req.get("id")
         if card_id:
@@ -5516,6 +5550,12 @@ class PlayFabEmulator:
             # a reviewer's own card needs someone else's approval (admins answer for the whole set and may)
             if status == "approved" and role < 2 and card.get("author", "").lower() == (self._creator_user(req) or "").lower():
                 return err("NotAuthorized", "you cannot approve your own card - another reviewer or an admin has to")
+            if status == "approved" and card.get("updates"):
+                # one approved update per official card at a time: the patch built from it has to be unambiguous
+                for other in self._creator_load():
+                    if other.get("id") != card_id and other.get("status") == "approved" and other.get("updates") == card["updates"]:
+                        return err("InvalidParams", f"{other['id']} is already the approved update to {card['updates']} - "
+                                                    "reject or un-approve it first")
             card.update(status=status, reviewNote=str(req.get("note") or "")[:500], reviewed=now_iso(), returned=False,
                         reviewedAs="admin" if role == 2 else "reviewer")
             with open(path + ".tmp", "w", encoding="utf-8") as f:

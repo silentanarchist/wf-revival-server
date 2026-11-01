@@ -350,6 +350,8 @@
     <div>
       <section>
         <h2 data-t="creator.basics">Basics</h2>
+        <div class="agree hidden" id="updateRow" style="margin:0 0 12px"><span id="updateText"></span>
+          <button class="small" type="button" id="updateDrop" data-t="creator.updateDrop">Make it a new card instead</button></div>
         <div class="row">
           <div class="field grow"><label data-t="creator.name">Name</label><input id="f_name" maxlength="40"></div>
           <div class="field"><label data-t="creator.template">Card template</label><select id="f_template"></select></div>
@@ -2217,6 +2219,18 @@ function trimActive(a) {                  // an action or the alternative action
   if (a.playAnim) out.playAnim = true;
   return out;
 }
+// An update to an official card (owner, 2026-11-01): the same card with new rules. Name, faction, template, rarity,
+// art and flavour text stay as the official card has them (the server puts them back too); rules text, abilities,
+// keywords, cost and stats can change. Started from the Card viewer's "Propose an update".
+let updatesId = "";
+function applyUpdateLock() {
+  const on = !!updatesId;
+  $("updateRow").classList.toggle("hidden", !on);
+  if (on) $("updateText").textContent = T("creator.updateOf", "This is an update to the official card {card}: it stays the same card with new rules. Change its rules text, abilities, keywords, cost and stats; its name, faction, template, rarity, artwork and flavour text stay as they are.", { card: cardNames[updatesId] || updatesId }) + " ";
+  for (const id of ["f_name", "f_template", "f_army", "f_rarity", "f_art", "f_lore", "f_stratagemType"]) $(id).disabled = on;
+  if (on) $("f_token").disabled = true;
+  $("artPick").classList.toggle("hidden", on);
+}
 function collect() {
   const kind = val("f_kind");
   const ench = $("f_enchantment").checked;
@@ -2225,6 +2239,7 @@ function collect() {
               traits: state.traits.map(t => Object.assign({ name: t.name, value: t.value || 0 }, t.hidden ? { hidden: true } : {})),
               abilities: state.abilities.filter(a => !(a.auto && !a.effects.length)).map(trimAbility) };   // an empty one the editor added is not saved (a loaded one is: Stormhawk Interception)
   if (ench) c.enchantment = true;
+  if (updatesId) c.updates = updatesId;
   if (state.choose) c.choose = cleanTargets(state.choose); else if (state.choose === false) c.choose = false;
   if (state.action) {
     c.action = Object.assign({ keyword: state.action.keyword || "" }, trimActive(state.action));
@@ -2328,7 +2343,7 @@ function preview() {
   const c = collect();
   $("pvName").textContent = c.name || T("creator.newCardName", "New card"); $("pvCost").textContent = c.cost;
   $("pvCard").className = "card hidden rar-" + c.rarity;      // the old sketch; the card is drawn in pvFace now
-  $("pvType").textContent = [lab(schema.armies, c.army), kindName(c.kind), c.keyword, c.token && T("creator.createdByCard", "created by a card")].filter(Boolean).join(" · ");
+  $("pvType").textContent = [lab(schema.armies, c.army), kindName(c.kind), c.keyword, c.token && T("creator.createdByCard", "created by a card"), updatesId && T("creator.updateShort", "update to {id}", { id: updatesId })].filter(Boolean).join(" · ");
   $("pvText").textContent = c.text;
   $("pvArt").textContent = c.art ? T("creator.artOf", "art of: {card}", { card: cardNames[c.art] || c.art }) : (editingCard && editingCard.artUpload ? T("creator.uploadedArtwork", "uploaded artwork") : T("creator.noArtwork", "no artwork chosen"));
   const cl = $("pvCredit"); if (cl) { cl.textContent = ""; const line = !c.art && editingCard && editingCard.artUpload ? creditLine(editingCard.artCredit) : null; if (line) cl.append(line); }
@@ -2579,6 +2594,7 @@ function redraw(light) {
     if (state.alternative) ensurePick(state.alternative, state.alternative.effects);
     drawEntries(); drawCardMore();
   }
+  applyUpdateLock();
   preview();
 }
 
@@ -2587,7 +2603,8 @@ function fill(c) {
   editingId = c && c.id || null; editingCard = c || null;
   if (art.img) artClose();
   c = c || {};
-  $("f_name").value = c.name || ""; $("f_kind").value = c.kind || "troop"; $("f_army").value = c.army || schema.armies[0].id;
+  updatesId = c.updates || "";
+  $("f_name").value = (c.updates ? offName(c.updates, c.name) : c.name) || ""; $("f_kind").value = c.kind || "troop"; $("f_army").value = c.army || schema.armies[0].id;
   $("f_rarity").value = c.rarity || "Common"; $("f_cost").value = c.cost ?? 1; $("f_melee").value = c.melee ?? 1; $("f_ranged").value = c.ranged ?? 0;
   $("f_health").value = c.health ?? 1; $("f_armour").value = c.armour ?? 0; $("f_keyword").value = c.keyword || "";
   $("f_stratagemType").value = c.stratagemType || "Normal"; $("f_art").value = cardNames[c.art] || c.art || "";
@@ -3064,21 +3081,25 @@ async function viewCard(id) {
       el("table", {}, ...facts.map(([k, v]) => el("tr", {}, el("td", { text: k }), el("td", { text: String(v) })))),
       offLore(c.id, d.lore) ? el("p", { class: "hint", style: "font-style:italic", text: offLore(c.id, d.lore) }) : null,
       el("div", { class: "row", style: "margin-top:12px" },
-        el("button", { class: "primary", text: T("creator.loadInEditor", "Load in editor"), onclick: () => loadOfficial(c, d.design) })))),
+        el("button", { class: "primary", text: T("creator.loadInEditor", "Load in editor"), onclick: () => loadOfficial(c, d.design) }),
+        el("button", { text: T("creator.proposeUpdate", "Propose an update"), title: T("creator.proposeUpdateTitle", "Change this card's rules: the same card, with new rules text, abilities, cost or stats"),
+          onclick: () => loadOfficial(c, d.design, true) })))),
     el("details", { open: true }, el("summary", { text: T("creator.gameDataSummary", "The data the game uses (from the game's card file; empty fields left out, numbers with their names)") }),
       el("pre", { text: JSON.stringify(shownGameData(d.data), null, 1) })),
     el("details", {}, el("summary", { text: T("creator.designSummary", "The card as a creator design (what Load in editor fills in)") }), el("pre", { text: JSON.stringify(d.design, null, 1) })));
 }
-function loadOfficial(c, design) {
+function loadOfficial(c, design, update) {
   const d = JSON.parse(JSON.stringify(design));
   delete d.id;
+  if (update) d.updates = c.id;
   d.name = c.name || d.name || ""; d.text = c.text || d.text || "";      // the names and text being shown
   if (c.enchantment || (cardInfo[c.id] || {}).enchantment) d.enchantment = true;   // the designs do not carry it; the card list does
   const rarityOk = schema.rarities.some(r => (r.id || r) === d.rarity);
   if (!rarityOk) d.rarity = "Legendary";
   fill(d); editingCard = null;
   show("Create"); window.scrollTo(0, 0);
-  say(`A copy of ${c.name} is in the editor as a new card (nothing is saved until you save it).` + (rarityOk ? "" : ` Its rarity (${design.rarity}) is not one custom cards can have, so it shows as Legendary.`), "info");
+  say(update ? T("creator.updateLoaded", "{name} is in the editor as an update to the official card (nothing is saved until you save it).", { name: c.name })
+             : T("creator.copyLoaded", "A copy of {name} is in the editor as a new card (nothing is saved until you save it).", { name: c.name }) + (rarityOk ? "" : " " + T("creator.rarityShown", "Its rarity ({rarity}) is not one custom cards can have, so it shows as Legendary.", { rarity: design.rarity })), "info");
 }
 // Profile: username, passphrase, and the game login file for a linked game account.
 let account = null;
@@ -4358,8 +4379,9 @@ function drawList() {
     if (own(c) && (c.status === "draft" || c.status === "rejected")) actions.append(el("button", { class: "small danger", text: T("creator.discard", "Discard"), onclick: () => discard(c) }));
     box.append(el("div", { class: "item" },
       el("div", {},
-        el("div", {}, el("span", { class: "title", text: c.name + " " }), el("span", { class: "badge " + c.status, text: c.returned ? T("creator.status.sentBack", "draft – sent back") : statusName(c.status) })),
+        el("div", {}, el("span", { class: "title", text: (c.updates ? offName(c.updates, c.name) : c.name) + " " }), el("span", { class: "badge " + c.status, text: c.returned ? T("creator.status.sentBack", "draft – sent back") : statusName(c.status) })),
         el("div", { class: "hint", text: `${c.id} · ${T("creator.byAuthor", "by {author}", { author: c.author })} · ${summary(c)}` }),
+        c.updates ? el("div", { class: "hint", text: T("creator.updateListed", "Update to the official card {card}", { card: cardNames[c.updates] || c.updates }) }) : null,
         el("div", { text: c.text || "" }),
         c.reviewNote && c.status !== "approved" ? el("div", { class: "hint", text: T("creator.reviewerNote", "Reviewer's note: {note}", { note: c.reviewNote }) }) : null,
         (c.buildNotes || []).length ? el("div", { class: "hint", text: T("creator.buildNoteCount", "{n} build note(s) – open the card to read them", { n: c.buildNotes.length }) }) : null,
@@ -4613,6 +4635,7 @@ async function start() {
   $("advToggle").checked = ADV;
   $("advToggle").onchange = e => { ADV = e.target.checked; try { localStorage.setItem("creator.advanced", ADV ? "1" : "0"); } catch (x) {} redraw(); };
   $("artPick").onclick = () => $("artFile").click();
+  $("updateDrop").onclick = () => { updatesId = ""; redraw(true); say(T("creator.updateDropped", "This is now a new card: give it a name of its own."), "info"); };
   $("artFile").onchange = e => artOpen(e.target.files[0]);
   $("maskPick").onclick = () => $("maskFile").click(); $("maskFile").onchange = e => maskOpen(e.target.files[0]); $("maskRemove").onclick = maskRemove;
   $("artUse").onclick = artUse; $("artCancel").onclick = artClose; $("artRemove").onclick = artRemove;
