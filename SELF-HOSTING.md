@@ -237,7 +237,7 @@ your server to anyone:
   to agree again, and without the tag nobody is asked to agree at all.
 - The contact address `wf-revival@silentanarchist.com` in `terms.html`, `creator.html` and one
   server message in `playfab_emu.py`.
-- The Discord invite `discord.gg/f4N6RU2sYy` in `terms.html`, `guides.html` and `creator.html`.
+- The Discord invite `discord.gg/gYY43r65q8` in `terms.html`, `guides.html` and `creator.html`.
 - `content/files/guides.html`: the player guides, written for the community server. It and
   `creator.html` also link to the WF Revival mod repository, which is fine to keep.
 
