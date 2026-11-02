@@ -8361,12 +8361,19 @@ class PlayFabEmulator:
         # Server Deal matches (mod 0.15.14): the turn's step fingerprints, one per resolved action
         steps = req.get("steps")
         if steps is not None:
-            if not (isinstance(steps, list) and len(steps) <= 300 and all(
-                    isinstance(x, dict) and isinstance(x.get("n"), int) and not isinstance(x.get("n"), bool)
-                    and 0 < x["n"] <= 100000 and isinstance(x.get("h"), str) and re.fullmatch(r"[0-9a-f]{8,24}", x["h"])
-                    and isinstance(x.get("c"), str) and self.STATE_STEP_NUMS.fullmatch(x["c"]) for x in steps)):
+            # each step is keyed by the moves made so far by each side ("k": "0:12,31:11", mod 0.15.15) - the same
+            # moment on both games; 0.15.14 numbered every settling instead ("n"), which the two games do a different
+            # number of times, so those are kept but never compared
+            def step_ok(x):
+                if not (isinstance(x, dict) and isinstance(x.get("h"), str) and re.fullmatch(r"[0-9a-f]{8,24}", x["h"])
+                        and isinstance(x.get("c"), str) and self.STATE_STEP_NUMS.fullmatch(x["c"])):
+                    return False
+                if isinstance(x.get("k"), str):
+                    return bool(re.fullmatch(r"[0-9]{1,4}:[0-9]{1,4}(,[0-9]{1,4}:[0-9]{1,4}){0,3}", x["k"]))
+                return isinstance(x.get("n"), int) and not isinstance(x.get("n"), bool) and 0 < x["n"] <= 100000
+            if not (isinstance(steps, list) and len(steps) <= 300 and all(step_ok(x) for x in steps)):
                 return err("InvalidParams", "not a list of steps")
-            steps = [[x["n"], x["h"], x["c"]] for x in steps]
+            steps = [[x["k"] if isinstance(x.get("k"), str) else x["n"], x["h"], x["c"]] for x in steps]
         if not self._allow("matchstate", me, 600, 3600):
             return err("TooManyRequests", "too many board states; wait a moment", 1199, 429)
         match_id, month = photon_emu.find_room_match(room, me) if hasattr(photon_emu, "find_room_match") else (None, None)
@@ -8418,21 +8425,21 @@ class PlayFabEmulator:
             seen = self.__dict__.setdefault("_steps_differ", {})
             if match_id in seen:
                 return
-            theirs = {x[0]: x for x in other["steps"] if isinstance(x, list) and len(x) == 3}
+            # only steps keyed by moves (mod 0.15.15+) line up between the two games
+            theirs = {x[0]: x for x in other["steps"] if isinstance(x, list) and len(x) == 3 and isinstance(x[0], str)}
             first = None
-            for n, h, c in mine:
-                o = theirs.get(n)
+            for k, h, c in mine:
+                if not isinstance(k, str):
+                    continue
+                o = theirs.get(k)
                 if o is not None and o[1] != h:
-                    first = (n, c, o[2])
+                    first = (k, c, o[2])
                     break
             if first is None:
-                if len(mine) == len(theirs):
-                    return
-                detail = "end of turn %d: the games resolved %d and %d actions" % (turn, len(mine), len(theirs))
-            else:
-                n, c_me, c_them = first
-                same_nums = c_me == c_them
-                detail = "turn %d, action %d: %s" % (turn, n, "the boards differ (Energy, hands and decks agree: %s)" % c_me
+                return
+            k, c_me, c_them = first
+            same_nums = c_me == c_them
+            detail = "turn %d, after moves %s: %s" % (turn, k, "the boards differ (Energy, hands and decks agree: %s)" % c_me
                                                      if same_nums else "%s (%s) vs %s (%s)" % (me, c_me, other.get("p"), c_them))
             if len(seen) > 2000:
                 seen.clear()
