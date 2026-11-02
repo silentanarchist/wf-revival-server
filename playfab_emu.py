@@ -1044,7 +1044,7 @@ SITE_PAGES = {
         "/login", "/creator", "/my-cards", "/review", "/people", "/examples", "/cards", "/keywords",
         "/artwork", "/rules", "/profile", "/server", "/bugs", "/requests", "/moderation", "/uploads", "/unreleased",
         "/guides", "/guides/pc", "/guides/phone", "/guides/android-pc", "/guides/mumu", "/guides/creator", "/guides/card-art",
-        "/decks", "/replays", "/discord-linked")},
+        "/decks", "/replays", "/discord-linked", "/become-a-tester", "/tester-applications")},
     "/robots.txt": "robots.txt",                  # asks search engines and crawlers to keep out (all but /terms)
 }
 # Files in content/files that are not handed out as plain downloads (/api/v1/content/files/...):
@@ -2570,6 +2570,11 @@ class PlayFabEmulator:
         user = users[key]
         name = str(user.get("name") or key)
         names = {key, name.lower(), str(user.get("renamedFrom") or "").lower()} - {""}
+        apps = self._tester_apps()                            # its tester application, if any
+        if any(n in apps for n in names):
+            for n in names:
+                apps.pop(n, None)
+            self._tester_save(apps)
         players = self._account_players(user)
         for pfid in players:
             self.store.sign_out(pfid, "This account has been deleted.")
@@ -4079,6 +4084,13 @@ class PlayFabEmulator:
                     os.replace(path + ".tmp", path)
                 except (OSError, ValueError):
                     log.exception("could not update creator_admins.json for the rename %s -> %s", old_name, new)
+            apps = self._tester_apps()                        # a tester application follows the account
+            if old_key in apps:
+                app = apps.pop(old_key)
+                if isinstance(app, dict):
+                    app["name"] = new
+                apps[new_key] = app
+                self._tester_save(apps)
             d = self._creator_dir()
             for card in self._creator_load():                  # the author's cards carry the name
                 if card.get("author", "").lower() == old_key:
@@ -5445,6 +5457,234 @@ class PlayFabEmulator:
         return ok({"requests": page, "total": total, "matching": len(waiting), "offset": offset,
                    "autoApprove": self._creator_auto_approve()})
 
+    # ---------------------------------------------------------------- tester applications
+    # Owner (2026-11-02): the in-game tester role is given by application, to find people who will
+    # actually test what needs testing. An approved account fills in the form on /become-a-tester
+    # (Revival/CreatorTesterApply); admins read the applications on /tester-applications and accept
+    # (turns the account's "tester" switch on, the same switch as on the People page) or decline, with
+    # an optional note the applicant sees. data/tester_applications.json: {account name lowercase:
+    # {name, status pending|accepted|declined|withdrawn, at, updated, answers, decidedBy, decidedAt, note}}.
+    # One application per account; a declined one can apply again after TESTER_REAPPLY_DAYS.
+    # Applying needs a linked Discord account (owner, 2026-11-02), so admins can reach the tester.
+    TESTER_FILE = "tester_applications.json"
+    TESTER_REAPPLY_DAYS = 14
+    TESTER_DEVICES = ("pc", "androidPhone", "androidTablet", "mumu")
+    TESTER_HOURS = ("under1", "1to3", "3to6", "over6")
+    TESTER_TEXTS = {"why": (30, 1000), "experience": (0, 1000), "devicesNote": (0, 120), "region": (0, 60)}
+
+    def _tester_path(self):
+        return os.path.join(self.store.root, self.TESTER_FILE)
+
+    def _tester_apps(self):
+        try:
+            with open(self._tester_path(), encoding="utf-8") as f:
+                d = json.load(f)
+            return d if isinstance(d, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _tester_save(self, apps):
+        path = self._tester_path()
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(apps, f, ensure_ascii=False, indent=1)
+        _retry_locked(lambda: os.replace(tmp, path))
+
+    @staticmethod
+    def _tester_text(v, most):
+        """Plain text: control characters dropped, spaces kept as written within lines, at most `most` long."""
+        s = "".join(ch for ch in str(v or "") if ch in "\n\t" or ch >= " ")
+        s = "\n".join(line.rstrip() for line in s.replace("\r", "").split("\n")).strip()
+        return re.sub(r"\n{3,}", "\n\n", s)[:most]
+
+    def _tester_answers(self, req):
+        """The applicant's answers, checked; (answers, None) or (None, error)."""
+        a = req.get("answers")
+        if not isinstance(a, dict):
+            return None, err("InvalidParams", "the application is missing")
+        devices = a.get("devices")
+        if not isinstance(devices, list) or not devices or not all(d in self.TESTER_DEVICES for d in devices):
+            return None, err("InvalidParams", "pick at least one device you play on")
+        if a.get("hours") not in self.TESTER_HOURS:
+            return None, err("InvalidParams", "pick how much time you can give testing")
+        if not all(a.get(k) is True for k in ("agreeUnfinished", "agreeReport", "agreeActive")):
+            return None, err("InvalidParams", "tick all three boxes to apply")
+        out = {"devices": [d for d in self.TESTER_DEVICES if d in devices], "hours": a["hours"],
+               "agreeUnfinished": True, "agreeReport": True, "agreeActive": True}
+        for key, (least, most) in self.TESTER_TEXTS.items():
+            text = self._tester_text(a.get(key), most)
+            if len(text) < least:
+                return None, err("InvalidParams", f"tell us a little more about why you want to test (at least {least} characters)")
+            if text and self._word_filter().found(text):
+                return None, err("InvalidParams", "your answers contain a word that is not allowed here")
+            out[key] = text
+        return out, None
+
+    def _tester_view(self, app, staff=False):
+        keep = ("name", "status", "at", "updated", "answers", "decidedAt", "note") + (("decidedBy",) if staff else ())
+        return {k: app[k] for k in keep if k in app}
+
+    def api_Revival_CreatorTesterApplication(self, req, headers):
+        """The signed-in account's own application, if any, and whether it is a tester now."""
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me:
+                return err("NotAuthorized", "sign in first")
+            perms = self._creator_perms(me)
+            app = self._tester_apps().get(me["name"].lower())
+        again = ""
+        if app and app.get("status") == "declined" and app.get("decidedAt"):
+            again = self._tester_again_at(app)
+        return ok({"tester": bool(perms["tester"]), "admin": bool(perms["admin"]),
+                   "discordLinked": bool((me.get("discord") or {}).get("id")),
+                   "application": self._tester_view(app) if app else None, "applyAgainAt": again})
+
+    def _tester_again_at(self, app):
+        """When a declined applicant may apply again ("" when they may now)."""
+        from datetime import timedelta
+        try:
+            t = datetime.fromisoformat(str(app.get("decidedAt")).replace("Z", "+00:00"))
+        except ValueError:
+            return ""
+        at = t + timedelta(days=self.TESTER_REAPPLY_DAYS)
+        return at.strftime("%Y-%m-%dT%H:%M:%SZ") if at > datetime.now(timezone.utc) else ""
+
+    def api_Revival_CreatorTesterApply(self, req, headers):
+        """Sends (or, while still waiting, updates) the signed-in account's tester application."""
+        answers, bad = self._tester_answers(req)
+        if bad:
+            return bad
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me:
+                return err("NotAuthorized", "sign in first")
+            perms = self._creator_perms(me)
+            if perms["access"] != "approved":
+                return err("NotAuthorized", "your account needs an admin's approval before you can apply")
+            if perms["tester"]:
+                return err("InvalidParams", "you are already an in-game tester")
+            if not (me.get("discord") or {}).get("id"):
+                return err("InvalidParams", "link your Discord account on your Profile page first")
+            if not self._allow("tester-apply", me["name"].lower(), 10, 3600):
+                return err("TooManyRequests", "too many changes to your application; try again in an hour", 1199, 429)
+            key = me["name"].lower()
+            apps = self._tester_apps()
+            old = apps.get(key) or {}
+            if old.get("status") == "declined" and self._tester_again_at(old):
+                return err("InvalidParams", "you can apply again from " + self._tester_again_at(old)[:10])
+            fresh = old.get("status") != "pending"
+            app = {"name": me["name"], "status": "pending", "at": now_iso() if fresh else old.get("at", now_iso()),
+                   "updated": now_iso(), "answers": answers}
+            apps[key] = app
+            self._tester_save(apps)
+            waiting = sum(1 for a in apps.values() if isinstance(a, dict) and a.get("status") == "pending")
+        log.info("tester application %s by %s", "sent" if fresh else "updated", me["name"])
+        if fresh:
+            self._tester_notice(me["name"], waiting)
+        return ok({"application": self._tester_view(app)})
+
+    def api_Revival_CreatorTesterWithdraw(self, req, headers):
+        """The applicant takes back an application that is still waiting."""
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me:
+                return err("NotAuthorized", "sign in first")
+            apps = self._tester_apps()
+            app = apps.get(me["name"].lower())
+            if not app or app.get("status") != "pending":
+                return err("InvalidParams", "you have no application waiting")
+            app["status"], app["updated"] = "withdrawn", now_iso()
+            self._tester_save(apps)
+        return ok({"application": self._tester_view(app)})
+
+    def api_Revival_CreatorTesterApplications(self, req, headers):
+        """Applications for admins: waiting ones oldest first, or the decided ones newest first."""
+        if self._creator_role(req) < 2:
+            return err("NotAuthorized", "only admins can see tester applications")
+        show = req.get("show") if req.get("show") in ("pending", "decided") else "pending"
+        with self.store.lock:
+            apps = self._tester_apps()
+            users = self._creator_users_view()
+        rows = []
+        for key, app in apps.items():
+            if not isinstance(app, dict):
+                continue
+            pending = app.get("status") == "pending"
+            if (show == "pending") != pending:
+                continue
+            user = users.get(key)
+            perms = self._creator_perms(user) if user else None
+            row = self._tester_view(app, staff=True)
+            row["account"] = {"exists": user is not None, "created": (user or {}).get("created", ""),
+                              "access": perms["access"] if perms else "", "tester": bool(perms and perms["tester"]),
+                              "playing": bool(user and user.get("player")),
+                              "discord": str(((user or {}).get("discord") or {}).get("name") or "")}
+            rows.append(row)
+        rows.sort(key=lambda r: r.get("at", ""), reverse=(show == "decided"))
+        waiting = sum(1 for a in apps.values() if isinstance(a, dict) and a.get("status") == "pending")
+        return ok({"applications": rows[:200], "waiting": waiting})
+
+    def api_Revival_CreatorTesterDecide(self, req, headers):
+        """An admin accepts (tester switch on) or declines an application, with an optional note the applicant sees."""
+        name = str(req.get("name") or "").lower()
+        accept = req.get("accept")
+        if not isinstance(accept, bool):
+            return err("InvalidParams", "accept is an on/off value")
+        note = self._tester_text(req.get("note"), 300)
+        with self.store.lock:
+            me = self._creator_account(req)
+            if not me or self._creator_role(req) < 2:
+                return err("NotAuthorized", "only admins can answer tester applications")
+            apps = self._tester_apps()
+            app = apps.get(name)
+            if not app or app.get("status") != "pending":
+                return err("InvalidParams", "that application is not waiting any more")
+            users = self._creator_users()
+            user = users.get(name)
+            if accept:
+                if user is None:
+                    return err("InvalidParams", "that account no longer exists")
+                theirs, mine = self._creator_perms(user), self._creator_perms(me)
+                if theirs["access"] != "approved":
+                    return err("InvalidParams", f"{user['name']} is not an approved account")
+                if name != me["name"].lower() and self._creator_rank(theirs) >= self._creator_rank(mine):
+                    return err("NotAuthorized", f"only someone ranked above {user['name']} can change that account")
+                if "role" in user:                  # the older single role, as CreatorSetAccount does
+                    old = user.pop("role")
+                    user.setdefault("admin", old == "admin")
+                    user.setdefault("reviewer", old == "reviewer")
+                user["tester"] = True
+                user["changedBy"], user["changedAt"] = me["name"], now_iso()
+                self._creator_users_save(users)
+            app.update(status="accepted" if accept else "declined", decidedBy=me["name"], decidedAt=now_iso(), note=note)
+            self._tester_save(apps)
+        log.info("tester application of %s %s by %s", app.get("name"), "accepted" if accept else "declined", me["name"])
+        if accept:
+            self._discord_sync_later(user["name"])
+        return ok({"application": self._tester_view(app, staff=True)})
+
+    def _tester_notice(self, name, waiting):
+        """A line in the admins' Discord channel (the account-request webhook), at most 20 an hour."""
+        if self._discord_settings() is None or not self._allow("tester-notice", "all", 20, 3600):
+            return
+
+        def post():
+            import urllib.request
+            try:
+                url, role = self._discord_settings()
+                site = str(self._settings().get("creatorUrl") or "").rstrip("/")
+                base = site.split("/creator")[0] if site else ""
+                text = (f"New tester application: `{name}`. {waiting} waiting. "
+                        + (f"Read them at {base}/tester-applications" if base else "Read them on the site's Tester applications page."))
+                body = json.dumps({"content": text[:1900], "username": "WF Revival", "allowed_mentions": {"parse": []}}).encode()
+                rq = urllib.request.Request(url, data=body, method="POST",
+                                            headers={"Content-Type": "application/json", "User-Agent": "WarpforgeRevival (server, 1.0)"})
+                with urllib.request.urlopen(rq, timeout=15) as resp:
+                    log.info("discord: posted a tester application (HTTP %s)", resp.status)
+            except Exception as e:              # the error only, never the address (it is a secret)
+                log.warning("discord: could not post a tester application: %s", type(e).__name__)
+        threading.Thread(target=post, name="discord-tester", daemon=True).start()
+
     def api_Revival_CreatorSetAccount(self, req, headers):
         """An admin changes one account: any of access, reviewer, tester, admin, owner (see the ranks above)."""
         name = str(req.get("name") or "").lower()
@@ -5843,7 +6083,7 @@ class PlayFabEmulator:
     #    and the file is cut back if it still passes 50 MB.
     LOG_SECRET = {"passphrase", "newpassphrase", "password", "session", "key", "token", "ticket", "image", "mask",
                   "sessionticket", "entitytoken", "devicetoken", "x-authorization", "secret", "recoverycode",
-                  "discordcode", "discordstate"}
+                  "discordcode", "discordstate", "answers"}     # answers: a tester application (Discord name, region...)
     LOG_IDENTITY = {"steamticket", "androiddeviceid", "androiddevice", "customid", "iosdeviceid", "deviceid", "nintendoswitchdeviceid"}
     LOG_MAX_BYTES = 50 * 1024 * 1024
 

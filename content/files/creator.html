@@ -311,6 +311,7 @@
 <nav id="adminTabs" class="sub hidden">
   <a id="tabPeople" href="/people" class="hidden" data-t="nav.people">People</a>
   <a id="tabRequests" href="/requests" class="hidden">Requests</a>
+  <a id="tabTesterApps" href="/tester-applications" class="hidden">Tester applications</a>
   <a id="tabModeration" href="/moderation" class="hidden" data-t="nav.moderation">Moderation</a>
   <a id="tabUploads" href="/uploads" class="hidden" data-t="nav.uploads">Uploaded artwork</a>
   <a id="tabList" href="/review" class="hidden" data-t="nav.reviewQueue">Review queue</a>
@@ -585,6 +586,11 @@
         </form>
       </div>
     </section>
+    <section id="p_testerBox">
+      <h2 data-t="profile.testerTitle">In-game tester</h2>
+      <p id="p_tester"></p>
+      <p><a href="/become-a-tester" id="p_testerLink"></a></p>
+    </section>
     <section id="p_discord">
       <h2>Discord</h2>
       <div id="p_discordReset" class="note bad hidden" data-t-rich="profile.discordResetAsked"><strong>A password reset was asked for through Discord.</strong> <span id="p_discordResetWhen" data-t-part="when"></span> If that was not you, cancel it now and change your password. <button type="button" id="p_discordResetCancel" class="danger small" data-t-part="cancel" data-t="profile.cancelReset">Cancel the reset</button></div>
@@ -701,6 +707,54 @@
       </div>
       <div class="list slim" id="requests"></div>
       <div class="row"><button class="small" id="reqPrev" type="button" data-t="admin.requests.previous">Previous</button><span class="hint" id="reqPage"></span><button class="small" id="reqNext" type="button" data-t="admin.requests.next">Next</button></div>
+    </section>
+  </div>
+
+  <div id="viewTesterApps" class="hidden">
+    <section>
+      <h2 data-t="admin.testers.title">Tester applications</h2>
+      <p class="hint" data-t-rich="admin.testers.help"><strong>Accept</strong> turns the account's <strong>In-game tester</strong> switch on, the same switch as on the People page. <strong>Decline</strong> leaves it off; the applicant can apply again after 14 days. The note is optional, and the applicant sees it on their application.</p>
+      <div class="row"><label class="hint"><input type="checkbox" id="taDecided"> <span data-t="admin.testers.showDecided">Show answered applications instead</span></label></div>
+      <p class="hint" id="taHint"></p>
+      <div class="list" id="testerApps"></div>
+    </section>
+  </div>
+
+  <div id="viewTester" class="hidden">
+    <section>
+      <h2 data-t="tester.title">Become an in-game tester</h2>
+      <p data-t-rich="tester.intro">In-game testers get the <strong>Testers</strong> tab in the game: modes and features that are still being built, such as the <strong>Server Deal</strong> test mode, before anyone else plays them. In return they play what needs testing, often in matches that may break, and report what they find with <strong>Report a bug</strong>.</p>
+      <p class="hint" data-t="tester.byApplication">The tester role is given by application, so it goes to people who want to help test. An admin reads every application.</p>
+      <div id="ta_status" class="box hidden"></div>
+      <div id="ta_needDiscord" class="note hidden"><span data-t-rich="tester.needDiscordLink"><strong>Link your Discord account first.</strong> Applying needs a linked Discord account, so the admins can reach you about tests.</span> <a href="/profile" data-t="tester.toProfile">Link it on your Profile page</a></div>
+      <form id="testerForm" class="hidden">
+        <div class="field"><label data-t="tester.devices">Which devices do you play on?</label>
+          <label class="hint"><input type="checkbox" name="ta_dev" value="pc"> <span data-t="tester.devPc">PC (Windows)</span></label>
+          <label class="hint"><input type="checkbox" name="ta_dev" value="androidPhone"> <span data-t="tester.devPhone">Android phone</span></label>
+          <label class="hint"><input type="checkbox" name="ta_dev" value="androidTablet"> <span data-t="tester.devTablet">Android tablet</span></label>
+          <label class="hint"><input type="checkbox" name="ta_dev" value="mumu"> <span data-t="tester.devMumu">MuMu Player on a PC</span></label>
+        </div>
+        <div class="field"><label for="ta_devicesNote" data-t="tester.models">Which models? (optional)</label><input id="ta_devicesNote" maxlength="120" placeholder="e.g. Windows 11 PC, Pixel 8, Galaxy Tab S9" data-t-placeholder="tester.modelsPlaceholder"></div>
+        <div class="row">
+          <div class="field"><label for="ta_hours" data-t="tester.hours">Time you could give testing in a typical week</label><select id="ta_hours">
+            <option value="" data-t="tester.hoursPick">Pick one</option>
+            <option value="under1" data-t="tester.hoursUnder1">Under 1 hour</option>
+            <option value="1to3" data-t="tester.hours1to3">1 to 3 hours</option>
+            <option value="3to6" data-t="tester.hours3to6">3 to 6 hours</option>
+            <option value="over6" data-t="tester.hoursOver6">More than 6 hours</option></select></div>
+          <div class="field grow"><label for="ta_region" data-t="tester.region">Your time zone or region (optional)</label><input id="ta_region" maxlength="60" placeholder="e.g. UTC-5, Central Europe" data-t-placeholder="tester.regionPlaceholder"></div>
+        </div>
+        <p class="hint" data-t="tester.regionHelp">Many tests need two players at once; your time zone helps pair testers.</p>
+        <div class="field"><label for="ta_why" data-t="tester.why">Why do you want to test, and what would you most like to help test?</label><textarea id="ta_why" maxlength="1000"></textarea></div>
+        <div class="field"><label for="ta_experience" data-t="tester.experience">Any experience testing games or reporting bugs? (optional)</label><textarea id="ta_experience" maxlength="1000"></textarea></div>
+        <label class="hint"><input type="checkbox" id="ta_agreeUnfinished"> <span data-t="tester.agreeUnfinished">I will play the things I am asked to test, including unfinished ones that may break a match.</span></label><br>
+        <label class="hint"><input type="checkbox" id="ta_agreeReport"> <span data-t="tester.agreeReport">I will report what I find with Report a bug in the game or on the Bugs page, saying what I did and what happened.</span></label><br>
+        <label class="hint"><input type="checkbox" id="ta_agreeActive"> <span data-t="tester.agreeActive">I understand that the tester role can be taken away if I stop testing.</span></label>
+        <div class="row" style="gap:10px; margin-top:12px">
+          <button class="primary" type="submit" id="ta_send">Send application</button>
+          <button type="button" id="ta_withdraw" class="hidden" data-t="tester.withdraw">Withdraw my application</button>
+        </div>
+      </form>
     </section>
   </div>
 
@@ -887,6 +941,7 @@
       <h2 data-t="home.community">Community</h2>
       <ul class="homeLinks">
         <li><a href="https://discord.gg/gYY43r65q8" target="_blank" rel="noopener" data-t="home.discord">Join the Discord</a> <span class="hint" data-t="home.discordHint">- news, install help, finding matches and talking cards</span></li>
+        <li><a href="/become-a-tester" data-t="home.tester">Become an in-game tester</a> <span class="hint" data-t="home.testerHint">- apply to try new modes and features before everyone else</span></li>
         <li><a href="/guides" data-t="home.guides">Install guides</a> <span class="hint" data-t="home.guidesHint">- PC, Android devices (phones and tablets), and Android on PC with MuMu Player</span></li>
         <li><a href="/terms" target="_blank" rel="noopener" data-t="home.terms">Terms and Privacy notice</a> <span class="hint" data-t="home.termsHint">- the rules, what the server keeps, and deleting your account</span></li>
       </ul>
@@ -2723,7 +2778,7 @@ async function sign() {
   $("loginGo").disabled = false;
 }
 // Every tab is a page of its own with its own address; the sign-in page is /login.
-const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", GuideCardArt: "/guides/card-art", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile", Decks: "/decks", Replays: "/replays" };
+const PAGES = { GuideHome: "/guides", GuidePc: "/guides/pc", GuidePhone: "/guides/phone", GuideAndroid: "/guides/android-pc", GuideMumu: "/guides/mumu", GuideCreator: "/guides/creator", GuideCardArt: "/guides/card-art", Bugs: "/bugs", Home: "/", Create: "/creator", Mine: "/my-cards", List: "/review", People: "/people", Unreleased: "/unreleased", Requests: "/requests", Moderation: "/moderation", Uploads: "/uploads", Server: "/server", Examples: "/examples", Cards: "/cards", Keywords: "/keywords", Artwork: "/artwork", Rules: "/rules", Profile: "/profile", Decks: "/decks", Replays: "/replays", Tester: "/become-a-tester", TesterApps: "/tester-applications" };
 const LOGIN = "/login";
 let wanted = "";                                 // the page asked for before signing in
 function pageOf(path) { path = path.replace(/\/+$/, "") || "/"; return Object.keys(PAGES).find(k => PAGES[k] === path) || ""; }
@@ -3105,7 +3160,11 @@ function loadOfficial(c, design, update) {
 let account = null;
 function drawProfile() {
   $("p_waiting").classList.toggle("hidden", !limited);
-  for (const id of ["p_game", "p_cardArt"]) $(id).classList.toggle("hidden", limited);
+  for (const id of ["p_game", "p_cardArt", "p_testerBox"]) $(id).classList.toggle("hidden", limited);
+  const isTester = !!(account && account.tester);
+  $("p_tester").textContent = isTester ? T("profile.testerYes", "You are an in-game tester: the Testers tab is in the game's main menu.")
+    : T("profile.testerNo", "Testers try new modes and features in the game before everyone else, and report what they find.");
+  $("p_testerLink").textContent = isTester ? T("profile.testerPage", "Your tester page") : T("profile.testerApply", "Apply to become an in-game tester");
   drawDiscord();
   if (limited) { drawRecovery(); return; }
   const linked = account && account.player;
@@ -3723,6 +3782,127 @@ async function answerRequest(name, change, done) {
   try { await call("CreatorSetAccount", Object.assign({ name }, change)); say(T("admin.people.changed", "{name}: {change}.", { name, change: done }), "ok"); }
   catch (x) { say(T("admin.notChanged", "Not changed: {error}", { error: x.message }), "bad"); }
   loadRequests();
+}
+// ---- tester applications (Become an in-game tester, Admin > Tester applications)
+function testerDeviceNames() { return { pc: T("tester.devPc", "PC (Windows)"), androidPhone: T("tester.devPhone", "Android phone"), androidTablet: T("tester.devTablet", "Android tablet"), mumu: T("tester.devMumu", "MuMu Player on a PC") }; }
+function testerHourNames() { return { under1: T("tester.hoursUnder1", "Under 1 hour"), "1to3": T("tester.hours1to3", "1 to 3 hours"), "3to6": T("tester.hours3to6", "3 to 6 hours"), over6: T("tester.hoursOver6", "More than 6 hours") }; }
+const dayOf = iso => iso ? new Date(iso).toLocaleDateString() : "";
+let testerState = null, taCount = 0;
+async function loadTester() {
+  try { testerState = await call("CreatorTesterApplication"); } catch (e) { return say(T("tester.loadFailed", "Could not load your application: {error}", { error: e.message }), "bad"); }
+  drawTester();
+}
+function drawTester() {
+  const d = testerState; if (!d) return;
+  const box = $("ta_status"), form = $("testerForm"), app = d.application;
+  box.textContent = ""; box.classList.remove("hidden");
+  const line = (text, cls) => box.append(el("p", { class: cls || "", text }));
+  let showForm = true;
+  if (d.tester) {
+    line(d.admin ? T("tester.isAdmin", "Admins have the tester role already.") : T("tester.isTester", "You are an in-game tester. Thank you! The Testers tab is in the game's main menu."));
+    showForm = false;
+  } else if (app && app.status === "pending") {
+    line(T("tester.pending", "Your application is waiting for an admin (sent {date}). You can still change your answers below.", { date: dayOf(app.at) }));
+  } else if (app && app.status === "declined") {
+    line(T("tester.declined", "Your application was declined on {date}.", { date: dayOf(app.decidedAt) }));
+    if (app.note) line(T("tester.adminNote", "Note from the admins: {note}", { note: app.note }), "hint");
+    if (d.applyAgainAt) { line(T("tester.applyAgainOn", "You can apply again from {date}.", { date: dayOf(d.applyAgainAt) })); showForm = false; }
+    else line(T("tester.applyAgain", "You can apply again below."));
+  } else if (app && app.status === "accepted") {
+    line(T("tester.ended", "Your tester role has ended. You can apply again below."));
+  } else if (app && app.status === "withdrawn") {
+    line(T("tester.withdrawn", "You withdrew your application. You can send a new one below."));
+  } else box.classList.add("hidden");
+  if (app && app.status === "accepted" && app.note && !d.tester) line(T("tester.adminNote", "Note from the admins: {note}", { note: app.note }), "hint");
+  const needDiscord = showForm && !d.discordLinked;
+  $("ta_needDiscord").classList.toggle("hidden", !needDiscord);
+  form.classList.toggle("hidden", !showForm || needDiscord);
+  const pending = !!(app && app.status === "pending");
+  $("ta_withdraw").classList.toggle("hidden", !pending);
+  $("ta_send").textContent = pending ? T("tester.update", "Update my application") : T("tester.send", "Send application");
+  const a = (app && app.answers) || null;
+  if (a && showForm && !form.dataset.filled) {
+    for (const c of document.querySelectorAll('input[name="ta_dev"]')) c.checked = (a.devices || []).includes(c.value);
+    $("ta_hours").value = a.hours || "";
+    for (const k of ["devicesNote", "region", "why", "experience"]) $("ta_" + k).value = a[k] || "";
+    for (const k of ["agreeUnfinished", "agreeReport", "agreeActive"]) $("ta_" + k).checked = pending && !!a[k];
+    form.dataset.filled = "1";
+  }
+}
+async function sendTester(e) {
+  e.preventDefault();
+  const answers = { devices: [...document.querySelectorAll('input[name="ta_dev"]:checked')].map(c => c.value), hours: val("ta_hours") };
+  for (const k of ["devicesNote", "region", "why", "experience"]) answers[k] = val("ta_" + k).trim();
+  for (const k of ["agreeUnfinished", "agreeReport", "agreeActive"]) answers[k] = $("ta_" + k).checked;
+  if (!answers.devices.length) return say(T("tester.needDevice", "Pick at least one device you play on."), "bad");
+  if (!answers.hours) return say(T("tester.needHours", "Pick how much time you could give testing."), "bad");
+  if (answers.why.length < 30) return say(T("tester.needWhy", "Tell us a little more about why you want to test (at least 30 characters)."), "bad");
+  if (!answers.agreeUnfinished || !answers.agreeReport || !answers.agreeActive) return say(T("tester.needAgree", "Tick all three boxes to apply."), "bad");
+  const again = !!(testerState && testerState.application && testerState.application.status === "pending");
+  try { await call("CreatorTesterApply", { answers }); }
+  catch (x) { return say(sentence(x), "bad"); }
+  say(again ? T("tester.updated", "Application updated.") : T("tester.sent", "Application sent. An admin will read it soon; this page shows the answer."), "ok");
+  loadTester();
+}
+async function withdrawTester() {
+  if (!confirm(T("tester.withdrawAsk", "Withdraw your tester application?"))) return;
+  try { await call("CreatorTesterWithdraw", {}); say(T("tester.withdrawDone", "Application withdrawn."), "ok"); } catch (x) { say(sentence(x), "bad"); }
+  loadTester();
+}
+function taTab(n) {                      // Admin > Tester applications, with the number waiting
+  taCount = n || 0;
+  $("tabTesterApps").textContent = taCount ? T("nav.testerAppsCount", "Tester applications ({count})", { count: taCount }) : T("nav.testerApps", "Tester applications");
+}
+onSiteLang(() => { taTab(taCount); try { if (testerState && !$("viewTester").classList.contains("hidden")) drawTester(); } catch (e) { } });
+async function loadTesterCount() {
+  try { const d = await call("CreatorTesterApplications", { show: "pending" }); taTab(d.waiting); } catch (e) { /* the tab just shows no number */ }
+}
+async function loadTesterApps() {
+  const decided = $("taDecided").checked;
+  let d;
+  try { d = await call("CreatorTesterApplications", { show: decided ? "decided" : "pending" }); }
+  catch (e) { return say(T("admin.testers.loadFailed", "Could not load the tester applications: {error}", { error: e.message }), "bad"); }
+  taTab(d.waiting);
+  $("taHint").textContent = decided ? "" : (d.waiting ? T("admin.testers.waiting", "{count} waiting, oldest first.", { count: d.waiting }) : T("admin.testers.nobody", "No applications are waiting."));
+  const box = $("testerApps"); box.textContent = "";
+  const devs = testerDeviceNames(), hours = testerHourNames();
+  const STATUS = { accepted: T("admin.testers.accepted", "accepted"), declined: T("admin.testers.declined", "declined"), withdrawn: T("admin.testers.withdrawn", "withdrawn") };
+  for (const r of d.applications) {
+    const a = r.answers || {}, acc = r.account || {};
+    const facts = [T("admin.testers.sent", "sent {date}", { date: dayOf(r.at) })];
+    if (r.updated && r.updated !== r.at) facts.push(T("admin.testers.changed", "changed {date}", { date: dayOf(r.updated) }));
+    if (acc.created) facts.push(T("admin.testers.accountSince", "account since {date}", { date: dayOf(acc.created) }));
+    facts.push(acc.playing ? T("admin.testers.playing", "has a game player") : T("admin.testers.notPlaying", "no game player linked yet"));
+    facts.push(acc.discord ? T("admin.testers.discordLinked", "Discord: {name}", { name: acc.discord }) : T("admin.testers.discordNone", "Discord not linked any more"));
+    if (!acc.exists) facts.push(T("admin.testers.gone", "account deleted"));
+    const qa = (q, text) => text ? el("p", { style: "white-space:pre-wrap" }, el("strong", { text: q + " " }), el("span", { text })) : null;
+    const body = el("div", {},
+      el("div", {}, el("span", { class: "title", text: r.name + " " }),
+        decided && STATUS[r.status] ? el("span", { class: "badge " + (r.status === "accepted" ? "approved" : "rejected"), text: STATUS[r.status] }) : null,
+        acc.tester ? el("span", { class: "badge approved", text: T("admin.testers.isTester", "tester now") }) : null),
+      el("div", { class: "hint", text: facts.join(" · ") }),
+      qa(T("admin.testers.qDevices", "Devices:"), (a.devices || []).map(x => devs[x] || x).join(", ") + (a.devicesNote ? " (" + a.devicesNote + ")" : "")),
+      qa(T("admin.testers.qHours", "Time a week:"), hours[a.hours] || a.hours || ""),
+      qa(T("admin.testers.qRegion", "Time zone:"), a.region),
+      qa(T("admin.testers.qWhy", "Why:"), a.why),
+      qa(T("admin.testers.qExperience", "Experience:"), a.experience),
+      decided && r.decidedAt ? el("p", { class: "hint", text: T("admin.testers.decidedBy", "Answered by {name} on {date}.", { name: r.decidedBy || "?", date: dayOf(r.decidedAt) }) + (r.note ? " " + T("admin.testers.noteWas", "Note: {note}", { note: r.note }) : "") }) : null);
+    let actions = null;
+    if (!decided) {
+      const note = el("input", { maxLength: 300, placeholder: T("admin.testers.notePlaceholder", "Note to the applicant (optional)") });
+      const decide = async accept => {
+        if (!accept && !confirm(T("admin.testers.declineAsk", "Decline {name}'s application?", { name: r.name }))) return;
+        try { await call("CreatorTesterDecide", { name: r.name, accept, note: note.value.trim() }); say(T("admin.people.changed", "{name}: {change}.", { name: r.name, change: accept ? T("admin.testers.acceptedDone", "in-game tester on") : T("admin.testers.declinedDone", "application declined") }), "ok"); }
+        catch (x) { say(T("admin.notChanged", "Not changed: {error}", { error: x.message }), "bad"); }
+        loadTesterApps();
+      };
+      actions = el("div", { class: "actions" }, note,
+        el("button", { class: "small primary", text: T("admin.testers.accept", "Accept"), onclick: () => decide(true) }),
+        el("button", { class: "small danger", text: T("admin.testers.decline", "Decline"), onclick: () => decide(false) }));
+    }
+    box.append(el("div", { class: "item" }, body, actions || el("div")));
+  }
+  if (!d.applications.length && decided) box.append(el("p", { class: "hint", text: T("admin.testers.noneDecided", "No answered applications yet.") }));
 }
 async function approveShown() {
   const names = reqShown.map(r => r.name);
@@ -4422,17 +4602,17 @@ async function loadList() {
     if (!me && session()) setSession("");
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
-    for (const t of ["People", "Requests", "Moderation", "Uploads", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
+    for (const t of ["People", "Requests", "TesterApps", "Moderation", "Uploads", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
     $("tabAdmin").classList.toggle("hidden", !role);              // reviewers: Admin holds only the review queue
     $("tabAdmin").href = role >= 2 ? "/people" : "/review";
-    if (role >= 2) loadRequestCount();
+    if (role >= 2) { loadRequestCount(); loadTesterCount(); }
     const bugsOk = !!(d.account && (d.account.tester || d.account.admin));   // testers and admins, not reviewers
     $("tabBugs").classList.toggle("hidden", !bugsOk);
     if (!bugsOk && !$("viewBugs").classList.contains("hidden")) show("Home");
     const founder = !!(d.account && d.account.fixed);
     $("tabServer").classList.toggle("hidden", !founder);
     if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
-    if (role < 2 && ["People", "Requests", "Moderation", "Uploads", "Unreleased"].some(v => !$("view" + v).classList.contains("hidden"))) show(role ? "List" : "Mine");
+    if (role < 2 && ["People", "Requests", "TesterApps", "Moderation", "Uploads", "Unreleased"].some(v => !$("view" + v).classList.contains("hidden"))) show(role ? "List" : "Mine");
     $("tabList").classList.toggle("hidden", !role);
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
@@ -4462,9 +4642,9 @@ let lastCreatorPage = "Create";
 // Game Data (main ribbon): your game account's decks and replays.
 const GAME_GROUP = ["Decks", "Replays"];
 let lastGamePage = "Decks";
-const ADMIN_GROUP = ["People", "Requests", "Moderation", "Uploads", "List", "Unreleased", "Server"];
+const ADMIN_GROUP = ["People", "Requests", "TesterApps", "Moderation", "Uploads", "List", "Unreleased", "Server"];
 let lastAdminPage = "";
-const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", GuideCardArt: "Guide: Card art from your game", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile", Decks: "Decks", Replays: "Replays" };
+const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", GuidePhone: "Install guide: Android Patcher app", GuideAndroid: "Install guide: Android with a PC", GuideMumu: "Install guide: MuMu Player", GuideCreator: "Guide: Card Creator", GuideCardArt: "Guide: Card art from your game", Bugs: "Bug reports", Home: "Home", Create: "Create a card", Mine: "My cards", List: "Review queue", People: "People", Unreleased: "Unreleased cards", Requests: "Account requests", Moderation: "Moderation", Uploads: "Uploaded artwork", Server: "Server settings", Examples: "Examples", Cards: "Card viewer", Keywords: "Keywords", Artwork: "Artwork", Rules: "Rules", Profile: "Profile", Decks: "Decks", Replays: "Replays" , Tester: "Become an in-game tester", TesterApps: "Tester applications" };
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
 const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu", GuideCreator: "creator", GuideCardArt: "card-art" };
@@ -4535,8 +4715,8 @@ function show(which, replace) {                // a page name from PAGES
   const list = which === "Mine" || which === "List";
   if (list) { const mode = which === "List" ? "all" : "mine"; if (mode !== listMode) $("filter").value = ""; listMode = mode; }
   $("viewCreate").classList.toggle("hidden", which !== "Create"); $("viewList").classList.toggle("hidden", !list);
-  for (const v of ["Bugs", "Home", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Decks", "Replays", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
-  for (const t of ["Profile", "Decks", "Replays", "GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
+  for (const v of ["Bugs", "Home", "People", "Requests", "TesterApps", "Tester", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Profile", "Decks", "Replays", "Examples", "Cards", "Artwork", "Keywords"]) $("view" + v).classList.toggle("hidden", which !== v);
+  for (const t of ["Profile", "Decks", "Replays", "GuideHome", "GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu", "GuideCreator", "GuideCardArt", "Bugs", "Home", "Create", "Mine", "List", "People", "Requests", "TesterApps", "Moderation", "Uploads", "Unreleased", "Server", "Rules", "Examples", "Cards", "Artwork", "Keywords"]) $("tab" + t).classList.toggle("on", t === which);
   const inCreator = CREATOR_GROUP.includes(which);
   if (inCreator) lastCreatorPage = which;
   const inAdmin = ADMIN_GROUP.includes(which);
@@ -4564,6 +4744,8 @@ function show(which, replace) {                // a page name from PAGES
   if (list) loadList();
   if (which === "People") loadPeople();
   if (which === "Requests") loadRequests();
+  if (which === "TesterApps") loadTesterApps();
+  if (which === "Tester") { say(""); loadTester(); }
   if (which === "Moderation") { loadPlayerReports(); loadReports(); loadBans(val("banQuery").trim()); loadWords(); }
   if (which === "Uploads") loadUploads();
   if (which === "Unreleased") loadUnreleased();
@@ -4661,6 +4843,9 @@ async function start() {
   $("reqPrev").onclick = () => { reqOffset = Math.max(0, reqOffset - REQ_PAGE); loadRequests(); };
   $("reqNext").onclick = () => { reqOffset += REQ_PAGE; loadRequests(); };
   $("reqApproveAll").onclick = approveShown;
+  $("testerForm").onsubmit = sendTester;
+  $("ta_withdraw").onclick = withdrawTester;
+  $("taDecided").onchange = loadTesterApps;
   $("peopleSearch").addEventListener("input", filterPeople); $("peopleShow").onchange = filterPeople;
   $("unrelQuery").addEventListener("input", drawUnreleased); $("unrelShow").onchange = drawUnreleased;
   $("tabGuides").onclick = e => { if (plainClick(e)) { e.preventDefault(); say(""); show(lastGuidePage); } };
