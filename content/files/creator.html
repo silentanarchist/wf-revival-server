@@ -713,7 +713,7 @@
   <div id="viewTesterApps" class="hidden">
     <section>
       <h2 data-t="admin.testers.title">Tester applications</h2>
-      <p class="hint" data-t-rich="admin.testers.help"><strong>Accept</strong> turns the account's <strong>In-game tester</strong> switch on, the same switch as on the People page. <strong>Decline</strong> leaves it off; the applicant can apply again at any time. The note is optional, and the applicant sees it on their application. Applicants can delete their own application completely, so one may disappear from this list.</p>
+      <p class="hint" data-t-rich="admin.testers.help"><strong>Accept</strong> turns the account's <strong>In-game tester</strong> switch on, the same switch as on the People page. <strong>Decline</strong> is final: it leaves the switch off and the applicant cannot apply again, so only decline someone you never want as a tester and leave the rest waiting. The note is optional, and the applicant sees it on their application. Applicants can delete their own application completely, so one may disappear from this list.</p>
       <div class="row"><label class="hint"><input type="checkbox" id="taDecided"> <span data-t="admin.testers.showDecided">Show answered applications instead</span></label></div>
       <p class="hint" id="taHint"></p>
       <div class="list" id="testerApps"></div>
@@ -3810,7 +3810,7 @@ function drawTester() {
   } else if (app && app.status === "declined") {
     line(T("tester.declined", "Your application was declined on {date}.", { date: dayOf(app.decidedAt) }));
     if (app.note) line(T("tester.adminNote", "Note from the admins: {note}", { note: app.note }), "hint");
-    line(T("tester.applyAgain", "You can apply again below."));
+    showForm = false;
   } else if (app && app.status === "accepted") {
     line(T("tester.ended", "Your tester role has ended. You can apply again below."));
   } else box.classList.add("hidden");

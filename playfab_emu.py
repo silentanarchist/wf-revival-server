@@ -5464,7 +5464,8 @@ class PlayFabEmulator:
     # (turns the account's "tester" switch on, the same switch as on the People page) or decline, with
     # an optional note the applicant sees. data/tester_applications.json: {account name lowercase:
     # {name, status pending|accepted|declined, at, updated, answers, decidedBy, decidedAt, note}}.
-    # One application per account; a declined one can apply again at once (owner, 2026-11-02: no wait).
+    # One application per account. A decline is final (owner, 2026-11-02: declines are only for people
+    # not wanted at all; everyone else is left pending), so a declined account cannot apply again.
     # Applications are kept until the applicant deletes theirs (Revival/CreatorTesterDelete, any status,
     # removed completely) or the account is deleted (Terms, privacy table).
     # Applying needs a linked Discord account (owner, 2026-11-02), so admins can reach the tester.
@@ -5558,6 +5559,8 @@ class PlayFabEmulator:
             key = me["name"].lower()
             apps = self._tester_apps()
             old = apps.get(key) or {}
+            if old.get("status") == "declined":
+                return err("InvalidParams", "your tester application was declined")
             fresh = old.get("status") != "pending"
             app = {"name": me["name"], "status": "pending", "at": now_iso() if fresh else old.get("at", now_iso()),
                    "updated": now_iso(), "answers": answers}
