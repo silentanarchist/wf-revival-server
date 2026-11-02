@@ -5474,6 +5474,9 @@ class PlayFabEmulator:
     # Applications are kept until the applicant deletes theirs (Revival/CreatorTesterDelete, any status,
     # removed completely) or the account is deleted (Terms, privacy table).
     # Applying needs a linked Discord account (owner, 2026-11-02), so admins can reach the tester.
+    # Only owners (founding owner or the "owner" switch) read and answer applications, and only they give
+    # or take the tester switch on the People page (owner, 2026-11-02: "sole say in who gets tester").
+    # Admins are testers anyway (_creator_perms).
     TESTER_FILE = "tester_applications.json"
     TESTER_DEVICES = ("pc", "androidPhone", "androidTablet", "mumu")
     TESTER_HOURS = ("under1", "1to3", "3to6", "over6")
@@ -5591,10 +5594,15 @@ class PlayFabEmulator:
         log.info("tester application deleted by its applicant %s", me["name"])
         return ok({"deleted": True})
 
+    def _tester_owner(self, req):
+        """The signed-in account if it is an owner (founding owner included), else None."""
+        me = self._creator_account(req)
+        return me if me and self._creator_rank(self._creator_perms(me)) >= 2 else None
+
     def api_Revival_CreatorTesterApplications(self, req, headers):
-        """Applications for admins: waiting ones oldest first, or the decided ones newest first."""
-        if self._creator_role(req) < 2:
-            return err("NotAuthorized", "only admins can see tester applications")
+        """Applications for owners: waiting ones oldest first, or the decided ones newest first."""
+        if not self._tester_owner(req):
+            return err("NotAuthorized", "only owners can see tester applications")
         show = req.get("show") if req.get("show") in ("pending", "decided") else "pending"
         with self.store.lock:
             apps = self._tester_apps()
@@ -5626,9 +5634,9 @@ class PlayFabEmulator:
             return err("InvalidParams", "accept is an on/off value")
         note = self._tester_text(req.get("note"), 300)
         with self.store.lock:
-            me = self._creator_account(req)
-            if not me or self._creator_role(req) < 2:
-                return err("NotAuthorized", "only admins can answer tester applications")
+            me = self._tester_owner(req)
+            if not me:
+                return err("NotAuthorized", "only owners can answer tester applications")
             apps = self._tester_apps()
             app = apps.get(name)
             if not app or app.get("status") != "pending":
@@ -5708,6 +5716,8 @@ class PlayFabEmulator:
                 return err("NotAuthorized", "only the founding owner can give or take owner")
             if "admin" in flags and rank(mine) < 2:
                 return err("NotAuthorized", "only an owner can give or take admin")
+            if "tester" in flags and rank(mine) < 2:      # owner, 2026-11-02: testers by application, owners decide
+                return err("NotAuthorized", "only an owner can give or take the tester role")
             if name != me["name"].lower() and rank(theirs) >= rank(mine):
                 who = "an owner" if theirs["owner"] else "an admin"
                 return err("NotAuthorized", f"{user['name']} is {who} - only someone ranked above can change that account")

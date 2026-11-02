@@ -3954,9 +3954,10 @@ async function loadPeople() {
     const access = el("select", { disabled: locked, onchange: e => setAccount(p.name, { access: e.target.value }, accessDone(e.target.value)) });
     for (const [v, t] of Object.entries(accessNames())) access.append(el("option", { value: v, text: t }));
     access.value = p.access;
-    const toggle = key => el("label", { title: myRank < ({ admin: 2, owner: 3 }[key] || 1) ? (key === "owner" ? T("admin.people.onlyFounder", "Only the founding owner can give or take owner") : T("admin.people.onlyOwner", "Only an owner can give or take admin")) : "" },
+    const needs = { admin: 2, owner: 3, tester: 2 };
+    const toggle = key => el("label", { title: myRank < (needs[key] || 1) ? (key === "owner" ? T("admin.people.onlyFounder", "Only the founding owner can give or take owner") : key === "tester" ? T("admin.people.onlyOwnerTester", "Only an owner can give or take the tester role (testers apply on Become an in-game tester)") : T("admin.people.onlyOwner", "Only an owner can give or take admin")) : "" },
       el("input", { type: "checkbox", checked: p[key],
-      disabled: locked || myRank < ({ admin: 2, owner: 3 }[key] || 1) || (p.owner && key !== "owner") || (p.admin && !p.owner && key !== "admin" && key !== "owner"),
+      disabled: locked || myRank < (needs[key] || 1) || (p.owner && key !== "owner") || (p.admin && !p.owner && key !== "admin" && key !== "owner"),
       onchange: e => setAccount(p.name, { [key]: e.target.checked }, roleDone(key, e.target.checked)) }), roles[key]);
     box.append(el("div", { class: "item" },
       el("div", {}, el("span", { class: "title", text: p.name + " " }),
@@ -4608,10 +4609,13 @@ async function loadList() {
     if (!me && session()) setSession("");
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
-    for (const t of ["People", "Requests", "TesterApps", "Moderation", "Uploads", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
+    const ownerRank = !!(d.account && (d.account.fixed || d.account.owner));   // tester applications: owners only
+    for (const t of ["People", "Requests", "Moderation", "Uploads", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
+    $("tabTesterApps").classList.toggle("hidden", !ownerRank);
     $("tabAdmin").classList.toggle("hidden", !role);              // reviewers: Admin holds only the review queue
     $("tabAdmin").href = role >= 2 ? "/people" : "/review";
-    if (role >= 2) { loadRequestCount(); loadTesterCount(); }
+    if (role >= 2) loadRequestCount();
+    if (ownerRank) loadTesterCount();
     const bugsOk = !!(d.account && (d.account.tester || d.account.admin));   // testers and admins, not reviewers
     $("tabBugs").classList.toggle("hidden", !bugsOk);
     if (!bugsOk && !$("viewBugs").classList.contains("hidden")) show("Home");
@@ -4619,6 +4623,7 @@ async function loadList() {
     $("tabServer").classList.toggle("hidden", !founder);
     if (!founder && !$("viewServer").classList.contains("hidden")) show("Mine");
     if (role < 2 && ["People", "Requests", "TesterApps", "Moderation", "Uploads", "Unreleased"].some(v => !$("view" + v).classList.contains("hidden"))) show(role ? "List" : "Mine");
+    if (role >= 2 && !ownerRank && !$("viewTesterApps").classList.contains("hidden")) show("People");
     $("tabList").classList.toggle("hidden", !role);
     if (!role && listMode === "all") { listMode = "mine"; if (!$("viewList").classList.contains("hidden")) show("Mine"); }
     $("signedIn").classList.toggle("hidden", !me); $("meName").textContent = me || "";
