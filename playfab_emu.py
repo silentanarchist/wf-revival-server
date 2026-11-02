@@ -5463,11 +5463,12 @@ class PlayFabEmulator:
     # (Revival/CreatorTesterApply); admins read the applications on /tester-applications and accept
     # (turns the account's "tester" switch on, the same switch as on the People page) or decline, with
     # an optional note the applicant sees. data/tester_applications.json: {account name lowercase:
-    # {name, status pending|accepted|declined|withdrawn, at, updated, answers, decidedBy, decidedAt, note}}.
-    # One application per account; a declined one can apply again after TESTER_REAPPLY_DAYS.
+    # {name, status pending|accepted|declined, at, updated, answers, decidedBy, decidedAt, note}}.
+    # One application per account; a declined one can apply again at once (owner, 2026-11-02: no wait).
+    # Applications are kept until the applicant deletes theirs (Revival/CreatorTesterDelete, any status,
+    # removed completely) or the account is deleted (Terms, privacy table).
     # Applying needs a linked Discord account (owner, 2026-11-02), so admins can reach the tester.
     TESTER_FILE = "tester_applications.json"
-    TESTER_REAPPLY_DAYS = 14
     TESTER_DEVICES = ("pc", "androidPhone", "androidTablet", "mumu")
     TESTER_HOURS = ("under1", "1to3", "3to6", "over6")
     TESTER_TEXTS = {"why": (30, 1000), "experience": (0, 1000), "devicesNote": (0, 120), "region": (0, 60)}
@@ -5532,22 +5533,9 @@ class PlayFabEmulator:
                 return err("NotAuthorized", "sign in first")
             perms = self._creator_perms(me)
             app = self._tester_apps().get(me["name"].lower())
-        again = ""
-        if app and app.get("status") == "declined" and app.get("decidedAt"):
-            again = self._tester_again_at(app)
         return ok({"tester": bool(perms["tester"]), "admin": bool(perms["admin"]),
                    "discordLinked": bool((me.get("discord") or {}).get("id")),
-                   "application": self._tester_view(app) if app else None, "applyAgainAt": again})
-
-    def _tester_again_at(self, app):
-        """When a declined applicant may apply again ("" when they may now)."""
-        from datetime import timedelta
-        try:
-            t = datetime.fromisoformat(str(app.get("decidedAt")).replace("Z", "+00:00"))
-        except ValueError:
-            return ""
-        at = t + timedelta(days=self.TESTER_REAPPLY_DAYS)
-        return at.strftime("%Y-%m-%dT%H:%M:%SZ") if at > datetime.now(timezone.utc) else ""
+                   "application": self._tester_view(app) if app else None})
 
     def api_Revival_CreatorTesterApply(self, req, headers):
         """Sends (or, while still waiting, updates) the signed-in account's tester application."""
@@ -5570,8 +5558,6 @@ class PlayFabEmulator:
             key = me["name"].lower()
             apps = self._tester_apps()
             old = apps.get(key) or {}
-            if old.get("status") == "declined" and self._tester_again_at(old):
-                return err("InvalidParams", "you can apply again from " + self._tester_again_at(old)[:10])
             fresh = old.get("status") != "pending"
             app = {"name": me["name"], "status": "pending", "at": now_iso() if fresh else old.get("at", now_iso()),
                    "updated": now_iso(), "answers": answers}
@@ -5583,19 +5569,19 @@ class PlayFabEmulator:
             self._tester_notice(me["name"], waiting)
         return ok({"application": self._tester_view(app)})
 
-    def api_Revival_CreatorTesterWithdraw(self, req, headers):
-        """The applicant takes back an application that is still waiting."""
+    def api_Revival_CreatorTesterDelete(self, req, headers):
+        """The applicant deletes their application completely, whatever its status (answers, the
+        admin's decision and note). Being a tester is not changed by this."""
         with self.store.lock:
-            me = self._creator_account(req)
+            me = self._creator_account_limited(req)
             if not me:
                 return err("NotAuthorized", "sign in first")
             apps = self._tester_apps()
-            app = apps.get(me["name"].lower())
-            if not app or app.get("status") != "pending":
-                return err("InvalidParams", "you have no application waiting")
-            app["status"], app["updated"] = "withdrawn", now_iso()
+            if apps.pop(me["name"].lower(), None) is None:
+                return err("InvalidParams", "you have no tester application")
             self._tester_save(apps)
-        return ok({"application": self._tester_view(app)})
+        log.info("tester application deleted by its applicant %s", me["name"])
+        return ok({"deleted": True})
 
     def api_Revival_CreatorTesterApplications(self, req, headers):
         """Applications for admins: waiting ones oldest first, or the decided ones newest first."""

@@ -713,7 +713,7 @@
   <div id="viewTesterApps" class="hidden">
     <section>
       <h2 data-t="admin.testers.title">Tester applications</h2>
-      <p class="hint" data-t-rich="admin.testers.help"><strong>Accept</strong> turns the account's <strong>In-game tester</strong> switch on, the same switch as on the People page. <strong>Decline</strong> leaves it off; the applicant can apply again after 14 days. The note is optional, and the applicant sees it on their application.</p>
+      <p class="hint" data-t-rich="admin.testers.help"><strong>Accept</strong> turns the account's <strong>In-game tester</strong> switch on, the same switch as on the People page. <strong>Decline</strong> leaves it off; the applicant can apply again at any time. The note is optional, and the applicant sees it on their application. Applicants can delete their own application completely, so one may disappear from this list.</p>
       <div class="row"><label class="hint"><input type="checkbox" id="taDecided"> <span data-t="admin.testers.showDecided">Show answered applications instead</span></label></div>
       <p class="hint" id="taHint"></p>
       <div class="list" id="testerApps"></div>
@@ -752,9 +752,13 @@
         <label class="hint"><input type="checkbox" id="ta_agreeActive"> <span data-t="tester.agreeActive">I understand that the tester role can be taken away if I stop testing.</span></label>
         <div class="row" style="gap:10px; margin-top:12px">
           <button class="primary" type="submit" id="ta_send">Send application</button>
-          <button type="button" id="ta_withdraw" class="hidden" data-t="tester.withdraw">Withdraw my application</button>
         </div>
       </form>
+      <div id="ta_deleteBox" class="hidden" style="margin-top:14px">
+        <button type="button" id="ta_delete" data-t="tester.delete">Delete my application</button>
+        <p class="hint" data-t="tester.deleteHelp">Removes your answers and the admins' reply from the server completely. If you are a tester, you stay one.</p>
+      </div>
+      <p class="hint" data-t-rich="tester.kept">We keep your application until you delete it here or delete your account. See the <a href="/terms#privacy">privacy notice</a>.</p>
     </section>
   </div>
 
@@ -3806,19 +3810,16 @@ function drawTester() {
   } else if (app && app.status === "declined") {
     line(T("tester.declined", "Your application was declined on {date}.", { date: dayOf(app.decidedAt) }));
     if (app.note) line(T("tester.adminNote", "Note from the admins: {note}", { note: app.note }), "hint");
-    if (d.applyAgainAt) { line(T("tester.applyAgainOn", "You can apply again from {date}.", { date: dayOf(d.applyAgainAt) })); showForm = false; }
-    else line(T("tester.applyAgain", "You can apply again below."));
+    line(T("tester.applyAgain", "You can apply again below."));
   } else if (app && app.status === "accepted") {
     line(T("tester.ended", "Your tester role has ended. You can apply again below."));
-  } else if (app && app.status === "withdrawn") {
-    line(T("tester.withdrawn", "You withdrew your application. You can send a new one below."));
   } else box.classList.add("hidden");
   if (app && app.status === "accepted" && app.note && !d.tester) line(T("tester.adminNote", "Note from the admins: {note}", { note: app.note }), "hint");
   const needDiscord = showForm && !d.discordLinked;
   $("ta_needDiscord").classList.toggle("hidden", !needDiscord);
   form.classList.toggle("hidden", !showForm || needDiscord);
   const pending = !!(app && app.status === "pending");
-  $("ta_withdraw").classList.toggle("hidden", !pending);
+  $("ta_deleteBox").classList.toggle("hidden", !app);
   $("ta_send").textContent = pending ? T("tester.update", "Update my application") : T("tester.send", "Send application");
   const a = (app && app.answers) || null;
   if (a && showForm && !form.dataset.filled) {
@@ -3844,9 +3845,13 @@ async function sendTester(e) {
   say(again ? T("tester.updated", "Application updated.") : T("tester.sent", "Application sent. An admin will read it soon; this page shows the answer."), "ok");
   loadTester();
 }
-async function withdrawTester() {
-  if (!confirm(T("tester.withdrawAsk", "Withdraw your tester application?"))) return;
-  try { await call("CreatorTesterWithdraw", {}); say(T("tester.withdrawDone", "Application withdrawn."), "ok"); } catch (x) { say(sentence(x), "bad"); }
+async function deleteTester() {
+  if (!confirm(T("tester.deleteAsk", "Delete your tester application completely? This cannot be undone."))) return;
+  try {
+    await call("CreatorTesterDelete", {});
+    say(T("tester.deleteDone", "Your application has been deleted."), "ok");
+    const form = $("testerForm"); form.reset(); delete form.dataset.filled;
+  } catch (x) { say(sentence(x), "bad"); }
   loadTester();
 }
 function taTab(n) {                      // Admin > Tester applications, with the number waiting
@@ -3866,7 +3871,7 @@ async function loadTesterApps() {
   $("taHint").textContent = decided ? "" : (d.waiting ? T("admin.testers.waiting", "{count} waiting, oldest first.", { count: d.waiting }) : T("admin.testers.nobody", "No applications are waiting."));
   const box = $("testerApps"); box.textContent = "";
   const devs = testerDeviceNames(), hours = testerHourNames();
-  const STATUS = { accepted: T("admin.testers.accepted", "accepted"), declined: T("admin.testers.declined", "declined"), withdrawn: T("admin.testers.withdrawn", "withdrawn") };
+  const STATUS = { accepted: T("admin.testers.accepted", "accepted"), declined: T("admin.testers.declined", "declined") };
   for (const r of d.applications) {
     const a = r.answers || {}, acc = r.account || {};
     const facts = [T("admin.testers.sent", "sent {date}", { date: dayOf(r.at) })];
@@ -4844,7 +4849,7 @@ async function start() {
   $("reqNext").onclick = () => { reqOffset += REQ_PAGE; loadRequests(); };
   $("reqApproveAll").onclick = approveShown;
   $("testerForm").onsubmit = sendTester;
-  $("ta_withdraw").onclick = withdrawTester;
+  $("ta_delete").onclick = deleteTester;
   $("taDecided").onchange = loadTesterApps;
   $("peopleSearch").addEventListener("input", filterPeople); $("peopleShow").onchange = filterPeople;
   $("unrelQuery").addEventListener("input", drawUnreleased); $("unrelShow").onchange = drawUnreleased;
