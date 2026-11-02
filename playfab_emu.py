@@ -5464,6 +5464,188 @@ class PlayFabEmulator:
         return ok({"requests": page, "total": total, "matching": len(waiting), "offset": offset,
                    "autoApprove": self._creator_auto_approve()})
 
+    # ---------------------------------------------------------------- developer code browser
+    # Owner (2026-11-02, claude/code-browser-plan.md): the decompiled game code (the parts made readable so far)
+    # for accounts with the Developer switch, read on the site at /#code. The code is game content and stays off
+    # every public path:
+    #   - the data is in data/code/ (index.json + files/...), never under content/files, so no address serves it;
+    #   - the browser's own page and script are in content/code/code-browser.js, also outside content/files, and
+    #     reach a developer's site only through Revival/CodeUi;
+    #   - every Revival/Code* call checks the signed-in session for the Developer switch; anyone else gets the very
+    #     answer an unknown call gets (an empty success), so the calls do not even show that the browser exists;
+    #   - a file is only read when its exact path is in the index (no other paths, no "..").
+    # Logging is light (owner): one server.log line when a developer opens the browser and one per file opened;
+    # the request log keeps none of these calls (their answers are game code).
+    CODE_DIR = "code"
+    CODE_RESULT_LINES = 200
+    CODE_RESULT_SYMBOLS = 100
+    # methods nothing in the code calls: started by Unity, by Photon by name, or a coroutine's step
+    CODE_UNITY_MESSAGES = {"Awake", "Start", "Update", "LateUpdate", "FixedUpdate", "OnEnable", "OnDisable", "OnDestroy",
+                           "OnApplicationPause", "OnApplicationQuit", "OnApplicationFocus", "OnGUI", "OnValidate", "Reset",
+                           "OnTriggerEnter", "OnTriggerExit", "OnCollisionEnter", "OnMouseDown", "OnMouseUp", "OnMouseEnter",
+                           "OnMouseExit", "OnPointerClick", "OnPointerDown", "OnPointerUp", "OnPointerEnter", "OnPointerExit",
+                           "OnBeginDrag", "OnDrag", "OnEndDrag", "OnDrop", "OnBecameVisible", "OnBecameInvisible",
+                           "OnRectTransformDimensionsChange", "OnTransformParentChanged", "OnAnimatorMove"}
+
+    def _code_dev(self, req):
+        """The signed-in account if it has the Developer switch (and is approved), else None."""
+        me = self._creator_account(req)
+        if not me:
+            return None
+        perms = self._creator_perms(me)
+        return me if perms["access"] == "approved" and perms["developer"] else None
+
+    def _code_data(self):
+        """The browser's index, with its edge maps and the files' text for the search; read again when index.json changes."""
+        def read(path):
+            with open(path, encoding="utf-8") as f:
+                d = json.load(f)
+            base = os.path.join(os.path.dirname(path), "files")
+            d["paths"] = {p for p, _ in d["files"]}
+            d["text"] = {}
+            for p, _ in d["files"]:
+                try:
+                    with open(os.path.join(base, *p.split("/")), encoding="utf-8") as f:
+                        d["text"][p] = f.read().split("\n")
+                except OSError:
+                    d["text"][p] = []
+            out, into = {}, {}
+            for caller, kind, target in d["xref"]:
+                out.setdefault(caller, []).append((kind, target))
+                into.setdefault(target, []).append((kind, caller))
+            d["out"], d["into"] = out, into
+            d["byFile"] = {}
+            for mid, (disp, p, line, end) in d["methods"].items():
+                if p:
+                    d["byFile"].setdefault(p, []).append([line, end, mid, disp])
+            d["fieldsByFile"] = {}
+            for fid, (disp, p, line) in d["fields"].items():
+                d["fieldsByFile"].setdefault(p, []).append([line, fid, disp])
+            return d
+        try:
+            return self._file_cached("code", os.path.join(self.store.root, self.CODE_DIR, "index.json"), read)
+        except (OSError, ValueError):
+            log.exception("code browser: could not read data/code/index.json")
+            return None
+
+    def api_Revival_CodeUi(self, req, headers):
+        me = self._code_dev(req)
+        if not me:
+            return ok({})
+        try:
+            with open(os.path.join(self.content_root, "code", "code-browser.js"), encoding="utf-8") as f:
+                js = f.read()
+        except OSError:
+            return ok({})
+        log.info("code browser: %s opened it", me["name"])
+        return ok({"js": js, "ready": self._code_data() is not None})
+
+    def api_Revival_CodeTree(self, req, headers):
+        if not self._code_dev(req):
+            return ok({})
+        d = self._code_data()
+        if d is None:
+            return ok({"files": [], "folders": []})
+        return ok({"files": d["files"], "folders": d.get("folders", [])})
+
+    def api_Revival_CodeFile(self, req, headers):
+        me = self._code_dev(req)
+        if not me:
+            return ok({})
+        d = self._code_data()
+        path = str(req.get("path") or "")
+        if d is None or path not in d["paths"]:
+            return ok({"missing": True})
+        log.info("code browser: %s opened %s", me["name"], path)
+        return ok({"path": path, "text": "\n".join(d["text"][path]),
+                   "methods": sorted(d["byFile"].get(path, [])), "fields": sorted(d["fieldsByFile"].get(path, []))})
+
+    def _code_name(self, d, tid):
+        """[id, display name, path, line] for a method or field id (path "" when not in the served files)."""
+        if tid in d["methods"]:
+            disp, p, line = d["methods"][tid][:3]
+            return [tid, disp, p, line]
+        if tid in d["fields"]:
+            disp, p, line = d["fields"][tid]
+            return [tid, disp, p, line]
+        if "::" in tid:                                  # a method without code outside the served files (engine, .NET)
+            t, m = tid.rsplit("::", 1)
+            return [tid, t.split("<")[0].rsplit(".", 1)[-1] + ("<" + t.split("<", 1)[1] if "<" in t else "") + "." + m, "", 0]
+        t, f = tid.rsplit(".", 1) if "." in tid else ("", tid)
+        return [tid, (t.rsplit(".", 1)[-1] + "." if t else "") + f, "", 0]
+
+    def api_Revival_CodeXref(self, req, headers):
+        if not self._code_dev(req):
+            return ok({})
+        d = self._code_data()
+        tid = str(req.get("id") or "")[:300]
+        if d is None or not tid:
+            return ok({"missing": True})
+        name = lambda t: self._code_name(d, t)
+        sort = lambda rows: sorted(rows, key=lambda r: (r[2] == "", r[1].lower()))
+        if tid in d["fields"]:
+            into = d["into"].get(tid, [])
+            return ok({"kind": "field", "item": name(tid),
+                       "readBy": sort([name(c) for k, c in into if k == "r"]),
+                       "writtenBy": sort([name(c) for k, c in into if k == "w"])})
+        out = d["out"].get(tid, [])
+        callers = sort([name(c) for k, c in d["into"].get(tid, []) if k == "c"])
+        item = name(tid)
+        method = item[1].rsplit(".", 1)[-1]
+        note = ""
+        if not callers:
+            note = ("unity" if method in self.CODE_UNITY_MESSAGES else "rpc" if method.startswith("PUNReceive")
+                    else "coroutine" if method == "MoveNext" else "lambda" if method.startswith("<") else "")
+        return ok({"kind": "method", "item": item, "note": note,
+                   "calls": sort([name(t) for k, t in out if k == "c"]),
+                   "reads": sort([name(t) for k, t in out if k == "r"]),
+                   "writes": sort([name(t) for k, t in out if k == "w"]),
+                   "calledBy": callers})
+
+    def api_Revival_CodeSearch(self, req, headers):
+        if not self._code_dev(req):
+            return ok({})
+        d = self._code_data()
+        q = str(req.get("q") or "")[:200]
+        if d is None or len(q.strip()) < 2:
+            return ok({"symbols": [], "lines": [], "more": False})
+        kind = str(req.get("kind") or "all")
+        folder = str(req.get("folder") or "").strip("/")
+        case, word = req.get("case") is True, req.get("word") is True
+        flags = 0 if case else re.IGNORECASE
+        pat = re.compile((r"\b" + re.escape(q) + r"\b") if word else re.escape(q), flags)
+        inside = lambda p: not folder or p == folder or p.startswith(folder + "/")
+        # names first: types, methods (and properties), fields (and enum values)
+        groups = {"types": ("type",), "methods": ("method", "property"), "fields": ("field", "enum")}
+        want = groups.get(kind) or ("type", "method", "property", "field", "enum")
+        symbols = []
+        if kind not in ("strings", "code"):
+            for s in d["symbols"]:
+                if s[1] in want and inside(s[3]) and pat.search(s[0]):
+                    symbols.append(s)
+            exact = (lambda n: n == q) if case else (lambda n: n.lower() == q.lower())
+            symbols.sort(key=lambda s: (not exact(s[0]), ("type", "method", "property", "field", "enum").index(s[1]), len(s[0]), s[0]))
+        # then every line of text (all code, or only inside string literals)
+        lines, more = [], False
+        if kind in ("all", "code", "strings"):
+            strings = re.compile(r'"(?:[^"\\]|\\.)*"')
+            for p, _ in d["files"]:
+                if not inside(p):
+                    continue
+                for i, text in enumerate(d["text"][p], 1):
+                    if not pat.search(text):
+                        continue
+                    if kind == "strings" and not any(pat.search(s.group(0)) for s in strings.finditer(text)):
+                        continue
+                    if len(lines) >= self.CODE_RESULT_LINES:
+                        more = True
+                        break
+                    lines.append([p, i, text.strip()[:240]])
+                if more:
+                    break
+        return ok({"symbols": symbols[:self.CODE_RESULT_SYMBOLS], "moreSymbols": len(symbols) > self.CODE_RESULT_SYMBOLS,
+                   "lines": lines, "more": more})
+
     # ---------------------------------------------------------------- tester applications
     # Owner (2026-11-02): the in-game tester role is given by application, to find people who will
     # actually test what needs testing. An approved account fills in the form on /become-a-tester
@@ -6063,6 +6245,8 @@ class PlayFabEmulator:
                 status, resp = err("InternalServerError", f"{type(e).__name__}: {e}", 1123, 500)
                 note = "EXCEPTION"
         if api in ("Revival/ChatPoll", "Revival/CreatorList", "Revival/CreatorExamples", "Revival/CreatorDecks", "Revival/PlayerStats") and not note:      # asked every few seconds; keep it out of the logs
+            return status, resp
+        if api.startswith("Revival/Code"):          # the developer code browser: its answers are game code (server.log has its own lines)
             return status, resp
         log_req, log_resp = req, resp
         if api == "Client/LoginWithSteam" and str(req.get("SteamTicket", "")).startswith(self.GAME_LOGIN_PREFIX):

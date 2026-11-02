@@ -4610,6 +4610,7 @@ async function loadList() {
     if (!me && session()) setSession("");
     $("roleBadge").classList.toggle("hidden", !role); $("roleBadge").textContent = d.account && d.account.fixed ? "Founding Owner" : d.account && d.account.owner ? "Owner" : role === 2 ? "Admin" : "Reviewer";
     $("testerBadge").classList.toggle("hidden", !(d.account && d.account.tester && role < 2));
+    codeHook(d.account);
     const ownerRank = !!(d.account && (d.account.fixed || d.account.owner));   // tester applications: owners only
     for (const t of ["People", "Requests", "Moderation", "Uploads", "Unreleased"]) $("tab" + t).classList.toggle("hidden", role < 2);
     $("tabTesterApps").classList.toggle("hidden", !ownerRank);
@@ -4643,6 +4644,17 @@ async function loadList() {
     if (schema) { preview(); drawList(); }
     if (!$("viewHome").classList.contains("hidden")) drawHome();
   } catch (e) { say("Could not load the card list: " + e.message, "bad"); if (!me) { gate(); loginSay(T("login.unreachable", "The server could not be reached: {error}", { error: e.message })); } }
+}
+// The developers' code reference (/#code). Its page and script come from the server only to accounts with the
+// Developer switch (Revival/CodeUi); for everyone else nothing happens here.
+let codeUiAsked = false;
+async function codeHook(acc) {
+  if (!(acc && acc.developer) || codeUiAsked) return;
+  codeUiAsked = true;
+  let d;
+  try { d = await call("CodeUi"); } catch (e) { codeUiAsked = false; return; }
+  if (!d || !d.js) return;
+  document.body.append(Object.assign(document.createElement("script"), { textContent: d.js }));
 }
 // An account waiting for an admin's approval sees only the guides and its own profile.
 let limited = false, shownOnce = false;
