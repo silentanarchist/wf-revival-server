@@ -3154,7 +3154,9 @@ class PlayFabEmulator:
     #   tester    in-game tester (will see custom cards in the game before they are released).
     #   developer helps build the mod (owner, 2026-11-02): will be able to read the decompiled game code on the
     #             site (plan: claude/code-browser-plan.md). Given by admins on the People page; gates nothing yet.
-    #   admin     everything: reviewer, tester and developer rights, changing or un-approving approved cards,
+    #             Separate from admin (owner, 2026-11-02): only the switch counts, also for admins and owners.
+    #             Only owners give or take it (like tester).
+    #   admin     everything (except developer, which is its own switch): reviewer and tester rights, changing or un-approving approved cards,
     #             and editing the accounts (access, reviewer, tester, developer) of players who are not admins.
     #   owner     admin rights, plus giving and taking admin and editing admins' accounts.
     #   founding owner  the accounts listed in data/creator_admins.json: always owners, cannot be
@@ -3211,7 +3213,7 @@ class PlayFabEmulator:
         return {"access": access, "admin": admin, "fixed": fixed, "owner": owner, "player": user.get("player") or "",
                 "reviewer": admin or bool(user.get("reviewer")) or user.get("role") == "reviewer",
                 "tester": admin or bool(user.get("tester")),
-                "developer": admin or bool(user.get("developer"))}
+                "developer": bool(user.get("developer"))}                 # its own switch only, admins included (owner, 2026-11-02)
 
     ROLE_KEYS = ("owner", "admin", "reviewer", "tester", "developer", "role")
 
@@ -5708,9 +5710,12 @@ class PlayFabEmulator:
             user = users.get(name)
             if user is None:
                 return err("InvalidParams", "no account with that name")
-            if name in self._creator_founders():
-                return err("NotAuthorized", f"{user['name']} is the founding owner and cannot be changed here")
             mine, theirs = self._creator_perms(me), self._creator_perms(user)
+            # the one change a founding owner's account takes from the page: its own developer switch (code access)
+            own_dev = (name == me["name"].lower() and mine["fixed"] and set(flags) == {"developer"}
+                       and access is None and not unlink and delete is None)
+            if name in self._creator_founders() and not own_dev:
+                return err("NotAuthorized", f"{user['name']} is the founding owner and cannot be changed here")
             rank = self._creator_rank
             if "owner" in flags and not mine["fixed"]:
                 return err("NotAuthorized", "only the founding owner can give or take owner")
@@ -5718,6 +5723,8 @@ class PlayFabEmulator:
                 return err("NotAuthorized", "only an owner can give or take admin")
             if "tester" in flags and rank(mine) < 2:      # owner, 2026-11-02: testers by application, owners decide
                 return err("NotAuthorized", "only an owner can give or take the tester role")
+            if "developer" in flags and rank(mine) < 2:   # owner, 2026-11-02: code access, owners decide
+                return err("NotAuthorized", "only an owner can give or take the developer role")
             if name != me["name"].lower() and rank(theirs) >= rank(mine):
                 who = "an owner" if theirs["owner"] else "an admin"
                 return err("NotAuthorized", f"{user['name']} is {who} - only someone ranked above can change that account")
