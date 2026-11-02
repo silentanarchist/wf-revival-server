@@ -676,10 +676,10 @@
   <div id="viewPeople" class="hidden">
     <section>
       <h2><span data-t="nav.people">People</span> <span class="hint" id="peopleTotals" style="text-transform:none; letter-spacing:0; font-family:inherit; font-weight:normal"></span></h2>
-      <p class="hint" data-t-rich="admin.people.help">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
+      <p class="hint" data-t-rich="admin.people.help">Every account that has been let in (accounts still waiting are on the <strong>Requests</strong> page). Only admins can change these. <strong>Reviewer</strong>: approves and rejects cards waiting for review. <strong>In-game tester</strong>: will get custom cards in the game before release. <strong>Developer</strong>: helps build the mod (will be able to read the game's code reference on this site). <strong>Admin</strong>: everything, including this page. <strong>Site access</strong>: whether the account may use this site and play on the game server. A banned account cannot sign in to either, and the game player linked to it is banned too.</p>
       <p class="hint" id="peopleHint"></p>
       <div class="row"><div class="field grow"><label data-t="admin.people.find">Find an account</label><input id="peopleSearch" type="search" name="peopleSearch-find" autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="account or game player name" data-t-placeholder="admin.people.findPlaceholder"></div>
-        <div class="field"><label data-t="creator.show">Show</label><select id="peopleShow"><option value="" data-t="admin.people.showEveryone">Everyone</option><option value="online" data-t="admin.people.showOnline">Online now</option><option value="staff" data-t="admin.people.showStaff">Staff (reviewers, admins, owners)</option><option value="tester" data-t="admin.people.showTesters">Testers</option><option value="banned" data-t="admin.people.showBanned">Banned</option></select></div></div>
+        <div class="field"><label data-t="creator.show">Show</label><select id="peopleShow"><option value="" data-t="admin.people.showEveryone">Everyone</option><option value="online" data-t="admin.people.showOnline">Online now</option><option value="staff" data-t="admin.people.showStaff">Staff (reviewers, admins, owners)</option><option value="tester" data-t="admin.people.showTesters">Testers</option><option value="developer" data-t="admin.people.showDevelopers">Developers</option><option value="banned" data-t="admin.people.showBanned">Banned</option></select></div></div>
       <p class="hint" id="peopleCount"></p>
       <div class="list" id="people"></div>
     </section>
@@ -3698,7 +3698,7 @@ async function importDeck() {
     say(T("decks.imported", "{name} added to your {mode} decks. It appears in the game the next time the game starts.", { name: d.name, mode: modeName(d.mode) }), "ok");
   } catch (e) { say(T("decks.notImported", "Not imported: {error}.", { error: e.message }), "bad"); }
 }
-// Admins: every account with its switches. Reviewer and tester are independent; admin turns everything on.
+// Admins: every account with its switches. Reviewer, tester and developer are independent; admin turns everything on.
 // Ranks: founding owner > owner > admin > everyone else. An account can only be changed by someone ranked
 // above it; owners give and take admin, only the founding owner gives and takes owner.
 async function adminDeleteAccount(name) {     // Admin > People (not the Profile page's own deleteAccount(), which this name once replaced)
@@ -3926,11 +3926,12 @@ function accessDone(access) {
   return ({ requested: T("admin.people.accessSetRequested", "access set to requested"), approved: T("admin.people.accessSetApproved", "access set to approved"),
     banned: T("admin.people.accessSetBanned", "access set to banned") })[access] || access;
 }
-function roleNames() { return { reviewer: T("admin.people.roleReviewer", "Reviewer"), tester: T("admin.people.roleTester", "In-game tester"), admin: T("admin.people.roleAdmin", "Admin"), owner: T("admin.people.roleOwner", "Owner") }; }
+function roleNames() { return { reviewer: T("admin.people.roleReviewer", "Reviewer"), tester: T("admin.people.roleTester", "In-game tester"), developer: T("admin.people.roleDeveloper", "Developer"), admin: T("admin.people.roleAdmin", "Admin"), owner: T("admin.people.roleOwner", "Owner") }; }
 function roleDone(key, on) {                     // what a role checkbox did, said after the account's name
   const words = {
     reviewer: [T("admin.people.reviewerOff", "reviewer off"), T("admin.people.reviewerOn", "reviewer on")],
     tester: [T("admin.people.testerOff", "in-game tester off"), T("admin.people.testerOn", "in-game tester on")],
+    developer: [T("admin.people.developerOff", "developer off"), T("admin.people.developerOn", "developer on")],
     admin: [T("admin.people.adminOff", "admin off"), T("admin.people.adminOn", "admin on")],
     owner: [T("admin.people.ownerOff", "owner off"), T("admin.people.ownerOn", "owner on")] };
   return words[key][on ? 1 : 0];
@@ -3976,7 +3977,7 @@ async function loadPeople() {
             ? el("button", { class: "small", text: T("admin.people.signOutGame", "Sign out of game"), title: T("admin.people.signOutGameTip", "Signs this account out of the game on every computer and Android device. It keeps its game player."), onclick: () => setAccount(p.name, { unlink: true }, T("admin.people.signedOutGame", "signed out of the game everywhere")) })
             : el("button", { class: "small", text: T("profile.unlink", "Unlink"), onclick: () => setAccount(p.name, { unlink: true }, T("admin.people.unlinked", "game account unlinked")) })) : null)),
       el("div", { class: "actions", style: "align-items:center; gap:14px" }, field(T("admin.people.siteAccess", "Site access"), access),
-        el("div", { class: "checks" }, toggle("reviewer"), toggle("tester"), toggle("admin"), toggle("owner")),
+        el("div", { class: "checks" }, toggle("reviewer"), toggle("tester"), toggle("developer"), toggle("admin"), toggle("owner")),
         // the button sits in a slot of fixed width, kept even when there is no button, so every row's boxes line up
         el("div", { class: "rowButton", style: "width:104px; display:flex; justify-content:flex-end" },
         locked || p.name.toLowerCase() === (me || "").toLowerCase() ? null : p.deleteAt
@@ -3985,7 +3986,7 @@ async function loadPeople() {
               onclick: () => adminDeleteAccount(p.name) })))));
     const row = box.lastElementChild;            // what the search box and the Show list match on
     row.dataset.search = (p.name + " " + (p.playerName || "") + " " + (p.discord || "")).toLowerCase();
-    row.dataset.tags = [p.online ? "online" : "", p.reviewer || p.admin || p.owner || p.fixed ? "staff" : "", p.tester ? "tester" : "", p.access === "banned" ? "banned" : ""].join(" ");
+    row.dataset.tags = [p.online ? "online" : "", p.reviewer || p.admin || p.owner || p.fixed ? "staff" : "", p.tester ? "tester" : "", p.developer ? "developer" : "", p.access === "banned" ? "banned" : ""].join(" ");
   }
   filterPeople();
 }

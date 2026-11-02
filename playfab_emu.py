@@ -3152,8 +3152,10 @@ class PlayFabEmulator:
     #             straight away unless revival-settings.json has {"accounts": {"autoApprove": false}}.
     #   reviewer  approves and rejects cards waiting for review.
     #   tester    in-game tester (will see custom cards in the game before they are released).
-    #   admin     everything: reviewer and tester rights, changing or un-approving approved cards,
-    #             and editing the accounts (access, reviewer, tester) of players who are not admins.
+    #   developer helps build the mod (owner, 2026-11-02): will be able to read the decompiled game code on the
+    #             site (plan: claude/code-browser-plan.md). Given by admins on the People page; gates nothing yet.
+    #   admin     everything: reviewer, tester and developer rights, changing or un-approving approved cards,
+    #             and editing the accounts (access, reviewer, tester, developer) of players who are not admins.
     #   owner     admin rights, plus giving and taking admin and editing admins' accounts.
     #   founding owner  the accounts listed in data/creator_admins.json: always owners, cannot be
     #             changed from the page by anyone (so the server can never be left without one), the
@@ -3194,7 +3196,7 @@ class PlayFabEmulator:
             return True
 
     def _creator_perms(self, user):
-        """{"access", "reviewer", "tester", "admin", "fixed"} for an account."""
+        """{"access", "reviewer", "tester", "developer", "admin", "fixed"} for an account."""
         fixed = user["name"].lower() in self._creator_founders()
         owner = fixed or bool(user.get("owner"))
         admin = owner or bool(user.get("admin")) or user.get("role") == "admin"        # "role" is the older form
@@ -3205,12 +3207,13 @@ class PlayFabEmulator:
             access = "approved"
         if access == "banned":                                  # a banned account has no roles, whatever the file says
             return {"access": access, "admin": False, "fixed": False, "owner": False, "player": user.get("player") or "",
-                    "reviewer": False, "tester": False}
+                    "reviewer": False, "tester": False, "developer": False}
         return {"access": access, "admin": admin, "fixed": fixed, "owner": owner, "player": user.get("player") or "",
                 "reviewer": admin or bool(user.get("reviewer")) or user.get("role") == "reviewer",
-                "tester": admin or bool(user.get("tester"))}
+                "tester": admin or bool(user.get("tester")),
+                "developer": admin or bool(user.get("developer"))}
 
-    ROLE_KEYS = ("owner", "admin", "reviewer", "tester", "role")
+    ROLE_KEYS = ("owner", "admin", "reviewer", "tester", "developer", "role")
 
     def _creator_rank(self, perms):
         """3 founding owner, 2 owner, 1 admin, 0 anyone else."""
@@ -3473,7 +3476,7 @@ class PlayFabEmulator:
             # Guides and Profile only: no cards, no role, no game account details
             return ok({"cards": [], "role": 0, "released": False, "name": waiting["name"], "rulesVersion": "",
                        "account": {"access": "requested", "admin": False, "fixed": False, "owner": False, "player": "",
-                                   "reviewer": False, "tester": False,
+                                   "reviewer": False, "tester": False, "developer": False,
                                    "recoveryAt": waiting.get("recoveryAt") or "" if waiting.get("recoveryHash") else "",
                                    "discord": self._discord_view(waiting), "discordReady": self._discord_app() is not None,
                                    "discordReset": (waiting.get("discordReset") or {}).get("due") or 0}})
@@ -4327,8 +4330,8 @@ class PlayFabEmulator:
     #   /account         which site account and game player this Discord account is linked to
     #   /approve name    admins (by their site rank): approve a waiting account by its website name (suggests waiting
     #                    accounts while typing, to admins only)
-    # Roles: each linked member gets the Discord roles that match their site account (Approved, Tester, Reviewer, Admin as
-    # named in the settings), when they link and when an admin changes the account. Roles are only added, never taken
+    # Roles: each linked member gets the Discord roles that match their site account (Approved, Tester, Reviewer, Admin,
+    # Developer as named in the settings: "roles": {"developer": "<Discord role name>"} etc.), when they link and when an admin changes the account. Roles are only added, never taken
     # away (owner, 2026-10-17), unless the settings say "removeRoles": true. Roles the settings do not name are never
     # touched, and members who are not linked are left alone.
     DISCORD_BOT_FILE = "discord-bot.json"
@@ -4382,7 +4385,7 @@ class PlayFabEmulator:
             v = cfg.get(k, d)
             return v if isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi else d
         return {"app": app[0], "token": token, "guild": guild, "key": bytes.fromhex(key), "site": app[2].rsplit("/", 1)[0],
-                "roles": {k: str(v) for k, v in roles.items() if k in ("approved", "tester", "reviewer", "admin") and isinstance(v, str) and v.strip()},
+                "roles": {k: str(v) for k, v in roles.items() if k in ("approved", "tester", "reviewer", "admin", "developer") and isinstance(v, str) and v.strip()},
                 "wait": num("resetWaitSeconds", 120, 30, 600), "valid": num("resetMinutes", 30, 5, 120),
                 "minAge": num("minAccountDays", 30, 0, 3650),
                 "remove": cfg.get("removeRoles") is True,
@@ -4483,6 +4486,8 @@ class PlayFabEmulator:
                         want.add("admin")
                     if user.get("tester"):
                         want.add("tester")
+                    if user.get("developer"):
+                        want.add("developer")
                     if user.get("reviewer") or user.get("role") == "reviewer":
                         want.add("reviewer")
             ids = self._discord_role_ids(bot)
@@ -5675,7 +5680,7 @@ class PlayFabEmulator:
         threading.Thread(target=post, name="discord-tester", daemon=True).start()
 
     def api_Revival_CreatorSetAccount(self, req, headers):
-        """An admin changes one account: any of access, reviewer, tester, admin, owner (see the ranks above)."""
+        """An admin changes one account: any of access, reviewer, tester, developer, admin, owner (see the ranks above)."""
         name = str(req.get("name") or "").lower()
         access = req.get("access")
         if access is not None and access not in self.ACCESS:
@@ -5684,9 +5689,9 @@ class PlayFabEmulator:
         delete = req.get("delete")
         if delete is not None and not isinstance(delete, bool):
             return err("InvalidParams", "delete is an on/off value")
-        flags = {k: req[k] for k in ("reviewer", "tester", "admin", "owner") if k in req}
+        flags = {k: req[k] for k in ("reviewer", "tester", "developer", "admin", "owner") if k in req}
         if not all(isinstance(v, bool) for v in flags.values()):
-            return err("InvalidParams", "reviewer, tester, admin and owner are on/off values")
+            return err("InvalidParams", "reviewer, tester, developer, admin and owner are on/off values")
         with self.store.lock:
             me = self._creator_account(req)
             if not me or self._creator_role(req) < 2:
