@@ -47,7 +47,16 @@
   #codeView .cbRight .row { font-size: 13px; padding: 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #codeView .cbRight .title { font-weight: 600; word-break: break-all; }
   #codeView .cbRight .note { font-size: 13px; color: var(--warn); margin: 6px 0; }
-  @media (max-width: 1000px) { #codeView .cbMain { grid-template-columns: 1fr; grid-template-rows: 30% 1fr 30%; } #codeView .cbLeft, #codeView .cbRight { border: 0; border-bottom: 1px solid var(--line); } }`;
+  #codeView .cbBar button.toggle { padding: 4px 10px; }
+  #codeView .cbBar button.toggle.on { border-color: var(--accent); color: var(--accent); }
+  #codeView .cbMain.noLeft .cbLeft, #codeView .cbMain.noRight .cbRight { display: none; }
+  #codeView .cbMain.noLeft { grid-template-columns: 1fr 340px; }
+  #codeView .cbMain.noRight { grid-template-columns: 300px 1fr; }
+  #codeView .cbMain.noLeft.noRight { grid-template-columns: 1fr; }
+  @media (max-width: 1000px) { #codeView .cbMain { grid-template-columns: 1fr; grid-template-rows: 30% 1fr 30%; } #codeView .cbLeft, #codeView .cbRight { border: 0; border-bottom: 1px solid var(--line); }
+    #codeView .cbMain.noLeft, #codeView .cbMain.noRight, #codeView .cbMain.noLeft.noRight { grid-template-columns: 1fr; }
+    #codeView .cbMain.noLeft { grid-template-rows: 1fr 30%; } #codeView .cbMain.noRight { grid-template-rows: 30% 1fr; }
+    #codeView .cbMain.noLeft.noRight { grid-template-rows: 1fr; } }`;
   document.head.append(Object.assign(document.createElement("style"), { textContent: css }));
 
   const h = (tag, attrs, ...kids) => {
@@ -99,8 +108,12 @@
   const folder = h("select", {}, h("option", { value: "", text: "All folders" }));
   const caseBox = h("input", { type: "checkbox" }), wordBox = h("input", { type: "checkbox" });
   const back = h("button", { class: "small", text: "Back to the site", onclick: () => close() });
+  // panel switches: hide the file list or the cross-references to give the code more room (tablets, small
+  // screens); remembered in this browser only
+  const leftBtn = h("button", { class: "small toggle", text: "Files", title: "Show or hide the file list" });
+  const rightBtn = h("button", { class: "small toggle", text: "Calls / called by", title: "Show or hide the cross-references" });
   const bar = h("div", { class: "cbBar" }, h("h2", { text: "Code reference" }), q, kind, folder,
-    h("label", {}, caseBox, "Match case"), h("label", {}, wordBox, "Whole word"), h("span", { class: "grow" }), back);
+    h("label", {}, caseBox, "Match case"), h("label", {}, wordBox, "Whole word"), h("span", { class: "grow" }), leftBtn, rightBtn, back);
   const tabs = h("div", { class: "cbTabs" });
   const leftList = h("div", { class: "cbList" });
   const left = h("div", { class: "cbLeft" }, tabs, leftList);
@@ -109,8 +122,30 @@
   const scroll = h("div", { class: "cbScroll" }, code);
   const center = h("div", { class: "cbCenter" }, pathBar, scroll);
   const right = h("div", { class: "cbRight" });
-  const view = h("div", { id: "codeView", class: "hidden" }, bar, h("div", { class: "cbMain" }, left, center, right));
+  const main = h("div", { class: "cbMain" }, left, center, right);
+  const view = h("div", { id: "codeView", class: "hidden" }, bar, main);
   document.body.append(view);
+  const PANELS_KEY = "codeBrowser.panels";
+  let panels = { left: true, right: true };
+  try { Object.assign(panels, JSON.parse(localStorage.getItem(PANELS_KEY) || "{}")); } catch (e) { }
+  function drawPanels() {
+    main.classList.toggle("noLeft", !panels.left);
+    main.classList.toggle("noRight", !panels.right);
+    leftBtn.classList.toggle("on", panels.left);
+    rightBtn.classList.toggle("on", panels.right);
+    leftBtn.setAttribute("aria-pressed", panels.left ? "true" : "false");
+    rightBtn.setAttribute("aria-pressed", panels.right ? "true" : "false");
+  }
+  function setPanel(which, on) {
+    panels[which] = on;
+    try { localStorage.setItem(PANELS_KEY, JSON.stringify(panels)); } catch (e) { }
+    drawPanels();
+    if (which === "right" && on && S.path && S.cur) xrefAt(S.cur);      // catch up on the line chosen while hidden
+    if (S.path) paint(true);                                            // the code column changed width
+  }
+  leftBtn.onclick = () => setPanel("left", !panels.left);
+  rightBtn.onclick = () => setPanel("right", !panels.right);
+  drawPanels();
 
   // ---- routing: #code, #code/<path>, #code/<path>:<line>
   function parseHash() {
@@ -309,6 +344,7 @@
   // ---- cross-references
   let xrefAsk = 0;
   async function xrefAt(n) {
+    if (!panels.right) return;                // hidden: fetched when the panel is shown again
     const f = S.fields.find(x => x[0] === n);
     let id = f ? f[1] : "";
     if (!id) {
