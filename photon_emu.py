@@ -596,6 +596,29 @@ def mod_of(player_id):
         return _mods.get(player_id)
 
 
+# ---- same mod version in matchmaking (2026-11-03)
+# Photon Cloud kept builds apart by the app version the game connects with; this server does not, and the sign-in
+# check ("minModVersion": "latest") only stops an old mod at its next sign-in - a player still signed in from before
+# a new build went out could be paired with someone on the new one. join_random now skips a room when any seated
+# player's mod version (from their match ticket) differs from the searcher's. Windows and Android builds share
+# version numbers, so only the number counts. Unknown versions (an older mod that does not say) match anyone, as
+# before. Friend challenges (rooms joined by name) are not affected. A player left with no room of their version
+# opens their own and gets the game's usual bot match if nobody on that version comes.
+SAME_MOD_ONLY = True
+
+
+def _mods_differ(room, mine):
+    """True when a seated player in the room runs a different known mod version than `mine` (a version tuple)."""
+    if not mine:
+        return False
+    for a in room.actors.values():
+        if a.player:
+            theirs = mod_of(a.player)
+            if theirs and theirs != mine:
+                return True
+    return False
+
+
 def _fingerprint(ticket):
     return hashlib.sha256(ticket.encode("utf-8")).hexdigest()
 
@@ -1059,6 +1082,8 @@ class Service(object):
                 log.info("matchmaking: %s searches a server-deal mode; the ranked/casual filter is ignored", conn.peer)
                 sql = stripped
         now = time.monotonic()
+        mine = mod_of(conn.player) if SAME_MOD_ONLY and conn.player else None
+        other_version = 0
         with self.lock:
             found = []
             for room in self.rooms.values():
@@ -1066,6 +1091,9 @@ class Service(object):
                     continue
                 if not room.active():
                     continue                                    # only people who dropped are in it
+                if _mods_differ(room, mine):
+                    other_version += 1                          # see SAME_MOD_ONLY
+                    continue
                 custom = room.custom()
                 if any(isinstance(k, str) and custom.get(k) != plain(v) for k, v in want.items()):
                     continue
@@ -1074,6 +1102,9 @@ class Service(object):
                 if lobby[1] == 2 and not sql_match(sql, custom):
                     continue
                 found.append(room)
+            if other_version:
+                log.info("matchmaking: %s (mod %s) skipped %d room(s) of players on another mod version", conn.peer,
+                         ".".join(str(n) for n in mine), other_version)
             if not found:
                 return conn.reply(225, rc=ERR_NO_MATCH, debug="No match found")
             room = max(found, key=lambda r: len(r.actors))       # fill rooms up
