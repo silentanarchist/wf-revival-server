@@ -165,6 +165,13 @@
   .guides a { color: var(--accent2); }
   .guides ol, .guides ul { padding-left: 24px; } .guides li { margin: 5px 0; }
   .guides pre { max-height: none; }
+  .guides .dl { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; margin: 10px 0 14px; }
+  .guides .dl:empty { display: none; }
+  .guides .dl .file { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+  .guides .dl a.btn { display: inline-block; background: var(--accent); color: #14161a; font-weight: 600; text-decoration: none; padding: 6px 14px; border-radius: 5px; overflow-wrap: anywhere; }
+  .guides .dl .sum { margin-top: 6px; font-size: 13px; color: var(--dim); }
+  .guides .dl .sum code { user-select: all; overflow-wrap: anywhere; }
+  .guides .dl .sum button { font-size: 12px; padding: 1px 8px; margin-left: 4px; }
   .guides code { overflow-wrap: anywhere; background: #0e1013; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
   .guides .dim { color: var(--dim); }
   pre { background: #0e1013; border: 1px solid var(--line); border-radius: 6px; padding: 10px; overflow: auto; font-size: 12px; max-height: 300px; }
@@ -4672,7 +4679,7 @@ const TITLES = { GuideHome: "Install guides", GuidePc: "Install guide: PC", Guid
 // Guides: install guides for every signed-in account (text kept in content/files/guides.html).
 // The Guides tab opens its own ribbon with one page per guide; the file's <section id> picks the page.
 const GUIDE_SECTIONS = { GuideHome: "", GuidePc: "pc", GuidePhone: "phone-app", GuideAndroid: "android", GuideMumu: "mumu", GuideCreator: "creator", GuideCardArt: "card-art" };
-let lastGuidePage = "GuideHome", guideParts = null, guideAsk = null;
+let lastGuidePage = "GuideHome", guideParts = null, guideAsk = null, guideDownloads = {};
 const INSTALL_GUIDES = ["GuidePc", "GuidePhone", "GuideAndroid", "GuideMumu"];   // under Guides > Install Guides
 let lastInstallGuide = "GuidePc";
 /* The guides in the player's language: guides.html is not marked up; every text block that holds no other block is
@@ -4707,6 +4714,40 @@ async function guideTranslate(box) {
   }
 }
 onSiteLang(() => { if (!$("viewGuides").classList.contains("hidden")) showGuide(lastGuidePage); });
+// Download boxes (<div class="dl" data-dl="pc|android|patcher|repo">): a direct link to the newest file on GitHub,
+// with its size and the SHA-256 GitHub lists for it (the server reads GitHub's release list). Without that data
+// the box stays empty (hidden) and the guide's own release-page links remain.
+const GUIDE_REPO_ZIP = "https://github.com/silentanarchist/wf-revival-mod/archive/refs/heads/main.zip";
+function guideFillDownloads(box) {
+  const ok = u => /^https:\/\/github\.com\/silentanarchist\/wf-revival-mod\//.test(u || "");
+  const size = n => n >= 1048576 ? (Math.round(n / 104857.6) / 10) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+  let sums = false;
+  for (const slot of box.querySelectorAll("div.dl[data-dl]")) {
+    slot.textContent = "";
+    const kind = slot.dataset.dl;
+    if (kind === "repo") {
+      slot.append(el("div", { class: "file" },
+        el("a", { class: "btn", href: GUIDE_REPO_ZIP, rel: "noopener", text: T("guides.dl.repoZip", "Download the repository as a ZIP") }),
+        el("span", { class: "dim", text: T("guides.dl.repoNote", "the same as Code > Download ZIP on GitHub") })));
+      continue;
+    }
+    const f = guideDownloads[kind];
+    if (!f || !ok(f.url) || !ok(f.page)) continue;
+    const meta = el("span", { class: "dim" }, (f.release ? f.release + " · " : "") + (f.size ? size(f.size) + " · " : ""),
+      el("a", { href: f.page, rel: "noopener", text: T("guides.dl.releasePage", "release page on GitHub") }));
+    slot.append(el("div", { class: "file" }, el("a", { class: "btn", href: f.url, rel: "noopener", text: T("guides.dl.download", "Download {file}", { file: f.file }) }), meta));
+    if (/^[0-9a-f]{64}$/.test(f.sha256 || "")) {
+      sums = true;
+      const copy = el("button", { type: "button", text: T("guides.dl.copy", "Copy") });
+      copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(f.sha256); copy.textContent = T("common.copied", "Copied"); }
+        catch (x) { say(T("guides.dl.copyByHand", "Copy did not work: select the code and copy it by hand."), "bad"); }
+      };
+      slot.append(el("div", { class: "sum" }, "SHA-256: ", el("code", { text: f.sha256 }), copy));
+    }
+  }
+  for (const n of box.querySelectorAll(".dl-note")) n.classList.toggle("hidden", !sums);
+}
 async function showGuide(which) {
   if (!guideParts) {
     guideAsk = guideAsk || call("Guides");
@@ -4718,10 +4759,12 @@ async function showGuide(which) {
     guideParts[""] = doc.innerHTML;                                      // the introduction and "Which guide?"
     for (const k of Object.keys(guideParts)) guideParts[k] = guideParts[k].replace(/<p class="dim" style="margin-top:40px">[\s\S]*$/, "");
     guideParts.footer = (d.html.match(/<p class="dim" style="margin-top:40px">[\s\S]*?<\/p>/) || [""])[0];
+    guideDownloads = d.downloads || {};
   }
   if (!(which in GUIDE_SECTIONS) || $("viewGuides").classList.contains("hidden")) return;   // moved on meanwhile
   const box = $("guidesText");
   box.innerHTML = (guideParts[GUIDE_SECTIONS[which]] || "") + guideParts.footer;
+  guideFillDownloads(box);
   guideTranslate(box);                         // in the chosen language, block by block (links are set up below meanwhile)
   // a link to another guide (#pc, #mumu, ...) opens that guide's page
   for (const a of box.querySelectorAll('a[href^="#"]')) {

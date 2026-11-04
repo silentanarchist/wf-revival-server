@@ -2945,7 +2945,8 @@ class PlayFabEmulator:
 
     def api_Revival_Guides(self, req, headers):
         """The install guides for the site's Guides page: any signed-in account, one still waiting for
-        approval included (not a banned one). Text from content/files/guides.html."""
+        approval included (not a banned one). Text from content/files/guides.html, plus the newest
+        download files from GitHub (_guide_downloads) for the guides' download boxes."""
         me = self._creator_account_limited(req)
         if not me:
             return err("NotAuthorized", "sign in first")
@@ -2955,7 +2956,69 @@ class PlayFabEmulator:
         except OSError:
             return err("NotFound", "the guides are not on the server")
         m = re.search(r"<main>(.*)</main>", page, re.S)
-        return ok({"html": m.group(1) if m else ""})
+        return ok({"html": m.group(1) if m else "", "downloads": self._guide_downloads()})
+
+    # Download boxes in the guides (owner, 2026-11-04): a direct link to each file on GitHub (the release
+    # asset's own download address, so it is the very file on the release page) with its size and the
+    # SHA-256 GitHub lists for it. Read from GitHub's public release list, kept 10 minutes; while it is
+    # being refreshed (in the background) the last good copy is used. Nothing is downloaded or hosted here.
+    GUIDE_REPO = "silentanarchist/wf-revival-mod"
+    GUIDE_FILES = {   # box: (release tag pattern, file name pattern); the newest release with such a file wins
+        "pc": (r"v\d+\.\d+\.\d+(-w)?", r"(WFRevival|WarpforgeRevival)-\d+(\.\d+)*-w\.zip"),
+        "android": (r"v\d+\.\d+\.\d+(-a)?", r"(WFRevival|WarpforgeRevival)\.Android-\d+(\.\d+)*-a\.zip"),
+        "patcher": (r"patcher-v\d+\.\d+\.\d+", r"(WFRevivalPatcher|WarpforgePatcher)-\d+(\.\d+)*\.apk"),
+    }
+    _guide_dl = {"data": None, "at": 0.0, "busy": False}
+
+    def _guide_downloads(self):
+        c = PlayFabEmulator._guide_dl
+        if c["data"] is not None and time.time() - c["at"] < 600:
+            return c["data"]
+        if c["data"] is None and time.time() - c["at"] > 120:
+            self._guide_downloads_fetch()               # first time: wait for it (a few seconds at most)
+        elif not c["busy"]:
+            c["busy"] = True
+            threading.Thread(target=self._guide_downloads_fetch, name="guide-downloads", daemon=True).start()
+        return c["data"]
+
+    def _guide_downloads_fetch(self):
+        import urllib.request
+        c = PlayFabEmulator._guide_dl
+        try:
+            rq = urllib.request.Request(f"https://api.github.com/repos/{self.GUIDE_REPO}/releases?per_page=40",
+                                        headers={"Accept": "application/vnd.github+json", "User-Agent": "WarpforgeRevival (server, 1.0)"})
+            with urllib.request.urlopen(rq, timeout=8) as resp:
+                releases = json.loads(resp.read(2_000_000))
+            c["data"] = self._guide_downloads_pick(releases)
+            log.info("guides: GitHub downloads read (%s)", ", ".join(f"{k} {v['file']}" for k, v in c["data"].items()) or "none found")
+        except Exception as e:                          # keep the last good copy; the guides fall back to the release links
+            log.warning("guides: could not read GitHub's releases: %s", type(e).__name__)
+        finally:
+            c["at"], c["busy"] = time.time(), False
+
+    def _guide_downloads_pick(self, releases):
+        base = f"https://github.com/{self.GUIDE_REPO}/releases/"
+        out = {}
+        for r in releases if isinstance(releases, list) else []:
+            if not isinstance(r, dict) or r.get("draft") or r.get("prerelease"):
+                continue
+            tag, page = str(r.get("tag_name") or ""), str(r.get("html_url") or "")
+            if not page.startswith(base + "tag/"):
+                continue
+            for box, (tag_re, file_re) in self.GUIDE_FILES.items():
+                if box in out or not re.fullmatch(tag_re, tag):
+                    continue
+                for a in r.get("assets") or []:
+                    name, url = str(a.get("name") or ""), str(a.get("browser_download_url") or "")
+                    if re.fullmatch(file_re, name) and url == f"{base}download/{tag}/{name}":
+                        digest = str(a.get("digest") or "")
+                        size = a.get("size")
+                        out[box] = {"file": name, "url": url, "page": page,
+                                    "release": re.sub(r"[^\w .()+-]", "", str(r.get("name") or tag))[:80],
+                                    "size": size if isinstance(size, int) and size >= 0 else 0,
+                                    "sha256": digest[7:] if re.fullmatch(r"sha256:[0-9a-f]{64}", digest) else ""}
+                        break
+        return out
 
     def _bug_reader(self, req):
         """(account, perms) for a signed-in tester or admin on the site, or (None, error)."""
