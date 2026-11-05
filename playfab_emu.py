@@ -3927,7 +3927,12 @@ class PlayFabEmulator:
             perms = dict(self._creator_perms(linked), name=linked["name"]) if linked else None
             # whether the account has a recovery code (mod 0.13.40 reminds the player to make one); never the code
             recovery = bool(linked.get("recoveryHash")) if linked else False
-        return ok({"linked": perms["name"] if perms else "", "account": perms, "signedOut": signed_out, "recovery": recovery})
+        # whether this player may send bug reports (mod 0.15.19 shows the Report a bug buttons by it; older mods only
+        # to testers) - the same rule _bug_who applies when a report arrives
+        mode = str(self._settings().get("bugReports") or "testers").lower()
+        bugs = bool(perms) and mode != "off" and perms.get("access") == "approved" and (mode == "everyone" or bool(perms.get("tester")))
+        return ok({"linked": perms["name"] if perms else "", "account": perms, "signedOut": signed_out, "recovery": recovery,
+                   "bugReports": bugs})
 
     # ---- bans
     # A player is banned when the site account linked to them is banned (People page), or when an
