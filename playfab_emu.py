@@ -7041,8 +7041,9 @@ class PlayFabEmulator:
     def cs_CreateGroup(self, player, params):
         a = self._alliance_args("CreateGroup", params)
         name = " ".join(str(self._arg(a, "GroupName", "name", "Name", default="")).split())
-        if not 3 <= len(name) <= 24:
-            return self._alliance_error("An alliance name must be 3-24 characters long")
+        # 32 since 2026-11-05: the game's name field takes more than 24 (a 28-character name was refused).
+        if not 3 <= len(name) <= 32:
+            return self._alliance_error("An alliance name must be 3-32 characters long")
         if self._word_filter().found(name):
             return self._alliance_error("That name contains a word that is not allowed here")
         with self.store.lock:
