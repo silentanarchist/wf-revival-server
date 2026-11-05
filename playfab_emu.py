@@ -4454,7 +4454,9 @@ class PlayFabEmulator:
                 "wait": num("resetWaitSeconds", 120, 30, 600), "valid": num("resetMinutes", 30, 5, 120),
                 "minAge": num("minAccountDays", 30, 0, 3650),
                 "remove": cfg.get("removeRoles") is True,
-                "replayChannel": str(cfg.get("replayChannel") or "replay-sharing").strip().lstrip("#")[:100] or "replay-sharing"}
+                "replayChannel": str(cfg.get("replayChannel") or "replay-sharing").strip().lstrip("#")[:100] or "replay-sharing",
+                "cleanChannels": [str(c).strip().lstrip("#")[:100] for c in (cfg.get("cleanChannels") if isinstance(cfg.get("cleanChannels"), list)
+                                  else self.DISCORD_CLEAN_DEFAULT)[:10] if isinstance(c, str) and c.strip()]}
 
     def _discord_rest(self, bot, method, path, body=None):
         """A request to Discord's API as the bot. (status, JSON or None); never raises."""
@@ -4685,6 +4687,74 @@ class PlayFabEmulator:
         log.info("account %s approved by %s through Discord", t["name"], me["name"])
         self._discord_sync_later(t["name"])
         return self._discord_say(f"{t['name']} is approved. They can now sign in to the game with that account.")
+
+    # ---------------------------------------------------------------- command-only channels (2026-11-05)
+    # Discord only lets a member use slash commands in a channel where they may also send messages, so a channel meant
+    # for /password-reset alone cannot be closed to chatting. Instead the server removes everything else posted there:
+    # about every 20 seconds it reads the channel's latest 50 messages and deletes those not written by the bot and not
+    # pinned (pin a how-to note to keep it). The commands themselves leave nothing in the channel (their answers are
+    # only shown to the asker). Channels by name: "cleanChannels" in discord-bot.json, default the two names below;
+    # [] turns it off. The bot needs View Channel, Read Message History and Manage Messages there. No message text
+    # is read or logged, only how many were removed.
+    DISCORD_CLEAN_DEFAULT = ["password-reset", "reset-password"]
+    DISCORD_CLEAN_EVERY = 20
+
+    def _discord_clean(self):
+        now = time.time()
+        if now - self.__dict__.get("_discord_clean_at", 0) < self.DISCORD_CLEAN_EVERY or self.__dict__.get("_discord_cleaning"):
+            return
+        self._discord_clean_at = now
+        bot = self._discord_bot()
+        if bot is None or not bot.get("cleanChannels"):
+            return
+        self._discord_cleaning = True
+        def run():
+            try:
+                for name in bot["cleanChannels"]:
+                    cid = self._discord_channel_id(bot, name)
+                    if cid:
+                        self._discord_clean_channel(bot, cid, name)
+            except Exception as e:
+                log.warning("discord bot: cleaning failed (%s)", type(e).__name__)
+            finally:
+                self._discord_cleaning = False
+        threading.Thread(target=run, name="discord-clean", daemon=True).start()
+
+    def _discord_clean_channel(self, bot, cid, name):
+        status, msgs = self._discord_rest(bot, "GET", f"/channels/{cid}/messages?limit=50")
+        if status != 200 or not isinstance(msgs, list):
+            noted = self.__dict__.setdefault("_discord_clean_noted", set())
+            if (cid, status) not in noted:
+                noted.add((cid, status))
+                log.warning("discord bot: cannot read #%s to keep it command-only (HTTP %s; the bot needs View Channel and "
+                            "Read Message History there)", name, status)
+            return
+        cutoff = time.time() - 13 * 86400                    # bulk delete only takes messages younger than 14 days
+        old, young = [], []
+        for m in msgs:
+            if not isinstance(m, dict) or m.get("pinned") or str((m.get("author") or {}).get("id")) == bot["app"]:
+                continue
+            mid = str(m.get("id") or "")
+            if not re.fullmatch(r"\d{15,22}", mid):
+                continue
+            sent_at = ((int(mid) >> 22) + 1420070400000) / 1000.0  # a message id carries its time
+            (young if sent_at >= cutoff else old).append(mid)
+        removed = 0
+        if len(young) >= 2:
+            st, _ = self._discord_rest(bot, "POST", f"/channels/{cid}/messages/bulk-delete", {"messages": young[:100]})
+            if st == 204:
+                removed += len(young[:100])
+            young = [] if st == 204 else young
+        for mid in (young + old)[:10]:                       # one by one: a single message, old ones, or a failed bulk
+            st, _ = self._discord_rest(bot, "DELETE", f"/channels/{cid}/messages/{mid}")
+            if st == 204:
+                removed += 1
+            elif st == 403:
+                log.warning("discord bot: cannot delete in #%s (the bot needs Manage Messages there)", name)
+                break
+            time.sleep(0.5)
+        if removed:
+            log.info("discord bot: removed %d message(s) from #%s (command-only channel)", removed, name)
 
     # ---------------------------------------------------------------- /replay (2026-10-18)
     # Anyone with a replay code can share it: the bot posts a card about the match in the replay channel (by name,
@@ -6165,6 +6235,7 @@ class PlayFabEmulator:
         if api == "Revival/DiscordInteractions":
             return self._discord_interaction(headers, body_bytes)
         self._discord_startup()
+        self._discord_clean()
         try:
             req = json.loads(body_bytes or b"{}")
         except ValueError:
