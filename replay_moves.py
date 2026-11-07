@@ -89,14 +89,28 @@ class Cards:
                 self.t[n] = (c['id'], s, 'deck', None)
                 n += 1
         self.n = n
+        self.cd = cd
+        self.candidates = {}
+        self.stale = False
         if revival_cards and revival_cards.get('cards'):
             # mod >= 0.13.39 records the game's own table: [number, card id, 1 = recording player's card]
-            for num, cid, own in revival_cards['cards']:
-                if num not in self.t:
-                    self.t[num] = (cid, 'P' if own else 'E', 'table', None)
-            self.exact = True
-            self.counter = max(self.t) + 1
-            return
+            table = {num: (cid, own) for num, cid, own in revival_cards['cards']}
+            # Mods up to 0.15.19 did not empty the table between matches when the previous match was not saved,
+            # so a number this match reused kept the previous match's card (2026-11-06: an Astra Militarum vs
+            # Tyranids replay named Space Wolves cards). The table's deck numbers then disagree with this
+            # recording's own decks: trust none of it blindly; its later numbers are only candidates, accepted
+            # in infer_turns when the player who used the card plays that card's faction.
+            deck = [num for num in range(n) if num in table]
+            stale = bool(deck) and sum(table[num][0] != self.t[num][0] for num in deck) * 2 > len(deck)
+            if not stale:
+                for num, (cid, own) in table.items():
+                    if num not in self.t:
+                        self.t[num] = (cid, 'P' if own else 'E', 'table', None)
+                self.exact = True
+                self.counter = max(self.t) + 1
+                return
+            self.candidates = {num: cid for num, (cid, own) in table.items() if num >= n}
+            self.stale = True
         # 2) cards made before turn 1 (inferred, see README):
         envP, envE = r.get('playerEnviromentalCard'), r.get('enemyEnviromentalCard')
         pre = []
@@ -138,6 +152,19 @@ class Cards:
                 if a['tgtd']:
                     refs.setdefault(a['tget'], []).append((ti, side, 'target'))
         unknown = {k: v for k, v in refs.items() if k not in self.t}
+        if self.candidates:
+            army = lambda cid: (self.cd.get(cid) or {}).get('army')
+            sides = {s: army(self.warlord[s]) for s in 'PE'}
+            for k, v in list(unknown.items()):
+                cid = self.candidates.get(k)
+                a = army(cid) if cid else None
+                if a is None:
+                    continue
+                users = {side for _, side, role in v if role.startswith('act')}
+                if (users and all(sides[u] == a for u in users)) or (not users and a in sides.values()):
+                    owner = next(iter(users)) if users else ('P' if sides['P'] == a else 'E')
+                    self.t[k] = (cid, owner, 'table', None)
+                    del unknown[k]
         # a talent is only ever played as a tactic, in the turn it was made, by the player whose turn it is
         talentish = {k for k, v in unknown.items()
                      if all(role == 'act-spell' for _, _, role in v) and len({ti for ti, _, _ in v}) == 1
@@ -208,7 +235,10 @@ def moves(record, names, carddata=None, show_ids=False, player_names=None):
     out = [f"{who['P']} ({names.get(r['playerData']['deckWarlord']['id'], r['playerData']['deckWarlord']['id'])}) vs "
            f"{who['E']} ({names.get(r['oppData']['deckWarlord']['id'], r['oppData']['deckWarlord']['id'])}); "
            f"{who[first]} goes first"]
-    if not cards.exact:
+    if cards.stale:
+        out.append("(This recording's card list is partly from an earlier match: cards made during the match, such as "
+                   "tokens, may not be named.)")
+    elif not cards.exact:
         out.append("(An older recording: cards made during the match, such as tokens, may not be named.)")
     for s, key in (('P', 'playerMulligan'), ('E', 'enemyMulligan')):
         if r.get(key):

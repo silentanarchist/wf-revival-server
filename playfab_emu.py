@@ -4889,7 +4889,14 @@ class PlayFabEmulator:
         return data
 
     def _replay_moves_lines(self, d):
-        import replay_moves
+        import importlib, replay_moves
+        try:                                    # pick up a changed replay_moves.py without a server restart
+            stamp = os.path.getmtime(replay_moves.__file__)
+            if getattr(replay_moves, "_loaded_stamp", None) != stamp:     # None: loaded before this check existed
+                replay_moves = importlib.reload(replay_moves)
+            replay_moves._loaded_stamp = stamp
+        except (OSError, ImportError, SyntaxError) as e:
+            log.warning("replay_moves reload: %s", e)
         carddata = self._replay_carddata()
         names = dict(self._official_names())
         names.update({k: v["name"] for k, v in carddata.items() if isinstance(v, dict) and isinstance(v.get("name"), str)})
