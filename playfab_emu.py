@@ -6212,6 +6212,10 @@ class PlayFabEmulator:
             served = {}
         has = self._version_number(mine)
 
+        # The refusals below use PlayFab code 1124 (VersionNotFound), not 1001 (AccountNotFound): the game treats
+        # 1000-1003 as "this account is wrong", clears the saved sign-in details and shows "Account not found"
+        # (LoginManager.IsAccountLoginError / ProcessLoginResult). A player whose mod could not update thought
+        # the account was gone (2026-11-12). 1124 is not an account error, so nothing is cleared.
         wanted = str(settings.get("minModVersion") or "").strip()
         if wanted.lower() == "latest":
             wanted = str(served.get("v") or "")
@@ -6220,13 +6224,13 @@ class PlayFabEmulator:
             width = max(len(need), len(has))
             if not has or has + (0,) * (width - len(has)) < need + (0,) * (width - len(need)):
                 number = ".".join(str(n) for n in need)
-                return (err("ModOutOfDate", f"This server needs Warpforge Revival {number} or newer. Update the mod, then start the game again.", 1001, 401),
+                return (err("ModOutOfDate", f"This server needs Warpforge Revival {number} or newer. Update the mod, then start the game again.", 1124, 401),
                         "mod %s is older than %s" % (mine or "(not given)", number))
 
         if settings.get("onlyRevivalMod") is True:
             others = headers.get("X-Revival-Others")
             if others is None:
-                return (err("ModOutOfDate", "This server needs a newer Warpforge Revival mod. Update the mod, then start the game again.", 1001, 401),
+                return (err("ModOutOfDate", "This server needs a newer Warpforge Revival mod. Update the mod, then start the game again.", 1124, 401),
                         "mod %s does not report what else is loaded" % (mine or "(not given)"))
             others = re.sub(r"[^\w .,'+()-]", "", str(others))[:200].strip()
             if others.lower() == "none":
@@ -6238,7 +6242,7 @@ class PlayFabEmulator:
             sent = str(headers.get("X-Revival-Hash") or "").strip().lower()
             # ("unknown": the mod could not read its own file - let it in, since refusing would lock out honest players)
             if sent != "unknown" and served.get("h") and has and has == self._version_number(served.get("v")) and sent != str(served["h"]).lower():
-                return (err("ModChanged", "This copy of the Warpforge Revival mod is not the one this server hands out. Let the game update the mod, or download it again.", 1001, 401),
+                return (err("ModChanged", "This copy of the Warpforge Revival mod is not the one this server hands out. Let the game update the mod, or download it again.", 1124, 401),
                         "mod file of %s differs from the one served" % mine)
         return None, ""
 
