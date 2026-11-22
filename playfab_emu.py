@@ -1182,6 +1182,39 @@ def _cards_version(handler):
     return hashlib.sha256("|".join(sorted(shas)).encode()).hexdigest()[:16] if shas else ""
 
 
+_card_file_shas = {}
+
+
+def _current_card_files(content_root):
+    """The SHA-256 of the card files the server hands out now (allcards*, PC and Android), cached per file
+    (path, mtime, size). PC and Android files differ byte for byte but hold the same cards, so a game that loaded
+    either counts as "current" for same-cards matchmaking (photon_emu SAME_CARDS_ONLY)."""
+    out = set()
+    for sub in ("bundles", "bundles-android"):
+        folder = os.path.join(content_root, sub)
+        try:
+            names = os.listdir(folder)
+        except OSError:
+            continue
+        for name in names:
+            if not (name.startswith("allcards") and name.endswith(".bundle")):
+                continue
+            path = os.path.join(folder, name)
+            try:
+                st = os.stat(path)
+                key = (path, st.st_mtime_ns, st.st_size)
+                if key not in _card_file_shas:
+                    h = hashlib.sha256()
+                    with open(path, "rb") as f:
+                        for chunk in iter(lambda: f.read(1 << 20), b""):
+                            h.update(chunk)
+                    _card_file_shas[key] = h.hexdigest()
+                out.add(_card_file_shas[key])
+            except OSError:
+                continue
+    return out
+
+
 # The content bundles (the game's card file, alternate art and text) are only for signed-in players.
 # Mods from 0.13.21 send their saved game sign-in with each bundle download (X-Revival-Login).
 # Switched on 2026-10-14: a download without a valid sign-in gets 403 (the mod fetches it again after
@@ -7913,10 +7946,23 @@ class PlayFabEmulator:
         if grant is None:                     # the match service part is older (restart the server)
             return err("NotAvailable", "restart the server to use match tickets", 1000, 503)
         mod = str(headers.get("X-Revival-Mod") or "")[:40]      # 0.14.17+ says it: the match service picks who goes first
+        cards = str(headers.get("X-Revival-Cards") or "").strip().lower()[:80]  # 0.15.30+: the card file the game loaded
+        if cards:
+            # PC and Android card files differ byte for byte: every current one is the same cards ("current");
+            # anything else is an older copy, kept as its own checksum (or "game", the game's own copy)
+            try:
+                if cards in _current_card_files(self.content_root):
+                    cards = "current"
+            except Exception:
+                log.exception("match ticket: could not read the current card files")
+                cards = ""
         try:
-            ticket = grant(p["PlayFabId"], mod=mod)
-        except TypeError:                     # a match service from before 2026-10-19 (restart the server)
-            ticket = grant(p["PlayFabId"])
+            ticket = grant(p["PlayFabId"], mod=mod, cards=cards)
+        except TypeError:                     # an older match service (restart the server)
+            try:
+                ticket = grant(p["PlayFabId"], mod=mod)
+            except TypeError:                 # a match service from before 2026-10-19
+                ticket = grant(p["PlayFabId"])
         return ok({"ticket": ticket, "seconds": getattr(photon_emu, "TICKET_SECONDS", 1800)})
 
     def api_Client_GetPhotonAuthenticationToken(self, req, headers):

@@ -590,6 +590,15 @@ def _version_tuple(text):
     return tuple(int(x) for x in m.groups()) if m else None
 
 
+_cards = _keep("_cards", dict)                # player id -> the card data their game loaded (SHA-256 hex, or "game"), from the match ticket request
+
+
+def cards_of(player_id):
+    """The card data a signed-in player's game said it loaded when asking for their match ticket, or None."""
+    with _tickets_lock:
+        return _cards.get(player_id)
+
+
 def mod_of(player_id):
     """The mod version (tuple) a signed-in player said when asking for their match ticket, or None."""
     with _tickets_lock:
@@ -605,6 +614,28 @@ def mod_of(player_id):
 # before. Friend challenges (rooms joined by name) are not affected. A player left with no room of their version
 # opens their own and gets the game's usual bot match if nobody on that version comes.
 SAME_MOD_ONLY = True
+
+
+# ---- same card data in matchmaking (2026-11-22)
+# The game loads its card file once, at start. When the server's card file changes (Everstorm fixed in the card data,
+# 2026-11-22), a game started before keeps the old cards until it restarts, and a match between an old and a new copy
+# breaks once the cards differ. From mod 0.15.30 the match ticket request says which card file the game loaded
+# (X-Revival-Cards; playfab_emu turns any of the current PC/Android card files into "current"). join_random skips a room whose seated players loaded different cards than the searcher, and a
+# join by name (a friend challenge) into a room whose seated players loaded different cards is refused ("Game closed").
+# Unknown (an older mod, or a server restart since the ticket) matches anyone, as before.
+SAME_CARDS_ONLY = True
+
+
+def _cards_differ(room, mine):
+    """True when a seated player in the room loaded different known card data than `mine`."""
+    if not mine:
+        return False
+    for a in room.actors.values():
+        if a.player:
+            theirs = cards_of(a.player)
+            if theirs and theirs != mine:
+                return True
+    return False
 
 
 def _mods_differ(room, mine):
@@ -659,11 +690,12 @@ def _tickets_save():
         log.warning("match tickets: could not write %s: %s", path, e)
 
 
-def grant(player_id, mod=None):
+def grant(player_id, mod=None, cards=None):
     """A match ticket for a signed-in player (valid TICKET_SECONDS, usable for every connection).
 
     mod: the version the mod said in its request ("0.14.17-w"); it decides whether the server picks who goes
-    first for this player's matches (see FIRST_MIN_MOD). A ticket asked for without one counts as an older mod."""
+    first for this player's matches (see FIRST_MIN_MOD). A ticket asked for without one counts as an older mod.
+    cards: the card data the player's game loaded (see SAME_CARDS_ONLY); None = not said."""
     ticket = uuid.uuid4().hex + uuid.uuid4().hex
     now = time.time()
     with _tickets_lock:
@@ -676,6 +708,11 @@ def grant(player_id, mod=None):
             _mods[player_id] = version
         else:
             _mods.pop(player_id, None)
+        cards = str(cards or "").strip().lower()
+        if cards and (cards in ("game", "current") or re.fullmatch(r"[0-9a-f]{64}", cards)):
+            _cards[player_id] = cards
+        else:
+            _cards.pop(player_id, None)
         _tickets_save()
     return ticket
 
@@ -1083,7 +1120,8 @@ class Service(object):
                 sql = stripped
         now = time.monotonic()
         mine = mod_of(conn.player) if SAME_MOD_ONLY and conn.player else None
-        other_version = 0
+        my_cards = cards_of(conn.player) if SAME_CARDS_ONLY and conn.player else None
+        other_version = other_cards = 0
         with self.lock:
             found = []
             for room in self.rooms.values():
@@ -1093,6 +1131,9 @@ class Service(object):
                     continue                                    # only people who dropped are in it
                 if _mods_differ(room, mine):
                     other_version += 1                          # see SAME_MOD_ONLY
+                    continue
+                if _cards_differ(room, my_cards):
+                    other_cards += 1                            # see SAME_CARDS_ONLY
                     continue
                 custom = room.custom()
                 if any(isinstance(k, str) and custom.get(k) != plain(v) for k, v in want.items()):
@@ -1105,6 +1146,8 @@ class Service(object):
             if other_version:
                 log.info("matchmaking: %s (mod %s) skipped %d room(s) of players on another mod version", conn.peer,
                          ".".join(str(n) for n in mine), other_version)
+            if other_cards:
+                log.info("matchmaking: %s skipped %d room(s) of players whose game loaded other card data", conn.peer, other_cards)
             if not found:
                 return conn.reply(225, rc=ERR_NO_MATCH, debug="No match found")
             room = max(found, key=lambda r: len(r.actors))       # fill rooms up
@@ -1178,6 +1221,10 @@ class Service(object):
                 return conn.reply(code, rc=ERR_NO_REJOIN, debug="Rejoiner not found")
             if back is None:
                 if not room.flag(K_OPEN):
+                    return conn.reply(code, rc=ERR_CLOSED, debug="Game closed")
+                if SAME_CARDS_ONLY and conn.player and _cards_differ(room, cards_of(conn.player)):
+                    log.info("room %s: %s refused: their game loaded other card data than the players in the room "
+                             "(one of them has not restarted since the cards changed)", room.name, conn.peer)
                     return conn.reply(code, rc=ERR_CLOSED, debug="Game closed")
                 if room.max_players > 0 and len(room.actors) >= room.max_players:
                     return conn.reply(code, rc=ERR_FULL, debug="Game full")
