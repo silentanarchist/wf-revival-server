@@ -626,14 +626,25 @@ SAME_MOD_ONLY = True
 SAME_CARDS_ONLY = True
 
 
+def _cards_split(value):
+    """("current", "3") for "current+c3": the card data, and the testers' custom-card package version (None without one)."""
+    base, _, custom = value.partition("+c")
+    return base, custom or None
+
+
 def _cards_differ(room, mine):
-    """True when a seated player in the room loaded different known card data than `mine`."""
+    """True when a seated player in the room loaded different known card data than `mine`, or when both have the
+    testers' custom-card package (it carries updates to official cards, 2026-11-23) in different versions."""
     if not mine:
         return False
+    my_base, my_custom = _cards_split(mine)
     for a in room.actors.values():
         if a.player:
             theirs = cards_of(a.player)
-            if theirs and theirs != mine:
+            if not theirs:
+                continue
+            base, custom = _cards_split(theirs)
+            if base != my_base or (custom and my_custom and custom != my_custom):
                 return True
     return False
 
@@ -709,7 +720,7 @@ def grant(player_id, mod=None, cards=None):
         else:
             _mods.pop(player_id, None)
         cards = str(cards or "").strip().lower()
-        if cards and (cards in ("game", "current") or re.fullmatch(r"[0-9a-f]{64}", cards)):
+        if cards and re.fullmatch(r"(?:game|current|[0-9a-f]{64})(?:\+c\d{1,6})?", cards):
             _cards[player_id] = cards
         else:
             _cards.pop(player_id, None)

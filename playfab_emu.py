@@ -3476,6 +3476,18 @@ class PlayFabEmulator:
         if card["kind"] == "tactic":
             card["stratagemType"] = design.get("stratagemType") or "Normal"
 
+    def _creator_update_base(self, official_id):
+        """The official card's own design in the game's layout, compiled the same way as an update to it (2026-11-23).
+        Stored with the update as "nativeBase": the package builder takes from the update only what differs from it, so
+        whatever the compiler does not write (animations, fields the creator does not show) stays the official card's."""
+        one = ((self._creator_official_data() or {}).get("detail") or {}).get(official_id) or {}
+        design = dict(one.get("design") or {})
+        if not design:
+            return None
+        design["updates"] = official_id
+        native, _ = self._creator_compile(design)
+        return native
+
     def _creator_clean(self, card):
         """Checks a submitted design and returns only the fields the creator defines."""
         if not isinstance(card, dict):
@@ -3650,6 +3662,8 @@ class PlayFabEmulator:
                 if existing.get("artCredit"):
                     card["artCredit"] = existing["artCredit"]
             card["native"], card["buildNotes"] = self._creator_compile(card)
+            if card.get("updates"):
+                card["nativeBase"] = self._creator_update_base(card["updates"])
             if (existing or {}).get("rulesAccepted"):
                 card["rulesAccepted"] = existing["rulesAccepted"]
             if status == "pending":
@@ -3713,6 +3727,8 @@ class PlayFabEmulator:
     def _creator_store(self, card, path):
         card["updated"] = now_iso()
         card["native"], card["buildNotes"] = self._creator_compile(card)
+        if card.get("updates"):
+            card["nativeBase"] = self._creator_update_base(card["updates"])
         with open(path + ".tmp", "w", encoding="utf-8") as f:
             json.dump(card, f, ensure_ascii=False, indent=1)
         os.replace(path + ".tmp", path)
@@ -7956,6 +7972,9 @@ class PlayFabEmulator:
             except Exception:
                 log.exception("match ticket: could not read the current card files")
                 cards = ""
+        custom = str(headers.get("X-Revival-Custom") or "").strip()      # 0.15.32+: the testers' custom-card package version
+        if cards and re.fullmatch(r"[1-9]\d{0,5}", custom):
+            cards += "+c" + custom
         try:
             ticket = grant(p["PlayFabId"], mod=mod, cards=cards)
         except TypeError:                     # an older match service (restart the server)
