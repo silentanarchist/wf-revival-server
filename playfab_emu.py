@@ -4513,7 +4513,47 @@ class PlayFabEmulator:
         if bot is None and stamps[1] is not None:            # set up halfway: say what is missing (never the values)
             log.warning("discord bot: not started - %s", "; ".join(why) or "settings incomplete")
         self._discord_bot_cache = (stamps, bot)
+        if bot is not None:
+            self._discord_roles_catch_up(bot)
         return bot
+
+    DISCORD_ROLES_DONE_FILE = "discord-roles-synced.json"
+
+    def _discord_roles_catch_up(self, bot):
+        """When the role list in discord-bot.json changes (2026-11-23: "tester" -> "Tester" added), every account linked
+        to Discord is synced once, so members who already hold a site role get the Discord role too (a sync otherwise
+        only runs when someone links or an admin changes their account). The role list last caught up is kept in
+        data/discord-roles-synced.json, so a restart does not do it again."""
+        done = os.path.join(self.store.root, self.DISCORD_ROLES_DONE_FILE)
+        want = json.dumps(bot["roles"], sort_keys=True)
+        try:
+            with open(done, encoding="utf-8") as f:
+                if json.dumps((json.load(f) or {}).get("roles"), sort_keys=True) == want:
+                    return
+        except (OSError, ValueError, AttributeError):
+            pass
+        if getattr(self, "_discord_catching_up", False) or not bot["roles"]:
+            return
+        self._discord_catching_up = True
+        try:
+            with open(done + ".tmp", "w", encoding="utf-8") as f:
+                json.dump({"roles": bot["roles"], "at": now_iso()}, f)
+            os.replace(done + ".tmp", done)
+        except OSError:
+            log.exception("discord bot: could not note the role catch-up")
+        names = [u.get("name") for u in self._creator_users_view().values()
+                 if isinstance(u, dict) and (u.get("discord") or {}).get("id") and u.get("name")]
+        log.info("discord bot: role list changed (%s); syncing the roles of %d linked account(s)", ", ".join(sorted(bot["roles"])), len(names))
+
+        def run():
+            try:
+                for n in names:
+                    self._discord_sync(bot, n)
+                    time.sleep(1.0)                       # well inside Discord's rate limits
+                log.info("discord bot: role catch-up done")
+            finally:
+                self._discord_catching_up = False
+        threading.Thread(target=run, name="discord-roles-catch-up", daemon=True).start()
 
     def _discord_bot_read(self, why):
         app = self._discord_app()
