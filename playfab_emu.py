@@ -1250,6 +1250,25 @@ def _custom_package_allowed(handler):
     return perms["access"] == "approved" and bool(perms.get("tester") or perms.get("admin"))
 
 
+# The testers' build of the mod (owner, 2026-11-23): two builds, one for everyone (mod/) and one for testers (mod-test/,
+# next to it). A tester build is the current main version plus a fourth number (0.15.31.1, .2, ...: changes for
+# testers only that do not change normal matches); the next main version (0.15.32) is newer than every tester build of
+# the one before, so testers move to it and the tester number starts again. Mods from 0.15.32 ask for both and take the
+# newer; only a tester's or admin's saved sign-in gets the tester build. Signed by the owner like the main build.
+_tester_store = [None, None]
+
+
+def _tester_mods(handler):
+    """The mod store for mod-test/ (beside mod/), or None when this server has no folder for it."""
+    main = getattr(handler, "mods", None)
+    if main is None:
+        return None
+    d = os.path.join(os.path.dirname(main.dir), "mod-test")
+    if _tester_store[0] != d:
+        _tester_store[0], _tester_store[1] = d, main.__class__(d)
+    return _tester_store[1]
+
+
 _offence_cache = [None, {}]
 
 
@@ -1310,7 +1329,8 @@ def _site_content_get(handler, path):
     - /api/v1/content/pack is no longer handed out: the mod never used its cards (only its version,
       now "cardsVersion" in the manifest); mods before 0.13.20 still ask and keep their cached copy.
     - /api/v1/content/manifest gains "cardsVersion".
-    - /api/v1/content/custom/<file>: the custom-card package, testers only (saved sign-in header)."""
+    - /api/v1/content/custom/<file>: the custom-card package, testers only (saved sign-in header).
+    - /api/v1/content/tester-mod/manifest and /download: the testers' build of the mod (mod-test/), testers only."""
     if path == "/api/v1/content/pack":
         handler._json(404, {"error": "not found"})
         return True
@@ -1325,6 +1345,28 @@ def _site_content_get(handler, path):
             handler._json(403, {"error": "sign in to the game first"})
             return True
         return False
+    if path in ("/api/v1/content/tester-mod/manifest", "/api/v1/content/tester-mod/download"):
+        # the testers' build of the mod (see _tester_mods): only for a saved sign-in of a tester or admin
+        try:
+            allowed = _custom_package_allowed(handler)
+        except Exception:
+            log.exception("tester build: could not check the sign-in")
+            allowed = False
+        if not allowed:
+            handler._json(403, {"error": "the tester build is for testers"})
+            return True
+        store = _tester_mods(handler)
+        android = handler._is_android()
+        info = store.info(android) if store is not None else None
+        if path.endswith("/manifest"):
+            handler._json(200, dict(info, available=True, url="/api/v1/content/tester-mod/download" + ("?platform=android" if android else ""))
+                          if info else {"available": False})
+        elif info is None:
+            handler._json(404, {"error": "no tester build on this server"})
+        else:
+            log.info("tester build %s handed out", info.get("label"))
+            handler._send_file(store.path(android), "application/octet-stream")
+        return True
     if path.startswith("/api/v1/content/custom/"):
         # the custom-card package (claude/custom-bundle-plan.md): content/custom/<file>, only to a game whose saved
         # sign-in belongs to an approved tester (or admin); the mod asks at start-up, before signing in
@@ -3478,8 +3520,9 @@ class PlayFabEmulator:
 
     def _creator_update_base(self, official_id):
         """The official card's own design in the game's layout, compiled the same way as an update to it (2026-11-23).
-        Stored with the update as "nativeBase": the package builder takes from the update only what differs from it, so
-        whatever the compiler does not write (animations, fields the creator does not show) stays the official card's."""
+        Used by the package builder (build_custom.py imports this file): it takes from an update only what differs from
+        this, so whatever the compiler does not write (animations, fields the creator does not show) stays the official
+        card's. Not stored with the update (owner: no copy of the official card)."""
         one = ((self._creator_official_data() or {}).get("detail") or {}).get(official_id) or {}
         design = dict(one.get("design") or {})
         if not design:
@@ -3662,8 +3705,6 @@ class PlayFabEmulator:
                 if existing.get("artCredit"):
                     card["artCredit"] = existing["artCredit"]
             card["native"], card["buildNotes"] = self._creator_compile(card)
-            if card.get("updates"):
-                card["nativeBase"] = self._creator_update_base(card["updates"])
             if (existing or {}).get("rulesAccepted"):
                 card["rulesAccepted"] = existing["rulesAccepted"]
             if status == "pending":
@@ -3727,8 +3768,6 @@ class PlayFabEmulator:
     def _creator_store(self, card, path):
         card["updated"] = now_iso()
         card["native"], card["buildNotes"] = self._creator_compile(card)
-        if card.get("updates"):
-            card["nativeBase"] = self._creator_update_base(card["updates"])
         with open(path + ".tmp", "w", encoding="utf-8") as f:
             json.dump(card, f, ensure_ascii=False, indent=1)
         os.replace(path + ".tmp", path)
