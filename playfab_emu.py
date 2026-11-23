@@ -4547,10 +4547,12 @@ class PlayFabEmulator:
 
         def run():
             try:
+                tally = {}
                 for n in names:
-                    self._discord_sync(bot, n)
+                    r = self._discord_sync(bot, n) or "?"
+                    tally[r] = tally.get(r, 0) + 1
                     time.sleep(1.0)                       # well inside Discord's rate limits
-                log.info("discord bot: role catch-up done")
+                log.info("discord bot: role catch-up done: %s", ", ".join("%d %s" % (v, k) for k, v in sorted(tally.items())))
             finally:
                 self._discord_catching_up = False
         threading.Thread(target=run, name="discord-roles-catch-up", daemon=True).start()
@@ -4653,6 +4655,7 @@ class PlayFabEmulator:
             return cache[2]
         status, roles = self._discord_rest(bot, "GET", f"/guilds/{bot['guild']}/roles")
         if status != 200 or not isinstance(roles, list):
+            log.warning("discord bot: could not read the server's roles (HTTP %s)", status)
             return {}
         by_name = {str(r.get("name") or "").lower(): str(r.get("id")) for r in roles if isinstance(r, dict)}
         ids = {k: by_name[v.lower()] for k, v in bot["roles"].items() if v.lower() in by_name}
@@ -4671,12 +4674,13 @@ class PlayFabEmulator:
 
     def _discord_sync(self, bot, name, forget=None):
         """Sets one account's linked Discord member's roles from the site account. forget: a Discord id just unlinked,
-        whose roles managed here are taken away."""
+        whose roles managed here are taken away. Returns what happened, for the role catch-up's summary: "unlinked",
+        "no roles" (no Discord role matched), "not in server", "changed", "nothing to change" or "error"."""
         try:
             user = self._creator_users_view().get(str(name).lower())
             did = forget or ((user or {}).get("discord") or {}).get("id")
             if not did:
-                return
+                return "unlinked"
             want = set()
             if user and not forget:
                 perms = self._creator_perms(user)
@@ -4691,9 +4695,11 @@ class PlayFabEmulator:
                     if user.get("reviewer") or user.get("role") == "reviewer":
                         want.add("reviewer")
             ids = self._discord_role_ids(bot)
+            if not ids:
+                return "no roles"
             status, member = self._discord_rest(bot, "GET", f"/guilds/{bot['guild']}/members/{did}")
             if status != 200 or not isinstance(member, dict):
-                return                                   # not in our Discord server (or Discord did not answer)
+                return "not in server"                   # not in our Discord server (or Discord did not answer)
             has = set(str(r) for r in member.get("roles") or [])
             changed = []
             for role, rid in ids.items():
@@ -4705,8 +4711,11 @@ class PlayFabEmulator:
                     changed.append(f"-{role}" if s == 204 else f"-{role} FAILED ({s})")
             if changed:
                 log.info("discord bot: roles of %s: %s", name, " ".join(changed))
+                return "changed"
+            return "nothing to change"
         except Exception:
             log.exception("discord bot: role sync for %s", name)
+            return "error"
 
     def _discord_account_of(self, did):
         """(key, account) linked to a Discord id, or (None, None)."""
